@@ -137,7 +137,7 @@ Memo-drafting tokens (emit the template WITH the additional hard prohibition in 
 > - P25 $170, P50 $190, P75 $218, P90 $236
 > - Proposed rate at P77, z-score 1.1, within 2σ outlier bounds ($139-$250)
 >
-> BLS OEWS DC metro (15-2051 Data Scientists, 2024 vintage aged to [contract start] at 2.5%):
+> BLS OEWS DC metro (15-2051 Data Scientists, 2025 vintage aged to [contract start] at 2.5%):
 > - P50 annual $135,190, P90 annual $208,600
 > - Applied Agency BPA cleared wrap (3.17x) to P90 hourly: fully-burdened equivalent $234
 >
@@ -239,12 +239,19 @@ If the user doesn't specify a vehicle, ASK before defaulting. If the user provid
 |----------|-------|--------|
 | Standard work year | 2,080 hours | 40 hrs x 52 weeks; converts annual wages to hourly |
 | Default productive hours | 1,880 hours/year | 2,080 minus holidays and avg leave |
-| BLS wage cap (annual) | $239,200 | May 2024 OEWS reporting ceiling |
-| BLS wage cap (hourly) | $115.00 | May 2024 OEWS reporting ceiling |
-| BLS data vintage | May 2024 | Released April 2025; next release May 15, 2026 |
+| BLS wage cap (annual) | $239,200 | OEWS reporting ceiling; reconfirm each release |
+| BLS wage cap (hourly) | $115.00 | OEWS reporting ceiling; reconfirm each release |
+| BLS data vintage | May 2025 | Released April 2026; next release ~spring 2027 |
 | GSA mileage rate | $0.70/mile | CY2025 GSA POV rate |
 | First/last day M&IE | 75% of full day | FTR 301-11.101 |
 | City Pair fare source | GSA City Pair Program | cpsearch.fas.gsa.gov; use YCA fare |
+
+> **Verify the data vintage before pricing.** OEWS publishes annually in spring, and BLS
+> withdraws the prior year when the new one lands. Call `detect_latest_year()` first and use
+> what it returns as the vintage for the aging factor. If the vintage in the table above is
+> older than that, the aging factor over-escalates every labor line. Do not age 2025 wages
+> from a 2024 vintage.
+
 
 ## Orchestration Sequence
 
@@ -418,10 +425,10 @@ Document this in Methodology as a convention, not a BLS standard.
 
 ### Step 2B: Age BLS Wages to Contract Start Date
 
-BLS OEWS data has a ~2-year lag (May 2024 estimates released April 2025). If the contract Period of Performance starts after the data reference period, the base wages must be aged forward to avoid understating costs.
+BLS OEWS data publishes about a year in arrears (May 2025 estimates released April 2026). If the contract Period of Performance starts after the data reference period, the base wages must be aged forward to avoid understating costs.
 
 ```
-months_gap = months between BLS data vintage (May 2024) and contract PoP start date
+months_gap = months between BLS data vintage (May 2025) and contract PoP start date
 aging_factor = (1 + escalation_rate) ^ (months_gap / 12)
 aged_annual_wage = annual_median * aging_factor
 ```
@@ -430,7 +437,7 @@ aged_annual_wage = annual_median * aging_factor
 
 Example: if the contract start is 29 months after the BLS data vintage, at 2.5% escalation the aging_factor = 1.025^(29/12) = ~1.061. A $100,000 BLS median becomes $106,100 before wrap rate buildup.
 
-Use the aged wage as the basis for all subsequent calculations. Document the aging adjustment in the Methodology sheet: "BLS OEWS wages (data vintage: May 2024) aged forward [X] months to [contract start] at [escalation rate]%/yr to account for data lag."
+Use the aged wage as the basis for all subsequent calculations. Document the aging adjustment in the Methodology sheet: "BLS OEWS wages (data vintage: [BLS_vintage]) aged forward [X] months to [contract start] at [escalation rate]%/yr to account for data lag."
 
 **Contract start date default.** If the user does not specify, default to October 1 of the next federal fiscal year (computed at build time). Surface the assumption in the Summary sheet as a blue-font editable cell. If the user clarifies later, changing the cell recalculates the aging factor and the entire workbook. Do NOT invent a start date silently without noting it in the output.
 
@@ -653,7 +660,7 @@ A5:  "Profit Rate"                   B5: 0.10      (blue font, percentage)
 A6:  "Escalation Rate/Yr"            B6: 0.025     (blue font, percentage)
 A7:  "Productive Hours/Year"         B7: 1880      (blue font)
 A8:  "Base Year Months (or PoP Months)" B8: 12       (blue font; for single-period PoPs like an 18-month study, relabel "Period Months" and set to total PoP length, e.g. 18)
-A9:  "BLS Vintage"                    B9: =DATE(2024,5,1)    (blue font, real date)
+A9:  "BLS Vintage"                    B9: =DATE(2025,5,1)    (blue font, real date)
 A10: "Contract Start"                 B10: =DATE(2026,10,1)   (blue font, real date, user-editable)
 A11: "Months Gap"                     B11: =DATEDIF(B9,B10,"m")
 A12: "Aging Factor"                   B12: =(1+B6)^(B11/12)   (formula)
@@ -705,7 +712,7 @@ The Aged Annual Wage gets its own row so the aging math is visible on the sheet;
 **Cell format conventions:**
 - **Blue font (RGB 0,0,255):** hardcoded inputs (BLS raw wage in row 2; assumption cells B2:B10 on Sheet 1)
 - **Black font:** all formula cells and formula-referenced cells
-- **Annotation text:** cells containing source notes (e.g., "Source: BLS OEWS May 2024") MUST NOT start with `=`, `+`, `-`, or `@`. Excel interprets those as formula triggers. Lead with a space or prefix with `Source:`.
+- **Annotation text:** cells containing source notes (e.g., "Source: BLS OEWS May 2025") MUST NOT start with `=`, `+`, `-`, or `@`. Excel interprets those as formula triggers. Lead with a space or prefix with `Source:`.
 
 **Sheet 3: Scenario Analysis.** Three columns (low/mid/high), each using its own fringe/overhead/G&A/profit rates. Display component rates at top of each column. Travel identical across scenarios. Summary row: "Range: $X (low) to $Y (high), Mid estimate: $Z." Note that scenarios do NOT respect Sheet 1's Base Year Months proration (B8) - scenarios always use full-year hours. Document this in Methodology to prevent a reviewer surprise.
 

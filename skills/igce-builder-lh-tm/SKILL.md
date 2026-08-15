@@ -209,12 +209,19 @@ If the user provides a vehicle not in the table, default to GSA MAS commercial a
 | Low scenario burden | 1.8x | Lower bound for scenario analysis |
 | High scenario burden | 2.2x | Upper bound for scenario analysis |
 | Default escalation rate | 2.5% annually | Standard federal IGCE assumption |
-| BLS wage cap (annual) | $239,200 | May 2024 OEWS reporting ceiling |
-| BLS wage cap (hourly) | $115.00 | May 2024 OEWS reporting ceiling |
-| OEWS data year | 2024 | May 2024 estimates |
+| BLS wage cap (annual) | $239,200 | OEWS reporting ceiling; reconfirm each release |
+| BLS wage cap (hourly) | $115.00 | OEWS reporting ceiling; reconfirm each release |
+| OEWS data year | 2025 | May 2025 estimates |
 | GSA mileage rate | $0.70/mile | CY2025 GSA POV rate |
 | First/last day M&IE | 75% of full day | FTR 301-11.101 |
 | City Pair fare source | GSA City Pair Program | cpsearch.fas.gsa.gov; use YCA fare |
+
+> **Verify the data vintage before pricing.** OEWS publishes annually in spring, and BLS
+> withdraws the prior year when the new one lands. Call `detect_latest_year()` first and use
+> what it returns as the vintage for the aging factor. If the vintage in the table above is
+> older than that, the aging factor over-escalates every labor line. Do not age 2025 wages
+> from a 2024 vintage.
+
 
 ## Orchestration Sequence
 
@@ -372,10 +379,10 @@ If BLS returns "-" with footnote code 5, the wage exceeds the $239,200 cap. Use 
 
 ### Step 2B: Age BLS Wages to Contract Start Date
 
-BLS OEWS data has a ~2-year lag (May 2024 estimates released April 2025). If the contract Period of Performance starts after the data reference period, the base wages must be aged forward to avoid understating costs.
+BLS OEWS data publishes about a year in arrears (May 2025 estimates released April 2026). If the contract Period of Performance starts after the data reference period, the base wages must be aged forward to avoid understating costs.
 
 ```
-months_gap = months between BLS data vintage (May 2024) and contract PoP start date
+months_gap = months between BLS data vintage (May 2025) and contract PoP start date
 aging_factor = (1 + escalation_rate) ^ (months_gap / 12)
 aged_annual_wage = annual_median * aging_factor
 ```
@@ -621,7 +628,7 @@ A4: "Burden Multiplier (High)"                 B4: 2.2     (blue)
 A5: "Escalation Rate"                          B5: 0.025   (blue, pct)
 A6: "Productive Hours/Year"                    B6: 1880    (blue)
 A7: "Base Year Months"                         B7: 12      (blue; <12 for partial)
-A8: "BLS Vintage"                              B8: =DATE(2024,5,1)           (blue, real date)
+A8: "BLS Vintage"                              B8: =DATE(2025,5,1)           (blue, real date)
 A9: "Contract Start"                           B9: =DATE(2026,10,1)          (blue, real date, user-editable)
 A10: "Months Gap"                              B10: =DATEDIF(B8,B9,"m")      (formula)
 A11: "Aging Factor"                            B11: =(1+B5)^(B10/12)         (formula)

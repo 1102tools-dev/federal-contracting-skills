@@ -12,9 +12,21 @@ Website: [1102tools.com](https://1102tools.com)
 
 For federal API data (SAM.gov, BLS wages, GSA CALC+ rates, GSA Per Diem, USASpending, eCFR, Federal Register, Regulations.gov), use the companion repo:
 
-**[federal-contracting-mcps](https://github.com/1102tools/federal-contracting-mcps)** — eight MCP servers packaged as Claude Desktop Extensions (`.mcpb`). One-click install. No Terminal. No JSON config editing. API keys prompted at install time.
+**[federal-contracting-mcps](https://github.com/1102tools/federal-contracting-mcps)**: eight MCP servers covering those APIs, installed with one config block per server in any MCP client.
 
 The two repos work together: MCPs handle data, skills handle deliverables.
+
+## Companion MCPs updated to 1.0.0 (August 2026)
+
+The MCP servers these skills call were rebuilt on v2 of the MCP Python SDK and published at 1.0.0. **Update them**, then read the two notes below, because both affect estimates you may already have produced.
+
+**Check any IGCE you built between roughly April and August 2026.** The BLS OEWS server was defaulting to a data year that BLS had withdrawn when it published the 2025 estimates. Wage lookups returned empty values rather than an error, which is indistinguishable from a privacy-suppressed cell. All three IGCE Builders and OT Cost Analysis price labor off that server. If an estimate from that window shows missing or suppressed wages, or you worked around them by hand, rebuild it.
+
+**The skills in this repo were also carrying the old vintage.** They hardcoded May 2024 as the BLS data vintage and computed the wage aging factor from it. Pairing an updated MCP with the old skill would age 2025 wages from a 2024 vintage, adding a full extra year of escalation and overstating every labor line by roughly one year of your escalation rate. The vintage is now May 2025, and each pricing skill carries a standing instruction to confirm it with `detect_latest_year()` before pricing rather than trusting the constant. **Re-download the four pricing skills.**
+
+Apologies to anyone who lost time to either one. The MCP-side detail is in each server's `changelog.md`.
+
+**`.mcpb` bundles are discontinued.** They could not be signed in a way Claude Desktop recognizes, so every install raised an untrusted-developer prompt, and they re-resolved dependencies on each launch instead of pinning them. Install via the config block in the companion repo instead.
 
 ## Why the split
 
@@ -23,7 +35,7 @@ The five API data-source skills (BLS OEWS, GSA CALC+, GSA Per Diem, SAM.gov, USA
 **Reasons:**
 
 1. **Deterministic tool calls.** MCP servers execute tested Python code. Claude does not generate API-call code on the fly. Skills drifted across runs; MCPs do not. Same input, same output.
-2. **One-click install for Claude Desktop.** `.mcpb` bundles prompt for API keys at install time and register tools automatically. Contracting officers install them the same way they install any app.
+2. **Updated independently of the skills.** When an upstream API changes, the MCP ships a fix and you get it on the next launch. Nothing to re-upload. A data-source skill would have to be re-downloaded and re-installed by every user.
 3. **Less context cost.** Tool schemas are ~100 tokens each. The old API skills cost 500-1000 lines of context per run.
 4. **Production-hardened.** Each MCP went through 3-6 audit rounds with live testing against the production API. Roughly 350 bugs fixed during hardening across the eight MCPs.
 5. **Cross-client support.** MCP is an open standard. Same servers run in Claude Desktop, Claude Code, Codex (ChatGPT), Gemini (CLI), Copilot.
@@ -55,7 +67,7 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 ## Install
 
 1. Install [Claude Desktop](https://claude.ai/download).
-2. Install the MCPs you need from [federal-contracting-mcps](https://github.com/1102tools/federal-contracting-mcps) (one-click, `.mcpb` files).
+2. Install the MCPs you need from [federal-contracting-mcps](https://github.com/1102tools/federal-contracting-mcps). Each server's README has a copy-paste config block; add it to `claude_desktop_config.json` and restart.
 3. Download a skill folder from this repo. In Claude Desktop: **Customize > Skills > + > Create skill > Upload a skill**. Drag in each `SKILL.md` file individually.
 4. Ask naturally. The skill reads its instructions and calls the MCP tools.
 

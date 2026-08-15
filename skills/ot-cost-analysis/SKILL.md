@@ -124,13 +124,20 @@ If the user doesn't know the cost-sharing arrangement, ask the performer type an
 | Low scenario burden | 1.8x | Lower bound |
 | High scenario burden | 2.2x | Upper bound |
 | Default escalation rate | 2.5% annually | Standard federal assumption |
-| BLS wage cap (annual) | $239,200 | May 2024 OEWS reporting ceiling |
-| BLS wage cap (hourly) | $115.00 | May 2024 OEWS reporting ceiling |
-| OEWS data year | 2024 | May 2024 estimates |
+| BLS wage cap (annual) | $239,200 | OEWS reporting ceiling; reconfirm each release |
+| BLS wage cap (hourly) | $115.00 | OEWS reporting ceiling; reconfirm each release |
+| OEWS data year | 2025 | May 2025 estimates |
 | GSA mileage rate | $0.70/mile | CY2025 GSA POV rate |
 | First/last day M&IE | 75% of full day | FTR 301-11.101 |
 | Default cost share (traditional) | 33% performer | Common OT practice per 4022(d)(1)(C) |
 | Default consortium fee | 5% | Typical consortium management fee |
+
+> **Verify the data vintage before pricing.** OEWS publishes annually in spring, and BLS
+> withdraws the prior year when the new one lands. Call `detect_latest_year()` first and use
+> what it returns as the vintage for the aging factor. If the vintage in the table above is
+> older than that, the aging factor over-escalates every labor line. Do not age 2025 wages
+> from a 2024 vintage.
+
 
 ## Orchestration Sequence
 
@@ -240,7 +247,7 @@ For AI/autonomy/robotics roles not in BLS, document the proxy choice in methodol
 
 **Step 2c: Age wages.** Same aging methodology as IGCE builders:
 ```
-months_gap = months between BLS data vintage (May 2024) and agreement start
+months_gap = months between BLS data vintage (May 2025) and agreement start
 aging_factor = (1 + escalation_rate) ^ (months_gap / 12)
 aged_wage = annual_median * aging_factor
 ```
