@@ -1,8 +1,12 @@
-# 1102tools Claude Skills
+# 1102tools Agent Skills
 
-Claude Skills for federal acquisition deliverables: SOW / PWS, IGCEs, OT project descriptions, OT cost analyses. Six orchestration skills that handle scope decisions, cost buildup, FAR citations, and document generation.
+Agent skills for federal acquisition deliverables: SOW / PWS, IGCEs, OT project descriptions, OT cost analyses. Six orchestration skills that handle scope decisions, cost buildup, FAR citations, and document generation.
 
 Website: [1102tools.com](https://1102tools.com)
+
+![What a skill is, where they run, and what that means in practice. A skill is a folder with a SKILL.md file in it: written instructions your AI reads and follows, not code and not a plugin. These bundles load unmodified on Claude Code, Codex, DeepSeek Harness, opencode, and LibreChat, confirmed August 2026. They were built and tested with Claude on Opus; the outputs are only verified there, and the file-delivery steps still assume a Claude environment.](docs/skills-explainer.png)
+
+Runtime links, since the image above cannot be clicked: [Claude Code](https://claude.com/claude-code) &middot; [Codex](https://openai.com/codex/) &middot; [DeepSeek Harness](https://deepseek.com/harness/en/) &middot; [opencode](https://opencode.ai) &middot; [LibreChat](https://www.librechat.ai)
 
 ![Architecture diagram showing how each instrument chains scope, pricing, and data sources. FAR contracts: SOW/PWS Builder feeds three IGCE Builders (FFP, LH/T&M, Cost-Reimbursement) pulling from BLS OEWS, GSA CALC+, and GSA Per Diem. Other Transactions: OT Project Description Builder feeds OT Cost Analysis pulling from the same three data sources.](docs/architecture-v6.png)
 
@@ -44,7 +48,7 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 
 ## The orchestration skills
 
-> **Model note:** These skills are built for Opus. Skills are still maturing as a format, with limits on length that force a lot of content into one file. Opus handles the density. On smaller models expect missed steps and wrong outputs.
+> **Model note:** Built and tested with Claude, on Opus. These are dense single-file skills, 10,000 to 18,000 tokens each, and that density is what smaller models struggle with: expect missed steps and wrong outputs. That is a model limitation, not a platform one. See the panel at the top for which runtimes read the format.
 
 ### FAR contracts
 
@@ -66,10 +70,21 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 
 ## Install
 
-1. Install [Claude Desktop](https://claude.ai/download).
-2. Install the MCPs you need from [federal-contracting-mcps](https://github.com/1102tools/federal-contracting-mcps). Each server's README has a copy-paste config block; add it to `claude_desktop_config.json` and restart.
-3. Download a skill folder from this repo. In Claude Desktop: **Customize > Skills > + > Create skill > Upload a skill**. Drag in each `SKILL.md` file individually.
+1. Install [Claude Desktop](https://claude.ai/download), or use any runtime from the panel above.
+2. Install the MCPs you need from [federal-contracting-mcps](https://github.com/1102tools/federal-contracting-mcps). Each server's README has a copy-paste config block; add it to your client config and restart.
+3. Add the skill. In Claude Desktop: **Customize > Skills > + > Create skill > Upload a skill**. Elsewhere, drop the unzipped folder into that runtime's skills directory:
+
+| Runtime | Skills directory |
+|---|---|
+| Claude Code | `~/.claude/skills/` |
+| Codex | `~/.codex/skills/` |
+| DeepSeek Harness | `~/.dsh/skills/` or `~/.agents/skills/` |
+| opencode | `.opencode/skills/`, or a path in `skills.paths` |
+| LibreChat | imports the `.zip` directly |
+
 4. Ask naturally. The skill reads its instructions and calls the MCP tools.
+
+The pricing skills need three MCP servers and a Python environment with `openpyxl` to produce their workbooks. A runtime with no code execution can read them but cannot finish the job.
 
 ## License
 
