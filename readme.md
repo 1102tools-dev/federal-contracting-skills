@@ -38,11 +38,11 @@ The five API data-source skills (BLS OEWS, GSA CALC+, GSA Per Diem, SAM.gov, USA
 
 **Reasons:**
 
-1. **Deterministic tool calls.** MCP servers execute tested Python code. Claude does not generate API-call code on the fly. Skills drifted across runs; MCPs do not. Same input, same output.
+1. **Deterministic tool calls.** MCP servers execute tested Python code. The model does not generate API-call code on the fly. Skills drifted across runs; MCPs do not. Same input, same output.
 2. **Updated independently of the skills.** When an upstream API changes, the MCP ships a fix and you get it on the next launch. Nothing to re-upload. A data-source skill would have to be re-downloaded and re-installed by every user.
 3. **Less context cost.** Tool schemas are ~100 tokens each. The old API skills cost 500-1000 lines of context per run.
 4. **Production-hardened.** Each MCP went through 3-6 audit rounds with live testing against the production API. Roughly 350 bugs fixed during hardening across the eight MCPs.
-5. **Cross-client support.** MCP is an open standard. Same servers run in Claude Desktop, Claude Code, Codex (ChatGPT), Gemini (CLI), Copilot.
+5. **Cross-client support.** MCP is an open standard, so the same servers run in Claude Desktop, Claude Code, Codex, Gemini CLI, and Copilot. This was the strongest argument for the split in April, when skills were Claude-only. It has since weakened: `SKILL.md` is now read by five runtimes too. The other four reasons still hold, and are why the split stays.
 
 The orchestration skills in this repo stay as skills. Their value is decision trees, FAR-compliant narrative, and document generation, not API calls.
 
