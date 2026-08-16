@@ -6,7 +6,7 @@ Website: [1102tools.com](https://1102tools.com)
 
 ## The fastest install: hand this PDF to your AI
 
-[![The 1102tools universal setup guide: one PDF that installs everything. Drop it into the AI you already use and say what you want installed; it walks you through the free API keys, the exact config block for your platform, and how to verify the tools are live. Covers 11 platforms, install paths executed against the real clients, troubleshooting written from what actually broke. August 2026.](docs/setup-guide-promo.png)](https://1102tools.com/downloads/1102tools-universal-setup.pdf)
+[![The 1102tools universal setup guide: one PDF that installs everything. Drop it into the AI you already use and say what you want installed; it walks you through the free API keys, the exact config block for your platform, and how to verify the tools are live. Covers 11 platforms, install paths executed against the real clients, troubleshooting written from what actually broke. August 2026.](docs/setup-guide-promo.png?v=2)](https://1102tools.com/downloads/1102tools-universal-setup.pdf)
 
 **[Download the universal setup guide (PDF)](https://1102tools.com/downloads/1102tools-universal-setup.pdf)**, then drop it into Claude, ChatGPT (Codex), Gemini (Antigravity), Copilot, DeepSeek Harness, Grok, Cursor, opencode, or LibreChat and say what you want installed. The AI reads the guide and walks you through every step: free API keys, the exact config for your platform, restart, verify. If 35 pages is more than your chat will accept, paste in just the section for your platform; every option is written to stand alone. Part 9 is troubleshooting built from errors we actually hit while executing every major install path for real.
 
