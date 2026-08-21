@@ -1,6 +1,6 @@
 # 1102tools Agent Skills
 
-Agent skills for federal acquisition deliverables: SOW / PWS, IGCEs, OT project descriptions, OT cost analyses. Six orchestration skills that handle scope decisions, cost buildup, FAR citations, and document generation.
+Portable agent skills for federal acquisition deliverables: SOW / PWS, IGCEs, OT project descriptions, and OT cost analyses. These are not six giant prompt files. Each capability is now a complete, multi-file skill package with a compact orchestration core, supporting references, deterministic validators, client metadata, and its own test record.
 
 Website: [1102tools.com](https://1102tools.com)
 
@@ -14,11 +14,40 @@ Website: [1102tools.com](https://1102tools.com)
 
 **Before you build:** Not every acquisition capability should be an AI tool. Dozens of potential skills were evaluated and several were intentionally excluded because they cross the line from data assembly into professional judgment. See **[ai-boundaries.md](ai-boundaries.md)**.
 
+## A skill is now a package, not a single Markdown file
+
+The April releases concentrated each workflow into one dense `SKILL.md`, with some pricing skills reaching roughly 10,000 to 18,000 tokens. That worked, but it made every instruction compete for context at once and mixed orchestration, reference material, platform handling, workbook specifications, and validation rules in one file.
+
+The August modernization replaces that monolith with progressive disclosure. Each skill is a directory that looks like this:
+
+```text
+skill-name/
+├── SKILL.md                 compact workflow, decisions, and load-bearing gates
+├── references/              detailed rules and specifications loaded when needed
+├── scripts/                 deterministic workbook or document validators
+├── agents/
+│   └── openai.yaml          OpenAI client display and invocation metadata
+├── test.md                  current cross-model and artifact test record
+└── testing.md               historical test record, where one already existed
+```
+
+This separation is functional, not cosmetic:
+
+1. **The core stays focused.** `SKILL.md` contains workflow selection, staged questions, professional-judgment boundaries, and the correctness gates that must survive context pressure.
+2. **Detail is loaded when it is relevant.** Contract-type rules, data-source operations, workbook layouts, document specifications, runtime adaptation, and extended validation assertions live one level down in `references/`.
+3. **Correctness does not depend only on model prose.** Pricing skills include independent recomputation and formula-structure checks. Document skills include DOCX structure, separation, TOC, placeholder, and table checks.
+4. **Claude and Codex use the same skill body.** Runtime-specific behavior is expressed through capability-based instructions and optional client metadata rather than maintaining separate Claude and Codex forks.
+5. **The evidence ships with the skill.** Every directory includes `test.md` describing the models, clients, fixtures, injected faults, results, and remaining open coverage.
+
+The result is still simple to install: copy or upload one skill folder. Internally, however, it is a tested capability package rather than a long prompt wearing a skill name.
+
+**Install the entire skill directory or ZIP, not only `SKILL.md`.** The references and scripts are part of the capability and its validation system.
+
 ## Companion repo: MCPs for API data
 
 For federal API data (SAM.gov, BLS wages, GSA CALC+ rates, GSA Per Diem, USASpending, eCFR, Federal Register, Regulations.gov), use the companion repo:
 
-**[federal-contracting-mcps](https://github.com/1102tools/federal-contracting-mcps)**: eight MCP servers covering those APIs, installed with one config block per server in any MCP client.
+**[federal-contracting-mcps](https://github.com/1102tools-dev/federal-contracting-mcps)**: eight MCP servers covering those APIs, installed with one config block per server in any MCP client.
 
 The two repos work together: MCPs handle data, skills handle deliverables.
 
@@ -50,13 +79,13 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 
 ## The orchestration skills
 
-> **Model note:** Built and tested with Claude, on Opus. The original releases were dense single-file skills, roughly 10,000 to 18,000 tokens each. Smaller models may miss steps, while platform mechanisms such as skill-catalog budgets, tool availability, and context compaction can also affect reliability. Use explicit invocation when needed and validate every generated artifact.
+> **August 21, 2026 modernization:** OpenAI Codex using GPT-5.6 Sol restructured all six skills into portable, progressive-disclosure packages while preserving the correctness gates from the original test program. Behavioral gates were tested with explicit invocation in Codex CLI using GPT-5.6 Sol at xhigh reasoning and Claude Code CLI using Opus 5. FFP also received claude.ai Opus 5 Max and Codex Desktop coverage. Pricing fixtures passed formula-structure audits, independent Python recomputation, and LibreOffice formula execution. Document fixtures passed deterministic validation and all-page rendering review. Every skill directory includes a current [`test.md`](skills/igce-builder-ffp/test.md); open coverage and client-specific limitations are recorded there. Explicit invocation remains the deterministic CLI test path.
 
 ### FAR contracts
 
 | Skill | Requires | Description |
 |-------|----------|-------------|
-| [SOW/PWS Builder](skills/sow-pws-builder) | None | Structured scope decision tree producing contract-file-ready SOW or PWS. FAR 37.102(d) compliant: staffing handoff for the IGCE Builder delivered as chat output, never embedded in the document body. |
+| [SOW/PWS Builder](skills/sow-pws-builder) | None | Structured scope decision tree producing a contract-file-ready SOW or PWS. Applies the results-oriented PWS standard in FAR 37.602(b)(1), while keeping staffing and Section B handoffs in chat rather than the document body. |
 | [IGCE Builder: FFP](skills/igce-builder-ffp) | BLS OEWS, GSA CALC+, GSA Per Diem MCPs | Firm-fixed-price IGCEs with layered wrap rate buildup (fringe, overhead, G&A, profit). |
 | [IGCE Builder: LH/T&M](skills/igce-builder-lh-tm) | BLS OEWS, GSA CALC+, GSA Per Diem MCPs | Labor Hour and Time-and-Materials IGCEs with burden multiplier pricing. |
 | [IGCE Builder: Cost-Reimbursement](skills/igce-builder-cr) | BLS OEWS, GSA CALC+, GSA Per Diem MCPs | CPFF, CPAF, CPIF IGCEs with fee structure analysis and statutory fee caps. |
@@ -65,15 +94,15 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 
 | Skill | Requires | Description |
 |-------|----------|-------------|
-| [OT Project Description Builder](skills/ot-project-description-builder) | None | Milestone-based project descriptions for prototype OT agreements under 10 USC 4021/4022. Replaces the SOW/PWS for OTs: structures work around TRL progression phases and go/no-go gates. Handles NDC, small business, traditional (with cost sharing), and consortium-brokered agreements. |
-| [OT Cost Analysis](skills/ot-cost-analysis) | BLS OEWS, GSA CALC+, GSA Per Diem MCPs | Should-cost estimates and price reasonableness analyses for OT agreements. Milestone-based pricing citing 10 USC 4021 instead of FAR 15.404. Handles cost-sharing math, consortium management fees, fixed-price and cost-type milestone payments. |
+| [OT Project Description Builder](skills/ot-project-description-builder) | None | Milestone-based project descriptions that distinguish Research OTs under 10 U.S.C. 4021, Prototype OTs under 10 U.S.C. 4022, and follow-on production under 10 U.S.C. 4022(f). Uses observable maturity evidence and go/no-go gates without forcing TRLs onto every project. |
+| [OT Cost Analysis](skills/ot-cost-analysis) | BLS OEWS, GSA CALC+, GSA Per Diem MCPs | Should-cost estimates and neutral price comparisons for OT agreements. Handles authority-specific contribution rules, consortium fees, fixed-price and cost-type milestones, and proposed-amount normalization without originating the Agreements Officer's determination. |
 
 "Requires" lists the MCP servers each skill calls at runtime. Install them from the companion repo.
 
 ## Install
 
-1. Install [Claude Desktop](https://claude.ai/download), or use any runtime from the panel above.
-2. Install the MCPs you need from [federal-contracting-mcps](https://github.com/1102tools/federal-contracting-mcps). Each server's README has a copy-paste config block; add it to your client config and restart.
+1. Install [Claude Desktop](https://claude.ai/download), or use any supported runtime listed below.
+2. Install the MCPs you need from [federal-contracting-mcps](https://github.com/1102tools-dev/federal-contracting-mcps). Each server's README has a copy-paste config block; add it to your client config and restart.
 3. Add the skill. In Claude Desktop: **Customize > Skills > + > Create skill > Upload a skill**. Elsewhere, drop the unzipped folder into that runtime's skills directory:
 
 | Runtime | Skills directory |
