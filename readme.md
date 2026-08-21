@@ -50,13 +50,13 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 
 ## The orchestration skills
 
-> **Model note:** Built and tested with Claude, on Opus. These are dense single-file skills, 10,000 to 18,000 tokens each, and that density is what smaller models struggle with: expect missed steps and wrong outputs. That is a model limitation, not a platform one. See the panel at the top for which runtimes read the format.
+> **Model note:** Built and tested with Claude, on Opus. The original releases were dense single-file skills, roughly 10,000 to 18,000 tokens each. Smaller models may miss steps, while platform mechanisms such as skill-catalog budgets, tool availability, and context compaction can also affect reliability. Use explicit invocation when needed and validate every generated artifact.
 
 ### FAR contracts
 
 | Skill | Requires | Description |
 |-------|----------|-------------|
-| [SOW/PWS Builder](skills/sow-pws-builder) | — | Structured scope decision tree producing contract-file-ready SOW or PWS. FAR 37.102(d) compliant: staffing handoff for the IGCE Builder delivered as chat output, never embedded in the document body. |
+| [SOW/PWS Builder](skills/sow-pws-builder) | None | Structured scope decision tree producing contract-file-ready SOW or PWS. FAR 37.102(d) compliant: staffing handoff for the IGCE Builder delivered as chat output, never embedded in the document body. |
 | [IGCE Builder: FFP](skills/igce-builder-ffp) | BLS OEWS, GSA CALC+, GSA Per Diem MCPs | Firm-fixed-price IGCEs with layered wrap rate buildup (fringe, overhead, G&A, profit). |
 | [IGCE Builder: LH/T&M](skills/igce-builder-lh-tm) | BLS OEWS, GSA CALC+, GSA Per Diem MCPs | Labor Hour and Time-and-Materials IGCEs with burden multiplier pricing. |
 | [IGCE Builder: Cost-Reimbursement](skills/igce-builder-cr) | BLS OEWS, GSA CALC+, GSA Per Diem MCPs | CPFF, CPAF, CPIF IGCEs with fee structure analysis and statutory fee caps. |
@@ -65,7 +65,7 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 
 | Skill | Requires | Description |
 |-------|----------|-------------|
-| [OT Project Description Builder](skills/ot-project-description-builder) | — | Milestone-based project descriptions for prototype OT agreements under 10 USC 4021/4022. Replaces the SOW/PWS for OTs: structures work around TRL progression phases and go/no-go gates. Handles NDC, small business, traditional (with cost sharing), and consortium-brokered agreements. |
+| [OT Project Description Builder](skills/ot-project-description-builder) | None | Milestone-based project descriptions for prototype OT agreements under 10 USC 4021/4022. Replaces the SOW/PWS for OTs: structures work around TRL progression phases and go/no-go gates. Handles NDC, small business, traditional (with cost sharing), and consortium-brokered agreements. |
 | [OT Cost Analysis](skills/ot-cost-analysis) | BLS OEWS, GSA CALC+, GSA Per Diem MCPs | Should-cost estimates and price reasonableness analyses for OT agreements. Milestone-based pricing citing 10 USC 4021 instead of FAR 15.404. Handles cost-sharing math, consortium management fees, fixed-price and cost-type milestone payments. |
 
 "Requires" lists the MCP servers each skill calls at runtime. Install them from the companion repo.
@@ -79,7 +79,7 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 | Runtime | Skills directory |
 |---|---|
 | Claude Code | `~/.claude/skills/` |
-| Codex | `~/.codex/skills/` |
+| Codex | `~/.agents/skills/` |
 | DeepSeek Harness | `~/.dsh/skills/` or `~/.agents/skills/` |
 | opencode | `.opencode/skills/`, or a path in `skills.paths` |
 | LibreChat | imports the `.zip` directly |
