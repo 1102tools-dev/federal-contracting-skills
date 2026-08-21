@@ -3,17 +3,5 @@ interface:
   short_description: "Build auditable firm-fixed-price cost estimates"
   default_prompt: "Use $igce-builder-ffp to build an auditable FFP IGCE from my staffing inputs or SOW."
 
-dependencies:
-  tools:
-    - type: "mcp"
-      value: "bls-oews"
-      description: "BLS OEWS wage data MCP server"
-    - type: "mcp"
-      value: "gsa-calc"
-      description: "GSA CALC+ ceiling-rate MCP server"
-    - type: "mcp"
-      value: "gsa-perdiem"
-      description: "GSA Per Diem MCP server"
-
 policy:
   allow_implicit_invocation: true

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate an FFP workbook structurally and with optional engine execution."""
+"""Validate a CR workbook structurally and with optional engine execution."""
 
 from __future__ import annotations
 
@@ -99,7 +99,12 @@ def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
             failures,
             summary,
             "B11",
-            contains=["VALUE(LEFT(B10,4))", "VALUE(MID(B10,6,2))"],
+            contains=[
+                "VALUE(LEFT(B10,4))",
+                "VALUE(MID(B10,6,2))",
+                "VALUE(LEFT(B9,4))",
+                "VALUE(MID(B9,6,2))",
+            ],
             not_contains=["DATEDIF", "YEAR("],
         )
         check_formula(
@@ -139,13 +144,15 @@ def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
         if not starts:
             failures.append("Cost Buildup contains no recognized labor blocks")
         for block_index, base in enumerate(starts):
-            expected_base = 1 + block_index * 19
+            expected_base = 1 + block_index * 23
             if base != expected_base:
                 failures.append(
                     f"Cost Buildup block {block_index + 1} starts at row {base}, expected {expected_base}"
                 )
             if buildup[f"B{base + 5}"].value is not None:
                 failures.append(f"Cost Buildup!B{base + 5} must be the blank separator row")
+            if buildup[f"B{base + 22}"].value is not None:
+                failures.append(f"Cost Buildup!B{base + 22} must be the blank block separator")
             check_formula(
                 failures,
                 buildup,
@@ -156,6 +163,15 @@ def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
                 failures.append(
                     f"Cost Buildup!B{base + 2} must display the aging factor as 0.0000"
                 )
+            assumptions = payload.get("assumptions", {})
+            fee_type = str(assumptions.get("fee_type", "")).upper()
+            if fee_type == "CPAF":
+                fee_formula = (
+                    f"=B{base + 16}*('IGCE Summary'!$B$14+"
+                    "'IGCE Summary'!$B$15*'IGCE Summary'!$B$16)"
+                )
+            else:
+                fee_formula = f"=B{base + 16}*'IGCE Summary'!$B$14"
             formulas = {
                 base + 3: f"=B{base + 1}*B{base + 2}",
                 base + 4: f"=B{base + 3}/2080",
@@ -167,11 +183,14 @@ def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
                 base + 11: f"=B{base + 8}+B{base + 10}",
                 base + 12: "='IGCE Summary'!$B$4",
                 base + 13: f"=B{base + 11}*B{base + 12}",
-                base + 14: f"=B{base + 11}+B{base + 13}",
-                base + 15: "='IGCE Summary'!$B$5",
-                base + 16: f"=B{base + 14}*B{base + 15}",
-                base + 17: f"=B{base + 14}+B{base + 16}",
-                base + 18: f"=B{base + 17}/B{base + 4}",
+                base + 14: "='IGCE Summary'!$B$5",
+                base + 15: f"=(B{base + 11}+B{base + 13})*B{base + 14}",
+                base + 16: f"=B{base + 11}+B{base + 13}+B{base + 15}",
+                base + 17: "='IGCE Summary'!$B$13",
+                base + 18: "='IGCE Summary'!$B$14",
+                base + 19: fee_formula,
+                base + 20: f"=B{base + 16}+B{base + 19}",
+                base + 21: f"=B{base + 20}/B{base + 4}",
             }
             for row_number, expected_formula in formulas.items():
                 check_formula(
@@ -192,10 +211,10 @@ def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
                     continue
                 for match in COST_B_REF.finditer(value):
                     referenced_row = int(match.group(1))
-                    if (referenced_row - 4) % 19 == 0:
+                    if (referenced_row - 4) % 23 == 0:
                         failures.append(
                             f"{sheet_name}!{cell.coordinate} uses Cost Buildup row {referenced_row} "
-                            "as a cross-sheet input; that row is Aged Annual Wage"
+                            "as a cross-sheet input; that row is Aged Annual Wage, not Direct Labor"
                         )
 
     assertions = payload.get("formula_assertions", [])
@@ -241,7 +260,7 @@ def find_soffice() -> Path | None:
 
 
 def recalculate_with_libreoffice(source: Path, executable: Path) -> tuple[tempfile.TemporaryDirectory[str], Path]:
-    temp = tempfile.TemporaryDirectory(prefix="ffp-workbook-validation-")
+    temp = tempfile.TemporaryDirectory(prefix="cr-workbook-validation-")
     temp_root = Path(temp.name)
     input_dir = temp_root / "input"
     output_dir = temp_root / "output"
@@ -293,18 +312,19 @@ def compare_results(
             )
 
     for line in expected["labor_lines"]:
-        if "workbook_fbr_cell" in line:
-            compare(
-                line["workbook_fbr_cell"],
-                line["fully_burdened_rate"],
-                f"{line['name']} FBR",
-            )
-        if "workbook_total_cell" in line:
-            compare(
-                line["workbook_total_cell"],
-                line["labor_total"],
-                f"{line['name']} labor total",
-            )
+        mappings = (
+            ("workbook_cost_rate_cell", "estimated_cost_rate", "cost rate"),
+            ("workbook_price_rate_cell", "estimated_price_rate", "price rate"),
+            ("workbook_total_cost_cell", "period_cost", "period cost"),
+            ("workbook_total_price_cell", "period_price", "period price"),
+        )
+        for reference_key, expected_key, label in mappings:
+            if reference_key in line:
+                compare(
+                    line[reference_key],
+                    line[expected_key],
+                    f"{line['name']} {label}",
+                )
     for line in expected["non_labor_lines"]:
         if "workbook_total_cell" in line:
             compare(
@@ -312,12 +332,15 @@ def compare_results(
                 line["amount"],
                 f"{line['name']} amount",
             )
-    if "workbook_grand_total_cell" in expected:
-        compare(
-            expected["workbook_grand_total_cell"],
-            expected["grand_total"],
-            "grand total",
-        )
+    totals = (
+        ("workbook_fee_bearing_cost_cell", "fee_bearing_cost", "fee-bearing cost"),
+        ("workbook_total_cost_cell", "total_estimated_cost", "total estimated cost"),
+        ("workbook_total_fee_cell", "total_fee", "total fee"),
+        ("workbook_total_price_cell", "total_estimated_price", "total estimated price"),
+    )
+    for reference_key, expected_key, label in totals:
+        if reference_key in expected:
+            compare(expected[reference_key], expected[expected_key], label)
     return failures
 
 
@@ -334,7 +357,7 @@ def cached_error_audit(workbook: Any) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Audit an FFP workbook and optionally verify formula execution with LibreOffice."
+        description="Audit a CR workbook and optionally verify formula execution with LibreOffice."
     )
     parser.add_argument("workbook", type=Path, help="Workbook to validate")
     parser.add_argument("--expected", required=True, type=Path, help="Validation-input JSON")
@@ -397,7 +420,7 @@ def main() -> int:
         "status": "pass" if not failures else "fail",
         "formula_structure": "pass" if not structural_failures else "fail",
         "independent_recomputation": "pass",
-        "independent_grand_total": expected["grand_total"],
+        "independent_total_estimated_price": expected["total_estimated_price"],
         "engine": engine_used,
         "engine_note": engine_note,
         "failures": failures,
@@ -416,7 +439,7 @@ def main() -> int:
                 "Formula structure and independent calculations passed. "
                 "Formula execution was not independently verified in Excel or LibreOffice."
             )
-        print(f"Independent grand total: {expected['grand_total']:.2f}")
+        print(f"Independent total estimated price: {expected['total_estimated_price']:.2f}")
         print(engine_note)
     return 0 if not failures else 1
 

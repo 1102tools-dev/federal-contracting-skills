@@ -25,9 +25,11 @@ Hosts may add namespaces or separators around an MCP operation. Treat those wrap
 
 If a stable operation is not exposed, inspect available schemas for an equivalent operation on the same server. If none exists, stop and report the missing dependency. Do not hand-build an API request as an undocumented substitute.
 
-## Python and openpyxl
+## Workbook authoring and deterministic validation
 
-Confirm that the runtime can execute Python and import openpyxl before workbook construction. If not, explain that the skill can prepare the estimate data but cannot finish the `.xlsx` artifact in that runtime.
+Use a host-supported spreadsheet authoring capability when it can create an `.xlsx` with the exact formulas, cell formats, sheet names, and source notes required by the workbook specification. Otherwise use Python and openpyxl for workbook construction. The authoring route does not change any workbook or validation gate.
+
+Confirm that the runtime can execute Python 3.10 or later and import openpyxl before Step 8.5. The bundled deterministic validators require them even when another capability authored the workbook. If they are unavailable, report that deterministic validation cannot be completed and do not present the workbook as fully validated.
 
 Use the skill-local scripts with paths resolved relative to the skill directory. Do not assume a global skill root.
 

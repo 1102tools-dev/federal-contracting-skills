@@ -78,6 +78,25 @@ def calculate(payload: dict[str, Any]) -> dict[str, Any]:
         aging = _setting(raw_line, assumptions, "aging_factor", minimum=0)
         hours = _setting(raw_line, assumptions, "productive_hours", minimum=0)
         fte = _number(raw_line.get("fte"), f"{name}.fte", minimum=0)
+        annual_priced_hours = hours * fte
+        annual_coverage_hours: float | None = None
+        if "annual_coverage_hours" in raw_line:
+            annual_coverage_hours = _number(
+                raw_line["annual_coverage_hours"],
+                f"{name}.annual_coverage_hours",
+                minimum=0,
+            )
+            if not math.isclose(
+                annual_priced_hours,
+                annual_coverage_hours,
+                rel_tol=0.005,
+                abs_tol=1.0,
+            ):
+                raise InputError(
+                    f"{name}.productive_hours * fte is {annual_priced_hours:.4f}, "
+                    f"which does not reconcile to annual_coverage_hours "
+                    f"{annual_coverage_hours:.4f}"
+                )
         months = _number(raw_line.get("months", 12), f"{name}.months", minimum=0)
         period_multiplier = _number(
             raw_line.get("period_multiplier", 1),
@@ -102,8 +121,11 @@ def calculate(payload: dict[str, Any]) -> dict[str, Any]:
             "aged_annual_wage": aged_annual_wage,
             "direct_hourly_rate": direct_hourly,
             "fully_burdened_rate": fully_burdened_rate,
+            "annual_priced_hours": annual_priced_hours,
             "labor_total": total,
         }
+        if annual_coverage_hours is not None:
+            result["annual_coverage_hours"] = annual_coverage_hours
         for key in ("workbook_fbr_cell", "workbook_total_cell"):
             if key in raw_line:
                 if not isinstance(raw_line[key], str) or not raw_line[key].strip():

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate an FFP workbook structurally and with optional engine execution."""
+"""Validate an LH/T&M workbook structurally and with optional engine execution."""
 
 from __future__ import annotations
 
@@ -21,10 +21,10 @@ from recompute_expected_values import InputError, calculate, load_payload
 
 DEFAULT_SHEETS = [
     "IGCE Summary",
-    "Cost Buildup",
     "Scenario Analysis",
     "Rate Validation",
     "Travel Detail",
+    "Materials Detail",
     "Methodology",
     "Raw Data",
 ]
@@ -32,8 +32,8 @@ DEFAULT_SHEETS = [
 CELL_REF = re.compile(
     r"^(?:'((?:[^']|'')+)'|([^!]+))!\$?([A-Za-z]{1,3})\$?([1-9][0-9]*)$"
 )
-COST_B_REF = re.compile(
-    r"(?:'Cost Buildup'|Cost Buildup)!\$?B\$?([1-9][0-9]*)",
+SCENARIO_B_REF = re.compile(
+    r"(?:'Scenario Analysis'|Scenario Analysis)!\$?B\$?([1-9][0-9]*)",
     re.IGNORECASE,
 )
 
@@ -98,18 +98,23 @@ def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
         check_formula(
             failures,
             summary,
-            "B11",
-            contains=["VALUE(LEFT(B10,4))", "VALUE(MID(B10,6,2))"],
+            "B10",
+            contains=[
+                "VALUE(LEFT(B9,4))",
+                "VALUE(MID(B9,6,2))",
+                "VALUE(LEFT(B8,4))",
+                "VALUE(MID(B8,6,2))",
+            ],
             not_contains=["DATEDIF", "YEAR("],
         )
         check_formula(
             failures,
             summary,
-            "B12",
-            contains=["B6", "B11", "^"],
+            "B11",
+            contains=["B5", "B10", "^"],
         )
-        if summary["B12"].number_format != "0.0000":
-            failures.append("IGCE Summary!B12 must display the aging factor as 0.0000")
+        if summary["B11"].number_format != "0.0000":
+            failures.append("IGCE Summary!B11 must display the aging factor as 0.0000")
 
     formula_count = 0
     formula_error_tokens = ("#REF!", "#NAME?", "#VALUE!", "#DIV/0!")
@@ -129,49 +134,44 @@ def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
     if formula_count == 0:
         failures.append("workbook contains no formulas")
 
-    if "Cost Buildup" in workbook.sheetnames:
-        buildup = workbook["Cost Buildup"]
+    if "Scenario Analysis" in workbook.sheetnames:
+        buildup = workbook["Scenario Analysis"]
         starts: list[int] = []
         for row_index in range(1, buildup.max_row + 1):
             label = buildup.cell(row_index, 1).value
-            if isinstance(label, str) and label.startswith("Cost Buildup:"):
+            if isinstance(label, str) and label.startswith("Scenario Analysis:"):
                 starts.append(row_index)
         if not starts:
-            failures.append("Cost Buildup contains no recognized labor blocks")
+            failures.append("Scenario Analysis contains no recognized labor blocks")
         for block_index, base in enumerate(starts):
-            expected_base = 1 + block_index * 19
+            expected_base = 1 + block_index * 13
             if base != expected_base:
                 failures.append(
-                    f"Cost Buildup block {block_index + 1} starts at row {base}, expected {expected_base}"
+                    f"Scenario Analysis block {block_index + 1} starts at row {base}, expected {expected_base}"
                 )
             if buildup[f"B{base + 5}"].value is not None:
-                failures.append(f"Cost Buildup!B{base + 5} must be the blank separator row")
+                failures.append(f"Scenario Analysis!B{base + 5} must be the blank separator row")
+            if buildup[f"B{base + 12}"].value is not None:
+                failures.append(f"Scenario Analysis!B{base + 12} must be the blank block separator")
             check_formula(
                 failures,
                 buildup,
                 f"B{base + 2}",
-                contains=["'IGCE SUMMARY'!$B$12"],
+                contains=["'IGCE SUMMARY'!$B$11"],
             )
             if buildup[f"B{base + 2}"].number_format != "0.0000":
                 failures.append(
-                    f"Cost Buildup!B{base + 2} must display the aging factor as 0.0000"
+                    f"Scenario Analysis!B{base + 2} must display the aging factor as 0.0000"
                 )
             formulas = {
                 base + 3: f"=B{base + 1}*B{base + 2}",
                 base + 4: f"=B{base + 3}/2080",
                 base + 6: "='IGCE Summary'!$B$2",
                 base + 7: f"=B{base + 4}*B{base + 6}",
-                base + 8: f"=B{base + 4}+B{base + 7}",
-                base + 9: "='IGCE Summary'!$B$3",
-                base + 10: f"=B{base + 8}*B{base + 9}",
-                base + 11: f"=B{base + 8}+B{base + 10}",
-                base + 12: "='IGCE Summary'!$B$4",
-                base + 13: f"=B{base + 11}*B{base + 12}",
-                base + 14: f"=B{base + 11}+B{base + 13}",
-                base + 15: "='IGCE Summary'!$B$5",
-                base + 16: f"=B{base + 14}*B{base + 15}",
-                base + 17: f"=B{base + 14}+B{base + 16}",
-                base + 18: f"=B{base + 17}/B{base + 4}",
+                base + 8: "='IGCE Summary'!$B$3",
+                base + 9: f"=B{base + 4}*B{base + 8}",
+                base + 10: "='IGCE Summary'!$B$4",
+                base + 11: f"=B{base + 4}*B{base + 10}",
             }
             for row_number, expected_formula in formulas.items():
                 check_formula(
@@ -181,7 +181,7 @@ def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
                     expected=expected_formula,
                 )
 
-    for sheet_name in ("IGCE Summary", "Scenario Analysis", "Rate Validation"):
+    for sheet_name in ("IGCE Summary", "Rate Validation"):
         if sheet_name not in workbook.sheetnames:
             continue
         sheet = workbook[sheet_name]
@@ -190,12 +190,12 @@ def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
                 value = cell.value
                 if not isinstance(value, str) or not value.startswith("="):
                     continue
-                for match in COST_B_REF.finditer(value):
+                for match in SCENARIO_B_REF.finditer(value):
                     referenced_row = int(match.group(1))
-                    if (referenced_row - 4) % 19 == 0:
+                    if (referenced_row - 4) % 13 == 0:
                         failures.append(
-                            f"{sheet_name}!{cell.coordinate} uses Cost Buildup row {referenced_row} "
-                            "as a cross-sheet input; that row is Aged Annual Wage"
+                            f"{sheet_name}!{cell.coordinate} uses Scenario Analysis row {referenced_row} "
+                            "as a cross-sheet input; that row is Aged Annual Wage, not Direct Labor"
                         )
 
     assertions = payload.get("formula_assertions", [])
@@ -241,7 +241,7 @@ def find_soffice() -> Path | None:
 
 
 def recalculate_with_libreoffice(source: Path, executable: Path) -> tuple[tempfile.TemporaryDirectory[str], Path]:
-    temp = tempfile.TemporaryDirectory(prefix="ffp-workbook-validation-")
+    temp = tempfile.TemporaryDirectory(prefix="lh-tm-workbook-validation-")
     temp_root = Path(temp.name)
     input_dir = temp_root / "input"
     output_dir = temp_root / "output"
@@ -293,18 +293,15 @@ def compare_results(
             )
 
     for line in expected["labor_lines"]:
-        if "workbook_fbr_cell" in line:
-            compare(
-                line["workbook_fbr_cell"],
-                line["fully_burdened_rate"],
-                f"{line['name']} FBR",
-            )
-        if "workbook_total_cell" in line:
-            compare(
-                line["workbook_total_cell"],
-                line["labor_total"],
-                f"{line['name']} labor total",
-            )
+        mappings = (
+            ("workbook_low_rate_cell", "burdened_low_rate", "low rate"),
+            ("workbook_mid_rate_cell", "burdened_mid_rate", "mid rate"),
+            ("workbook_high_rate_cell", "burdened_high_rate", "high rate"),
+            ("workbook_mid_total_cell", "labor_mid_total", "mid labor total"),
+        )
+        for reference_key, expected_key, label in mappings:
+            if reference_key in line:
+                compare(line[reference_key], line[expected_key], f"{line['name']} {label}")
     for line in expected["non_labor_lines"]:
         if "workbook_total_cell" in line:
             compare(
@@ -312,12 +309,15 @@ def compare_results(
                 line["amount"],
                 f"{line['name']} amount",
             )
-    if "workbook_grand_total_cell" in expected:
-        compare(
-            expected["workbook_grand_total_cell"],
-            expected["grand_total"],
-            "grand total",
-        )
+    totals = (
+        ("workbook_low_total_cell", "low_estimated_total", "low estimated total"),
+        ("workbook_mid_total_cell", "mid_estimated_total", "mid estimated total"),
+        ("workbook_high_total_cell", "high_estimated_total", "high estimated total"),
+        ("workbook_ceiling_price_cell", "ceiling_price", "ceiling price"),
+    )
+    for reference_key, expected_key, label in totals:
+        if reference_key in expected and expected_key in expected:
+            compare(expected[reference_key], expected[expected_key], label)
     return failures
 
 
@@ -334,7 +334,7 @@ def cached_error_audit(workbook: Any) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Audit an FFP workbook and optionally verify formula execution with LibreOffice."
+        description="Audit an LH/T&M workbook and optionally verify formula execution with LibreOffice."
     )
     parser.add_argument("workbook", type=Path, help="Workbook to validate")
     parser.add_argument("--expected", required=True, type=Path, help="Validation-input JSON")
@@ -397,7 +397,7 @@ def main() -> int:
         "status": "pass" if not failures else "fail",
         "formula_structure": "pass" if not structural_failures else "fail",
         "independent_recomputation": "pass",
-        "independent_grand_total": expected["grand_total"],
+        "independent_mid_estimated_total": expected["mid_estimated_total"],
         "engine": engine_used,
         "engine_note": engine_note,
         "failures": failures,
@@ -416,7 +416,7 @@ def main() -> int:
                 "Formula structure and independent calculations passed. "
                 "Formula execution was not independently verified in Excel or LibreOffice."
             )
-        print(f"Independent grand total: {expected['grand_total']:.2f}")
+        print(f"Independent mid estimated total: {expected['mid_estimated_total']:.2f}")
         print(engine_note)
     return 0 if not failures else 1
 

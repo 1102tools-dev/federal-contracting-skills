@@ -1,18 +1,15 @@
 ---
 name: igce-builder-ffp
 description: >
-  Build IGCEs for Firm-Fixed-Price (FFP) federal contracts using structured
-  wrap rate buildup (fringe, overhead, G&A, profit). Orchestrates BLS OEWS,
-  GSA CALC+, and GSA Per Diem skills. Supports FFP-by-period and
-  FFP-by-deliverable pricing structures, SOW/PWS decomposition into labor
-  categories, and rate validation against CALC+ market data. Trigger for:
-  FFP IGCE, firm fixed price estimate, firm fixed price cost estimate,
-  wrap rate, wrap rate buildup, cost buildup, FFP cost model, build an
-  FFP IGCE, price this FFP contract, fixed price estimate, FFP from this
-  SOW. Also trigger for wrap rate analysis, implied multiplier, FFP
-  scenario analysis, or FFP rate comparison. Do NOT use for Labor Hour,
-  T&M, or cost-reimbursement IGCEs (use IGCE Builder LH/T&M or IGCE
-  Builder CR). Do NOT use for grant budgets (use Grant Budget Builder).
+  Trigger for: FFP IGCE, firm-fixed-price estimate,
+  FFP cost model, proposed FFP rate validation, wrap-rate analysis, Agency
+  BPA rate comparison, price-reasonableness memo, or fair-and-reasonable
+  analysis. Build auditable Firm-Fixed-Price federal estimates using BLS
+  OEWS wages, layered fringe/overhead/G&A/profit, GSA CALC+ positioning, and
+  GSA Per Diem travel. Use for FFP-by-period, FFP-by-deliverable, SOW/PWS
+  decomposition, implied-multiplier analysis, and fixed-price scenario
+  comparisons. Do NOT use for Labor Hour, T&M, or cost-reimbursement IGCEs
+  (use IGCE Builder LH/T&M or IGCE Builder CR). Do NOT use for grant budgets.
   Requires the bls-oews, gsa-calc, and gsa-perdiem MCP servers.
 ---
 
@@ -53,25 +50,27 @@ These gates prevent documented silent wrong answers. Keep them active even when 
 5. **AI boundary:** Never originate a fair-and-reasonable determination. Workflow B is data only unless the user supplies verbatim Option B rationale and determination text.
 6. **BLS vintage:** Treat May 2025 only as the current documented baseline. Call `detect_latest_year` at runtime and use its result. Never age wages from a stale hardcoded vintage.
 7. **Rate-positioning bands:** Report 0-15% above CALC+ P50 as the expected range, 15-40% as the FFP premium band, and anything above 40% with explicit stacked-factor arithmetic. These are positioning bands, not determinations.
-8. **Staged questions:** For SOW/PWS decomposition, complete Stage A decomposition confirmation before Stage B build parameters. End each response at its question and wait. Never self-approve either stage.
+8. **Staged questions:** For SOW/PWS decomposition, complete Stage A decomposition confirmation before Stage B build parameters. The Stage A response must end immediately after the decomposition-confirmation question. Do not preview, list, or request any Stage B input in that response. End each response at its question and wait. Never self-approve either stage.
 9. **Aging factor:** Put the aging assumptions in named or clearly labeled assumption cells. Reference those cells from formulas. Never hardcode an aging multiplier into labor formulas or methodology prose.
+10. **Credentialed API pacing:** Serialize calls to credentialed federal APIs and leave at least three seconds between calls. Never parallelize keyed calls. Honor a longer server-provided retry interval, and stop with a rate-limit report instead of rapid retrying.
 
 ## Pre-flight: capabilities and dependencies
 
-Run this before workflow selection on every trigger.
+Select the workflow first, then run this before its first MCP-dependent step. For Workflow B, emit the required boundary and wait for the user's option before making a tool call.
 
 1. Inspect the operations available in the current session. Match by advertised MCP server and operation name or by equivalent operation schema. Do not depend on a host-generated namespace or separator.
-2. Confirm these operation groups are present:
-   - `bls-oews`: `detect_latest_year`, `get_wage_data`, and the SOC/metro lookup operations.
-   - `gsa-calc`: `suggest_contains`, `exact_search`, `keyword_search`, `igce_benchmark`, and `price_reasonableness_check`.
-   - `gsa-perdiem`: `estimate_travel_cost`, `lookup_city_perdiem`, and `get_mie_breakdown`.
-3. Make lightweight calls to `detect_latest_year` and `get_mie_breakdown` to distinguish installed-but-unauthenticated servers from working servers. Do not expose keys or credentials.
-4. If an operation is unavailable, look for a semantically equivalent operation exposed by the same server. Do not replace the MCP with a hand-built public API call.
-5. If a required capability remains missing, stop and list the missing server or operation. State whether it appears uninstalled, unauthenticated, or unavailable in the current host.
+2. Confirm the operation groups required by the active workflow:
+   - Workflows A and A+ require `bls-oews` operations `detect_latest_year`, `get_wage_data`, and the SOC/metro lookups, plus `gsa-calc` operations `suggest_contains`, `exact_search`, `keyword_search`, `igce_benchmark`, and `price_reasonableness_check`.
+   - Add `gsa-perdiem` operations `estimate_travel_cost`, `lookup_city_perdiem`, and `get_mie_breakdown` only when travel is in scope.
+   - Workflow B requires the listed `bls-oews` and `gsa-calc` operations but not `gsa-perdiem` unless the user also requests travel analysis.
+3. Before a build calls a data source, confirm an `.xlsx` authoring capability plus Python 3.10 or later with openpyxl for the bundled validators. A real spreadsheet engine is preferred but optional when its absence is disclosed exactly as required in Step 8.5.
+4. Test only capabilities the active workflow will use. For a build, call `detect_latest_year`. If travel is in scope, test the Per Diem capability when it is first needed. For Workflow B, test BLS and CALC+ only after the user selects an option. Apply the credentialed API pacing gate to every test call. Do not expose keys or credentials.
+5. If an operation is unavailable, look for a semantically equivalent operation exposed by the same server. Do not replace the MCP with a hand-built public API call.
+6. If a required capability remains missing, stop and list it. State whether it appears uninstalled, unauthenticated, or unavailable in the current host.
 
 Use this message when installation is missing:
 
-> This skill requires the `bls-oews`, `gsa-calc`, and `gsa-perdiem` MCP servers. Missing: [list]. Install and configure them in this client, restart or refresh the client, and try again.
+> The active workflow requires these MCP capabilities: [list]. Missing: [list]. Install and configure them in this client, restart or refresh the client, and try again.
 
 Use this message when authentication is missing:
 
@@ -85,7 +84,7 @@ Use when the user supplies structured labor and contract inputs. Execute Steps 1
 
 ### Workflow A+: SOW/PWS-driven FFP build
 
-Use when the user supplies a SOW, PWS, or unstructured requirement. Execute Step 0, obtain both staged confirmations when required, then execute Steps 1 through 9. Skip decomposition when the user already provided labor category, discipline, location, FTE, and period details.
+Use when the user supplies a SOW, PWS, unstructured requirement, or the approved staffing handoff from `sow-pws-builder`. For an unstructured requirement, execute Step 0 and obtain both staged confirmations when required. For an approved handoff, consume it as described below and do not repeat decomposition or Stage A.
 
 ### Workflow B: FFP rate positioning
 
@@ -130,29 +129,45 @@ Optional with disclosed defaults:
 
 Do not guess a required discipline, location, staffing basis, vehicle, or pricing structure.
 
+### Consume an approved SOW/PWS handoff
+
+Treat a table labeled `STAFFING HANDOFF TABLE` and identified for the IGCE Builder as user-reviewed input, regardless of the separator punctuation in its heading. Do not decompose the requirement again.
+
+1. Confirm that the declared contract type is FFP. For a hybrid, accept only the FFP CLINs and leave LH/T&M and CR CLINs to their respective skills.
+2. Preserve each approved Labor Category, SOC Code, FTE, Phase, Hours/Yr, Notes, derivation, and user override. Do not silently remap or resize staffing.
+3. Use the companion CLIN handoff when present to populate the period or deliverable pricing structure.
+4. Reconcile any contradiction between the handoff, SOW/PWS, and current user instruction in a short table and wait for the user to choose which value controls.
+5. Ask for all missing pricing inputs in one Stage B response: performance location, contract start, vehicle or indirect-rate basis, period mapping, travel or ODC assumptions, and any required allocation choice. Use a structured question tool or one numbered list, end at the question, and wait. Ask sequential one-field questions only when an answer changes the available choices.
+6. After the missing inputs are confirmed, proceed to Step 1. Do not rerun Step 0 or Stage A unless the user asks to revisit staffing.
+
 ## Orchestration
 
 ### Step 0: Decompose requirements for Workflow A+
+
+Run this step only when no approved staffing handoff is present.
 
 1. Check for labor disciplines, staffing indicators, location, period, deliverables, and travel. Hard stop when performance location is absent. If three or more elements are missing from a short requirement, ask whether to continue with labeled assumptions or obtain clarification.
 2. Separate the requirement into task areas. Record discipline, complexity, cadence, deliverable, and staffing basis.
 3. Map each task to candidate labor categories and SOCs using [data-source-operations.md](references/data-source-operations.md). Use multiple categories when a task spans disciplines.
 4. Estimate FTE ranges only when the scope supports them. Identify the basis for every estimate.
 5. Present the decomposition table.
-6. **Stage A:** Ask the user to confirm or amend decomposition. End the response at the question and wait.
-7. **Stage B:** After Stage A is confirmed, ask for vehicle, metro, contract start, NAICS/PSC, pricing structure, deliverable allocation, and any shift-density decision. End the response at the question and wait.
+6. **Stage A:** Ask the user only to confirm or amend the decomposition. Do not append staffing assumptions, pricing inputs, build-parameter questions, a preview of Stage B, or a list of information that will be needed later. The final sentence of the response must be the decomposition-confirmation question. Stop immediately after its question mark and wait.
+7. **Stage B:** After Stage A is confirmed, batch any required staffing quantities or authorization to develop labeled staffing assumptions with vehicle, metro, contract start, NAICS/PSC, pricing structure, deliverable allocation, and any shift-density decision. End the response at the question and wait.
 
 Skip both stages only when the user already supplied labor categories with discipline, metro, FTE, period, and the remaining build parameters.
 
 ### Step 0.5: Convert shift coverage to staffing
 
-Use these tested conventions unless the user supplies another documented staffing basis:
+Separate the coverage requirement from the productive-hours assumption. Derive staffing from the hours that must actually be covered:
 
 ```text
-24x7x365 single-seat coverage = 4.2 FTE
-24x7x365 double-seat coverage = 8.4 FTE
-8x5 single-seat coverage      = 1.2 FTE
+annual coverage hours = covered seats * hours per day * coverage days per year
+coverage FTE          = annual coverage hours / productive hours per FTE
 ```
+
+At the default 1,880 productive hours, one 24x7x365 seat requires `8,760 / 1,880 = 4.6596 FTE`; two seats require 9.3191 FTE. One 8x5x52 seat requires `2,080 / 1,880 = 1.1064 FTE`. Keep at least four decimal places in calculations and disclose the rounding used for presentation or staffing.
+
+The familiar 4.2 FTE shorthand is a scheduled-hours convention based on about 2,080 hours per FTE. Do not multiply 4.2 FTE by the workbook's 1,880 productive-hour default: that prices only 7,896 hours and leaves 864 of the required 8,760 hours unreconciled. If the user requires a 4.2 headcount convention, price the 8,760 coverage hours directly or use a compatible scheduled-hours basis. Add any overlap, leave-backfill, training, or turnover reserve separately and only with a disclosed user-approved basis.
 
 Do not price one FTE as continuous coverage. Distinguish standalone Tier 2 coverage from a Tier 2 on-call overlay. Ask which applies. For shift teams with travel, default to one representative per trip unless the requirement says otherwise. Do not silently add clearance or compliance buffers.
 
@@ -180,7 +195,7 @@ Calculate each cost pool separately:
 direct labor rate = aged annual wage / 2,080
 fringe amount     = direct labor rate * fringe rate
 labor + fringe    = direct labor rate + fringe amount
-overhead amount   = labor + fringe * overhead rate
+overhead amount   = (labor + fringe) * overhead rate
 subtotal          = labor + fringe + overhead amount
 G&A amount        = subtotal * G&A rate
 total cost        = subtotal + G&A amount

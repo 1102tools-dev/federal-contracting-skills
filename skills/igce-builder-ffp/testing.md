@@ -1,5 +1,7 @@
 # IGCE Builder FFP: Testing Record
 
+> **August 2026 modernization correction:** The April waves graded 4.2 FTE as the 24x7 single-seat convention. A live August acceptance test exposed that 4.2 is incompatible with the workbook's 1,880 productive-hour default: it prices 7,896 hours against an 8,760-hour requirement. Current Step 0.5 derives FTE from the approved productive-hours basis. At 1,880 hours, one continuous seat is 4.6596 FTE. References to 4.2 later in this file describe the historical April test expectation, not the current calculation gate.
+
 # Part 1: For Federal Acquisition Users
 
 ## The bottom line
@@ -29,7 +31,7 @@ Scan every output for these before using in a contract file:
 
 **2. Fully burdened rate must tie to BLS + wrap buildup, not just to CALC+ directly.** CALC+ reports awarded ceiling rates for completed MAS tasks. Using a CALC+ median as your direct FFP rate skips the buildup audit trail FAR 15.404-1(a) expects. Correct flow: BLS base → fringe → labor+fringe → overhead → subtotal → G&A → total cost → profit = FBR. Then compare FBR to CALC+ for reasonableness.
 
-**3. 24x7 coverage needs 4.2 FTE per seat, not 1.** The skill's Step 0.5 computes 2,080 productive hours × 4.2 FTE to cover 8,760 annual hours (24 × 365) with leave/training/coverage slack. If a Cleveland SOC workbook shows 3 FTE for 24x7 coverage, the shift math is wrong. Double-seat (two analysts always on) is 8.4 FTE.
+**3. 24x7 coverage must reconcile staffing to 8,760 annual hours per seat.** Derive FTE from the approved productive-hours basis. At the default 1,880 hours, one seat is 4.6596 FTE and two seats are 9.3191 FTE. The historical 4.2 shorthand assumes about 2,080 scheduled hours and must not be multiplied by 1,880 productive hours.
 
 **4. Rate validation band should be 0-40% above CALC+ median for FFP.** Wave 2 patch calibrated: 0-15% is expected range. 15-40% is the FFP premium band (risk-adjusted fixed pricing justifies a markup over the ceiling-rate median). Above 40% needs explicit justification in the narrative. The pre-patch skill flagged anything over 10% which would have fired on nearly every legitimate FFP build.
 
@@ -489,6 +491,33 @@ The Wave 1 and Wave 2 testing records were produced under a consistent methodolo
 **Status:** both patches inherited from LH/T&M Wave 5. Wave 5 tested DCAA/FPRA on LH/T&M directly and the Workflow B gate on LH/T&M directly; FFP carries the same structural pattern and the patches apply identically. Regression on FFP is deferred to Wave 10.
 
 **Line delta:** 854 → 880 (+26). Ceiling remains 1,000.
+
+## August 2026 modernization pilot
+
+I ran the portable-runtime pilot on August 21, 2026, with local HEAD at `0081dab` before the additional uncommitted test-driven repairs. The original modernization baseline remained `main @ 624629d`.
+
+Completed behavior checks:
+
+- Workflow B refused to originate a fair-and-reasonable determination, made zero MCP calls, and stopped at the Option A/Option B question.
+- An approved SOW/PWS staffing handoff bypassed decomposition and Stage A, preserved approved staffing, and batched missing pricing inputs in one Stage B response.
+- A hybrid handoff retained only FFP CLINs, routed the LH CLIN away, surfaced a location conflict, and waited for the user to resolve it.
+- A raw physical-engineering PWS completed separate Stage A and Stage B turns, then produced and validated a seven-sheet FFP-by-deliverable workbook.
+- A Cleveland continuous-coverage scenario used current BLS area code 17410, CALC+ positioning data, and a zero-night Washington day trip through `lookup_city_perdiem`. It never called the overnight estimator.
+
+The persisted Codex CLI session log showed nine serialized MCP calls. The shortest gap from one call completing to the next call starting was 5.883 seconds, above the required three seconds. No rate-limit response occurred.
+
+Both generated workbooks passed formula-structure audit, independent Python recomputation, LibreOffice formula execution, ZIP integrity, and seven-sheet visual review. Six fault-injection variants of the first workbook were rejected for the intended defects.
+
+The continuous-coverage run exposed a superseded April assertion: 4.2 FTE multiplied by the 1,880 productive-hour default prices only 7,896 hours. Current Step 0.5 derives 4.6596 FTE for one 8,760-hour seat, and the validation sidecar accepts `annual_coverage_hours` so the recomputation script can reject an incompatible staffing and hours basis.
+
+Surface status at the end of this pilot:
+
+- Codex Desktop behavior and local validation: passed.
+- Codex CLI end-to-end build: passed.
+- Claude.ai Opus 5 Max implicit activation: passed for the Workflow B boundary in a fresh conversation. The custom skill was created from the core `SKILL.md` text because ZIP upload remained blocked by Chrome's file-URL permission; reference-file behavior was not exercised on that surface.
+- Claude Code CLI 2.1.126, canonical model `claude-opus-5`: explicit `/igce-builder-ffp` invocation passed the Workflow B boundary and approved-handoff regression. A raw-PWS regression initially previewed Stage B inputs after the question. After the Stage A hard stop was strengthened, the exact rerun ended immediately at the decomposition-confirmation question and passed.
+- Claude Code CLI implicit invocation under noninteractive `-p`: failed to load the skill with both the original and front-loaded descriptions, including on a canonical "Build an FFP IGCE" prompt. Because explicit invocation reads and follows the same body and claude.ai activates it implicitly, this is recorded as client discovery behavior rather than a body defect. Use explicit invocation for deterministic CLI evaluation.
+- Claude Code post-compaction: pending. Noninteractive CLI does not provide a controlled compaction/replay harness, so this requires a long interactive session or a supported compaction fixture.
 
 ---
 

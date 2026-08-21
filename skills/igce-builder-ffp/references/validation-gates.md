@@ -91,6 +91,8 @@ Use overrides for approved rates, different scenarios, or lines with a distinct 
 
 `period_multiplier` carries option-year escalation or a deliverable timing factor. Set it to 1.0 for the base period. `months` prorates productive hours. For a deliverable allocation, represent each LCAT/deliverable combination as its own labor line with the allocated hours or equivalent FTE-month basis.
 
+For continuous or shift coverage, add `annual_coverage_hours` to each affected labor line. The recomputation script requires `productive_hours * FTE` to reconcile to that annual requirement within 0.5% or one hour, whichever is larger. Do not use a 4.2 scheduled-hours shorthand with the 1,880 productive-hour default.
+
 Use numeric non-labor amounts. Include travel, airfare, ground transportation, ODCs, and other costs that feed the grand total.
 
 ## 3. Formula-structure audit
@@ -155,6 +157,13 @@ grand total       = sum(labor totals) + sum(non-labor amounts)
 
 This calculation is independent of workbook formulas. It catches dimensional and arithmetic errors even when the workbook looks plausible.
 
+When `annual_coverage_hours` is present, the script also checks:
+
+```text
+annual priced hours = productive hours * FTE
+annual priced hours approximately equals annual coverage hours
+```
+
 Do not derive validator inputs by reading formula results back from the workbook. That would compare the workbook to itself.
 
 ## 5. Real-engine verification
@@ -195,6 +204,7 @@ Preserve these checks in the core and grader.
 - B11 uses `VALUE(LEFT(...))` and `VALUE(MID(...))`.
 - B11 contains no `DATEDIF` and no `YEAR(`.
 - B12 references B6 and B11.
+- Summary B12 and each Cost Buildup aging-factor cell display as a four-decimal multiplier, not a percentage.
 - Every labor block references Summary B12.
 - Methodology displays aging through a cell-linked formula.
 
@@ -224,10 +234,34 @@ Preserve these checks in the core and grader.
 - Stage B ends with its question.
 - No tool calls or build steps occur while a required stage is unanswered.
 
+### SOW/PWS handoff
+
+- An approved Staffing Handoff Table bypasses decomposition and Stage A.
+- Labor Category, SOC Code, FTE, Phase, Hours/Yr, Notes, derivations, and user overrides carry forward unchanged unless the user approves a revision.
+- The skill confirms FFP before pricing. For a hybrid, it processes only FFP CLINs.
+- All missing pricing inputs are requested together in one Stage B response before Step 1, unless an answer changes the available choices.
+- Contradictory source values are presented for user resolution rather than silently reconciled.
+
+### Credentialed API pacing
+
+- Keyed calls are serialized, never parallelized.
+- At least three seconds elapse between credentialed federal API calls.
+- A longer server-provided retry interval controls when present.
+- A rate-limit response stops rapid retries and is reported to the user.
+
+### Shift-coverage reconciliation
+
+- Annual coverage hours are derived from seats, hours per day, and coverage days.
+- FTE is derived from annual coverage hours divided by the approved productive-hours basis.
+- A 24x7x365 single seat at 1,880 productive hours requires 4.6596 FTE before any separately approved reserve.
+- A 4.2 FTE shorthand may be used only with a compatible scheduled-hours basis or when the workbook prices 8,760 coverage hours directly.
+- `productive hours * FTE` must not understate required annual coverage hours.
+
 ### Workbook safety
 
 - Step 8.5 ran before delivery.
 - Day trips use one 75% M&IE partial day and zero lodging.
+- Day trips use `lookup_city_perdiem`; they never pass `num_nights=0` to `estimate_travel_cost`, which requires at least one night.
 - First/last-day M&IE is not discounted twice.
 - Calculation cells contain numeric zero rather than `TBD`.
 - Formula-linked Methodology text does not go stale when assumptions change.

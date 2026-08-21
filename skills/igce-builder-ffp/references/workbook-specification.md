@@ -59,6 +59,8 @@ Do not use `YEAR()` against the text cells. Do not replace the tested pattern wi
 
 Use real numeric cells for B2:B8, text cells for B9:B10, and formulas for B11:B12. Make B2:B10 visually identifiable as editable assumptions.
 
+Format the B12 Aging Factor as `0.0000`, not as a percentage. A factor such as 1.0499 must display as `1.0499`, not `105.0%`.
+
 ### Summary pricing table
 
 For FFP by period:
@@ -67,6 +69,7 @@ For FFP by period:
 - Put base and option periods in columns.
 - Show the fully burdened hourly rate and FTE basis.
 - Calculate each period from FBR, productive hours, FTE, period months, and escalation.
+- For continuous or shift coverage, show annual coverage hours and the productive-hours basis used to derive FTE. The priced annual hours (`productive hours * FTE`) must reconcile to the required annual coverage hours.
 
 For FFP by deliverable:
 
@@ -112,6 +115,8 @@ The block-relative rows are fixed:
 | 16 | 17 | Profit Amount | `=B15*B16` |
 | 17 | 18 | Fully Burdened Rate | `=B15+B17` |
 | 18 | 19 | Implied Multiplier | `=B18/B5` |
+
+Format each block's Aging Factor cell as `0.0000`, matching Summary B12. Do not use a percentage format for an aging multiplier.
 
 Shift every in-block row reference by `(i-1)*19`. Do not shift the cross-sheet Summary assumption references.
 
@@ -259,5 +264,6 @@ Create a temporary JSON file that follows [validation-gates.md](validation-gates
 - Expected FBR and total workbook cell references
 - The grand-total cell reference
 - Any additional exact formula assertions
+- `annual_coverage_hours` on each shift-coverage labor line so independent recomputation can reject an incompatible FTE and productive-hours basis
 
 Use the same raw source values that populated the workbook, not values read back from its formulas. Delete or retain the temporary file according to the host's normal temporary-file policy. Do not present it as a contract deliverable unless the user requests it.

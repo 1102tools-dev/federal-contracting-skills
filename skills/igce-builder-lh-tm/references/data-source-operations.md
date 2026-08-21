@@ -1,4 +1,4 @@
-# Data Source Operations and Mapping Reference
+# LH/T&M Data Source Operations and Mapping Reference
 
 Use this reference for SOC selection, BLS wage retrieval, CALC+ positioning, and GSA Per Diem. Keep operation names stable and let the host supply any runtime namespace.
 
@@ -210,12 +210,14 @@ price_reasonableness_check(
 
 Use the returned count, bounds, z-score, and percentile only as positioning data. Label a pool under about 25 records as directional.
 
-### Positioning bands
+### LH/T&M positioning bands
 
-- 0-15% above P50: expected range
-- 15-40% above P50: FFP premium band
-- Above 40%: show stacked-factor arithmetic in Methodology
-- Below P25: report the position and ask the CO to review the input or pool alignment
+- Within 15% of P50: expected comparison range
+- Between 15% and 30% from P50: show the full burden, seniority, geography, and pool-composition arithmetic
+- More than 30% from P50: show alternate SOC or title pools and direct the result to Contracting Officer review
+- Below P25: report the position and ask the Contracting Officer to review the input, level, or pool alignment
+
+LH/T&M burdened hourly labor rates are directly comparable to CALC+ ceiling labor rates, but CALC+ pools can still mix education, experience, geography, and labor-category definitions. Do not translate a band into a fair-and-reasonable conclusion.
 
 Do not translate a band into a fair-and-reasonable conclusion.
 

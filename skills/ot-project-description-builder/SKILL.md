@@ -1,440 +1,160 @@
 ---
 name: ot-project-description-builder
 description: >
-  Build milestone-based project descriptions for Other Transaction (OT)
-  agreements under 10 USC 4021/4022. Produces the agreement attachment
-  that replaces a SOW/PWS in OT prototype and production follow-on
-  contexts. Structures work around TRL progression phases (design, build,
-  test, demonstrate) with milestone payment schedules tied to technical
-  deliverables. Trigger for: OT project description, OTA project
-  description, other transaction agreement, prototype agreement, OT scope,
-  10 USC 4021, 10 USC 4022, prototype OT, production follow-on OT,
-  TRL-based project description, milestone-based scope, write an OT
-  project description. Also trigger when user needs a project description
-  before an OT cost analysis or has a BAA white paper/SOO to develop.
-  Never contains cost estimates, funding profiles, or cost-sharing
-  calculations. Do NOT use for SOW/PWS (use sow-pws-builder), OT cost
-  analysis (use OT Cost Analysis), or FAR Part 15 requirements.
+  Trigger for: OT project description, OTA scope, Research OT under 10 U.S.C.
+  4021, Prototype OT under 10 U.S.C. 4022, follow-on production scope under
+  10 U.S.C. 4022(f), milestone-based project scope, prototype objective,
+  phase or go/no-go structure, BAA white-paper conversion, SOO conversion,
+  transition planning, or scope reduction before OT cost analysis. Produce a
+  milestone-based .docx plus a separate chat-only handoff to OT Cost Analysis.
+  Use TRL only when the project supports it. Never place cost estimates,
+  funding profiles, contribution calculations, prices, or skill-routing
+  content in the document. Do NOT use for a FAR SOW/PWS, OT cost analysis,
+  IGCE, agreement terms and conditions, or an Agreements Officer's authority,
+  participant-status, successful-completion, or follow-on determination.
 ---
 
 # OT Project Description Builder
 
-## Overview
+## Purpose and operating boundary
 
-This skill walks an agreements officer (AO) or program office through structured prototype scope decisions and assembles the answers into a milestone-based project description for an Other Transaction agreement. The core insight: OTs structure work around technology maturation phases and technical milestones, not task/subtask CLINs or performance objectives. The program office defines what must be demonstrated at each gate, and the performer proposes how to get there.
+Create a milestone-based `.docx` project description for a Research OT under 10 U.S.C. 4021, Prototype OT under 10 U.S.C. 4022, or a follow-on production action under 10 U.S.C. 4022(f). Define the technical outcome, phase logic, deliverables, completion evidence, Government responsibilities, and agreement-specific controls without making the Agreements Officer's authority, participant-status, successful-completion, or follow-on-eligibility determination.
 
-**Outputs (TWO SEPARATE ARTIFACTS -- never combined):**
+Produce two separate outputs:
 
-1. **A .docx project description** with milestone-based structure -- the agreement attachment. This document contains NO cost estimates, NO should-cost figures, NO funding profiles, NO cost-sharing calculations, and NO government budget data. It defines what the prototype must achieve, by when, and what constitutes success at each milestone.
+1. One project-description `.docx` suitable for the agreement file. It contains no cost estimate, should-cost, labor rate, milestone amount, funding profile, Government budget, or pricing conclusion.
+2. One `MILESTONE HANDOFF TABLE` in chat after document validation. It is an internal workpaper for OT Cost Analysis and never a document section, appendix, or companion file.
 
-2. **A milestone handoff table** -- an internal government workpaper presented in **chat output only** at the end of the skill run. This is the data handoff to the OT Cost Analysis skill. It is NEVER embedded in the project description document. It is NEVER saved as a companion file. It exists solely as a markdown table in the conversation so the user can review it and the downstream OT Cost Analysis skill can consume it.
+No external API is required.
 
-**No external APIs required.** This is a decision tree + document generation skill.
+## Reference map
 
-**Statutory basis:** 10 USC 4021 (authority to carry out prototype projects), 10 USC 4022 (other transaction authority and follow-on production), 10 USC 4003 (definition of prototype project). NOT FAR-based. OTs operate outside the FAR; the project description replaces the SOW/PWS as the primary scope document attached to the agreement.
+Load only what the active workflow needs:
 
-**Related policy:** DoD OT Guide (USD(R&E) / USD(A&S)), individual service OT policies (Army AFC, Navy NSWC, Air Force AFRL/AFWERX guidance). These are policy references, not binding regulations like the FAR.
+- [authority-and-scope-rules.md](references/authority-and-scope-rules.md) before stating authority, participant status, contribution treatment, prototype scope, or follow-on provisions.
+- [question-blocks.md](references/question-blocks.md) when collecting or confirming inputs.
+- [document-specification.md](references/document-specification.md) in full before building the `.docx`.
+- [handoff-specification.md](references/handoff-specification.md) before presenting the chat-only milestone handoff.
+- [validation-gates.md](references/validation-gates.md) before generation and again before delivery.
+- [runtime-adaptation.md](references/runtime-adaptation.md) when selecting input, document-generation, rendering, validation, or delivery capabilities.
 
-## Workflow Selection
+## Non-negotiable gates
 
-### Workflow A: Full Build (Default)
-User needs a project description from a prototype concept or objective. Execute Acquisition Context Intake, then all three phases.
-Triggers: "write an OT project description," "build a prototype agreement," "I need a project description for an OT," "scope a prototype."
+1. **Correct authority:** 10 U.S.C. 4021 covers basic, applied, and advanced research. 10 U.S.C. 4022 covers prototype projects. Section 4022(f) covers follow-on production contracts or transactions. Never label a prototype as a 4021 action.
+2. **Authority is supplied, not selected:** Explain the three paths when needed, but require the user or Agreements Officer to identify the authority. Do not default an uncertain request to Prototype OT.
+3. **Correct prototype conditions:** Under 4022(d)(1), Path A is significant participation by a nontraditional defense contractor or nonprofit research institution; Path B covers all significant non-Government participants being small businesses or nontraditional defense contractors; Path C requires at least one-third of total project cost from non-Federal sources; Path D is a senior procurement executive's written exceptional-circumstances determination. There is no Path D competition-commitment option.
+4. **Status and contribution facts are not inferred:** Do not decide nontraditional status, small-business status, significant participation, the applicable 4022(d) path, contribution ratio, contribution valuation, or fee. Record the user's approved facts and source. Research and follow-on production contribution arrangements are also supplied, not defaulted.
+5. **TRL is optional:** Use TRL only when supplied or genuinely useful. A prototype can address a proof of concept, model, process, agile development, novel commercial application, operational utility, or a combination. Do not force every project through a hardware-style TRL ladder.
+6. **Milestones precede prose:** Present the derived phase and milestone structure, including completion evidence and pending decisions, then end at the approval question. Do not generate the `.docx` in the same response.
+7. **Artifact separation:** Keep pricing, labor hours, contribution arithmetic, cost figures, funding, and skill-routing language out of the document. Keep the milestone handoff in chat only.
+8. **Data rights are negotiated:** Record the supplied posture by deliverable and distinguish background from agreement-generated material. Do not state that FAR or DFARS clauses control unless the agreement incorporates them.
+9. **Follow-on language stays conditional:** Record user-supplied predecessor, competitive-selection, and successful-completion facts without deciding eligibility. Do not promise award or say 4022(d) is a follow-on requirement.
+10. **Every placeholder closes:** Each `[TBD]` must name an owner, trigger, and disposition method in Constraints and Assumptions.
+11. **Independent document validation:** Run the bundled validator, render the document, inspect every page, fix defects, and repeat. Do not treat DOCX creation alone as proof of usability.
 
-### Workflow B: Convert from Existing Document
-User has an existing SOW, SOO, BAA white paper, or proposal abstract and needs it developed into an OT project description. Start with Phase 0 (document intake), then Phases 1-3.
-Triggers: "convert this SOW to an OT project description," "develop this white paper into a prototype scope," "we have a BAA response and need a project description."
+## Pre-flight: capabilities and inputs
 
-### Workflow C: Scope Reduction
-User has an existing OT project description or cost analysis output that exceeds budget or schedule. Walk through the milestone structure to identify what to cut or defer, then produce a revised document.
-Triggers: "this prototype is too expensive," "we need to reduce scope," "can we drop a phase," "defer TRL 6 to a follow-on."
+1. Inspect attached source documents with the host's native document or PDF reader. Preserve explicit decisions and identify contradictions instead of silently resolving them.
+2. Require a `.docx` authoring path, Python 3.10 or later with `python-docx` for the bundled validator, and a rendering path such as LibreOffice when available.
+3. Use an agency or consortium template when supplied. Otherwise use the formal document baseline in the document specification.
+4. Confirm that a source document's prices, rates, CLINs, budgets, and funding values will be excluded. Record only that excluded pricing data exists; the user can provide it separately to OT Cost Analysis with a confirmed amount basis.
+5. If document generation or rendering is unavailable, stop before promising a validated artifact and report the missing capability.
 
-## Acquisition Context Intake
+## Select a workflow
 
-Before diving into the scope decision tree, collect four framing decisions that shape everything that follows. Ask these up front, in a single pass, before Block 1.
+### Workflow A: build from a concept
 
-### Intake Question 1: OT Type
+Use when the user supplies an objective, problem, requirement, or early concept but no approved milestone structure.
 
-| Type | Statutory Authority | Use When |
-|------|-------------------|----------|
-| Prototype | 10 USC 4021 | R&D, technology maturation, proof of concept through system demo |
-| Production Follow-On | 10 USC 4022(f) | Transitioning a successful prototype to limited or full-rate production |
-| Research | 10 USC 4021 | Basic or applied research, typically pre-TRL 4 |
+### Workflow B: convert an existing document
 
-If the user is unsure, default to Prototype -- it covers the widest range of OT work and is the most common. Production follow-on requires a completed prototype OT as a predecessor. Research OTs are less common and typically issued by service labs (NRL, ARL, AFRL).
+Use for a white paper, proposal abstract, SOO, SOW, draft project description, or similar source. Extract settled technical facts; remove FAR clause, CLIN, QASP, staffing, and pricing content from the project-description artifact. Do not re-ask settled questions.
 
-### Intake Question 2: Performer Type
+### Workflow C: revise or reduce scope
 
-| Type | Cost-Sharing Implication | 10 USC 4022(d) Path |
-|------|------------------------|---------------------|
-| Nontraditional Defense Contractor (NDC) | NDC participation satisfies 4022(d)(1)(A) | No cost share required if NDC has significant participation |
-| Traditional + NDC Team | NDC sub or team member satisfies 4022(d)(1)(A) | Same as above |
-| Small Business | Small business significant participation satisfies 4022(d)(1)(B) | No cost share required |
-| Consortium Member | Depends on consortium structure and awardee | Varies by consortium agreement |
-| Traditional (sole, no NDC/SB participation) | Must have cost-sharing arrangement per 4022(d)(1)(C) | Cost share required (typically 1/3 performer) |
-| Traditional (with follow-on competition commitment) | Competitive follow-on satisfies 4022(d)(1)(D) | No cost share required but must compete production |
+Use when an existing project description or approved milestone structure must be changed. Preserve unaffected decisions, identify the technical and schedule effect of each proposed deletion or deferral, and obtain approval for the revised milestones before editing the document.
 
-An NDC is defined at 10 USC 3014: an entity that is not currently performing, and has not performed for the prior one-year period, any DoD contract or subcontract subject to full Cost Accounting Standards (CAS) coverage under 41 USC 1502. The test is CAS full-coverage status, not a dollar threshold on contracts. Nonprofits performing DoD-relevant research and any other entity the contracting officer determines as nontraditional also qualify. The performer type determines whether cost-sharing is required and shapes the project description's cost-sharing section. Do NOT cite a dollar-value rule (e.g., "$500K+ in prior year"). That is not the statutory test and will cause mis-determinations.
+## Stage A: authority and acquisition frame
 
-### Intake Question 3: TRL Entry and Exit
+Read [authority-and-scope-rules.md](references/authority-and-scope-rules.md) and collect only missing items:
 
-| TRL | Description | Typical OT Phase |
-|-----|-------------|-----------------|
-| 1 | Basic principles observed | Research OT |
-| 2 | Technology concept formulated | Research OT |
-| 3 | Proof of concept | Early Prototype |
-| 4 | Component validation in lab | Prototype (design/build) |
-| 5 | Component validation in relevant environment | Prototype (build/test) |
-| 6 | System demo in relevant environment | Prototype (test/demonstrate) |
-| 7 | System prototype demo in operational environment | Late Prototype / Pre-production |
-| 8 | System complete and qualified | Production Follow-On |
-| 9 | System proven in operational environment | Production |
+- User-confirmed authority: 4021 research, 4022 prototype, or 4022(f) follow-on production
+- For a prototype, user-confirmed 4022(d)(1) Path A, B, C, or D and source
+- Participant and significant-participation facts as confirmed by the Agreements Officer
+- Approved contribution arrangement and source, or `PENDING`
+- Direct or consortium structure and any controlling template
+- Project purpose, present technical or operational baseline, and source documents
+- For follow-on production, predecessor prototype and user-supplied selection and completion facts
 
-Collect: TRL at project start (entry) and TRL target at project end (exit). This determines the number of phases and the nature of milestones. Most prototype OTs span TRL 3-6 or TRL 4-7. Research OTs are typically TRL 1-3 or TRL 2-4.
+Use the host's structured question tool when available. Otherwise use numbered questions and accept numbers, labels, or free text. If authority is uncertain, explain the differences neutrally and end at the authority question. Do not continue to scope derivation.
 
-If the user gives a range wider than 4 TRL levels (e.g., TRL 2 to 8), flag that this may exceed typical prototype OT scope and suggest breaking into two agreements or phasing with go/no-go gates.
+When required authority items are complete, show a short authority record and ask the user to confirm or correct it. End at that question.
 
-### Intake Question 4: Consortium or Direct
+## Stage B: scope and milestone decisions
 
-| Approach | Description | Agreement Structure |
-|----------|------------|---------------------|
-| Direct OT | Government awards directly to a single performer | Bilateral agreement between government and performer |
-| Consortium-brokered | Award through a consortium organization | Agreement may route through consortium (DIU, AFWERX, NavalX, NSTXL, SOSSEC, MTEC, etc.) |
+After Stage A approval, read [question-blocks.md](references/question-blocks.md). Collect missing scope inputs in related batches:
 
-If consortium: identify which consortium. Consortium OTs often follow consortium-specific templates and add a management fee (typically 3-5%). The project description content is the same; the agreement wrapper differs.
+- Outcome and measurable success conditions
+- Existing baseline and major risks
+- Phase logic, schedule, and external dependencies
+- Test, demonstration, or acceptance environment
+- Systems, interfaces, prototype units, data, and security boundaries
+- Deliverables and objective completion evidence
+- Data-rights posture by deliverable category
+- Government-furnished property, information, facilities, and personnel
+- Key roles, reviews, reporting, off-ramps, and transition intent
 
-### Why these four questions come first
+Use TRL only when supported. Otherwise describe maturity through observable baseline, target capability, and completion evidence.
 
-OT project descriptions must be shaped by the statutory authority, the cost-sharing path, the technology maturation scope, and the agreement structure. A TRL 3-6 prototype with an NDC performer reads differently from a TRL 6-7 production-readiness effort with a traditional prime requiring cost-sharing. Collecting these up front means Phase 1 can frame scope questions appropriately.
+Derive a candidate structure with:
 
-## Phase 0: Document Intake (Workflow B Only)
+`Milestone ID | Phase | Objective | Estimated Duration | Deliverables | Completion Evidence | Timing or Sequence | Payment Type | TRL In/Out | Notes`
 
-When the user provides an existing document (SOW, SOO, BAA white paper, proposal abstract):
+Payment Type remains `PENDING` unless supplied. Do not infer Fixed, Cost-Type, or Mixed from milestone wording.
 
-1. **Read and extract.** Parse for: technical objective, current state of technology, systems involved, TRL indicators, proposed approach, deliverables, schedule, performer qualifications, prior work.
+### Decision Summary gate
 
-2. **Gap identification.** Flag what the document provides vs. what an OT project description needs:
-   - Typically present: technical objective, background, proposed approach
-   - Typically missing: TRL entry/exit mapping, milestone definitions, go/no-go criteria, data rights assertions, cost-sharing structure
+Present:
 
-3. **Decision bridge.** Present gaps as questions Phase 1 will answer. Frame it as: "This document tells us what the performer wants to build. Phase 1 asks the questions that turn a concept into executable prototype milestones with decision gates."
-
-4. **Carry forward.** Pre-populate Phase 1 answers with anything the document already decided. Don't re-ask settled questions.
-
-**SOW conversion note:** If converting from a traditional SOW, flag that OTs do not use task/subtask CLIN structure, FAR clause references, or performance-based language (those are FAR constructs). The conversion maps task areas to TRL phases and deliverables to milestone completion criteria.
-
-**Cost data stripping (Workflow B).** If the source document contains cost figures (CLIN values, total contract value, labor rates, phase dollar amounts), do NOT preserve them in the project description body or any section of the .docx. Pass them to the Milestone Handoff Table as an informational reference line labeled "Source-doc cost references (informational only, do not anchor should-cost estimate)" so the OT Cost Analysis has calibration context without treating them as should-cost anchors.
-
-**Cost-share arithmetic question (Workflow B + path (C) only).** If the source document states a total contract value and the performer type triggers 10 USC 4022(d)(1)(C) cost-sharing, ask the user whether the stated total represents (a) the government share with performer contributing additional funds on top, or (b) the total agreement value with performer share carved out of the stated figure. Do not default. The two interpretations produce materially different government obligations (roughly 50% delta at the standard 1/3 share).
-
-## Phase 1: Scope Decision Tree
-
-Ask questions in this sequence. Each decision narrows scope and implies milestones. Present as structured choices, not open-ended questions. Collect in a single pass where possible.
-
-**Phase 1 execution:** On platforms that expose a structured multi-choice prompt tool (claude.ai web chat provides AskUserQuestion), use it for Acquisition Context Intake and Blocks 1-6. Batch 3-4 related questions per prompt block. Reserve prose for genuinely open-ended answers (technical approach, system names, performer details). Every multi-choice question must include an "Other" / "Something else" free-text escape.
-
-**Anti-redundancy:** Before asking any framing or scope question, check whether the user's initial prompt already answers it. Do not re-ask explicit answers; confirm silently and proceed.
-
-### Block 1: Prototype Objective and Technical Baseline
-
-1. **What is being prototyped?** Hardware system | Software application/platform | Process or workflow | Algorithm or model | Hybrid (hardware + software) | Integration of existing systems
-2. **What is the current state?** Concept only (no existing implementation) | Lab prototype exists (needs maturation) | Commercial product exists (needs military adaptation) | Prior government prototype (needs iteration)
-3. **What does success look like?** Define in terms of: "Demonstrate [capability X] at [performance level Y] in [environment Z]." This becomes the top-level prototype objective.
-4. **Data rights posture:** Government Purpose Rights (GPR) | Limited Rights | Unlimited Rights | Negotiated split by deliverable category | Performer retains all background IP, government gets GPR on foreground
-
-Data rights in OTs are negotiated per agreement, not prescribed by FAR Part 27. DFARS 252.227-7013 (technical data) and 252.227-7014 (software) provide a framework but can be tailored. The data rights posture should be decided early because it affects performer willingness and cost.
-
-### Block 2: TRL Progression and Phase Structure
-
-5. **Number of phases:** Typically 2-4 for a prototype OT. Each phase spans 1-2 TRL levels.
-6. **For each phase, define:**
-   - Entry TRL and exit TRL
-   - Primary activity: Design | Build/Fabricate | Integrate | Test | Demonstrate
-   - Duration estimate (months)
-   - Key technical risk to retire in this phase
-7. **Go/no-go criteria between phases:** What must be demonstrated to proceed? Examples:
-   - "Component X achieves [metric] in lab environment" (TRL 4 gate)
-   - "Integrated system passes [test] in simulated operational conditions" (TRL 5 gate)
-   - "System demonstration meets [threshold] observed by government test team" (TRL 6 gate)
-8. **Off-ramp conditions:** Under what circumstances would the government terminate before completing all phases? (Technical failure, budget reduction, requirement change, superior alternative identified)
-
-### Block 3: Technical Scope
-
-9. **Systems and technologies:** List all systems, subsystems, and enabling technologies the prototype will develop, integrate with, or demonstrate against.
-10. **Integration requirements:** Standalone prototype | Must integrate with [existing government system] | Must demonstrate interoperability with [allied/partner system]
-11. **Test environment:** Laboratory | Simulated operational (specify fidelity) | Operational (specify location/unit) | Multiple environments across phases
-12. **Data and analytics:** Does the prototype produce data that requires analytics, ML model training, or algorithm validation? If yes, describe the data pipeline.
-
-### Block 4: Scale and Deliverables
-
-13. **Prototype units (if hardware):** Number of units to build. Single prototype | 2-5 units (for testing/evaluation) | Pre-production quantity (10+, likely production follow-on)
-14. **Test events and demonstrations:** Number and type of formal test/demo events. Who observes? (Government test team, operational users, senior leadership, allied partners)
-15. **Data deliverables:** Technical data packages | Design documents | Test reports | Source code | Training data sets | Algorithm documentation | User manuals
-16. **Software deliverables (if applicable):** Source code | Compiled binaries | Container images | API documentation | Deployment scripts
-
-### Block 5: Agreement Structure
-
-17. **Period of performance by phase:** Duration per phase in months. Total PoP typically 12-36 months for prototype OTs.
-18. **Milestones per phase:** Typically 2-4 milestones per phase. More milestones = more government oversight but also more payment events.
-19. **Milestone payment type:** Fixed-price milestones (most common -- fixed payment upon completion) | Cost-type milestones (ceiling per milestone, reimburse actuals) | Mixed (some fixed, some cost-type)
-20. **Cost-sharing arrangement (if applicable per Intake Q2):**
-    - Performer cash contribution (what percentage?)
-    - Performer in-kind contribution (lab time, equipment, personnel not charged to the agreement)
-    - No cost share (NDC/SB participation path or competition commitment path)
-21. **Production follow-on option (10 USC 4022(f)):** Yes -- include provisions for production transition | No -- prototype only | TBD -- evaluate after prototype results
-
-### Block 6: Oversight and Reporting
-
-22. **Technical review cadence:** Monthly | Quarterly | At milestone completion only | Per-phase technical interchange meetings (TIMs)
-23. **Milestone acceptance process:** Government program office review | Independent test team evaluation | Joint government-performer review board | Combination
-24. **Government test participation:** Government observers only | Government co-testers | Government provides test environment/range | Performer-led testing with government data access
-25. **Key personnel:** Which performer roles require government approval? (Principal Investigator/Technical Lead always; others as needed)
-
-### Decision-to-Milestone Derivation Rules
-
-After collecting decisions, derive the milestone structure. These are heuristics based on typical OT prototype structures:
-
-| Decision | Milestone Implication |
-|----------|----------------------|
-| TRL 3 to 4 phase | 1-2 milestones: preliminary design review (PDR), detailed design complete |
-| TRL 4 to 5 phase | 2-3 milestones: prototype fabrication/build, component test, subsystem integration |
-| TRL 5 to 6 phase | 2-3 milestones: system integration test, relevant-environment demo, test report delivery |
-| TRL 6 to 7 phase | 1-2 milestones: operational-environment demo, production readiness review |
-| Software prototype | Milestones per iteration: working demo, user acceptance test, deployment to test environment |
-| Hardware prototype | Milestones per build cycle: design freeze, first article, qualification test |
-| Each formal test event | 1 milestone for test execution + report delivery |
-| Each government demonstration | 1 milestone for demo completion + government acceptance |
-| Data deliverable package | 1 milestone per major data deliverable (TDP, source code drop, algorithm package) |
-
-**Present the derived milestone table to the user for validation before proceeding to Phase 2.** Format:
-
-```
-Phase | Milestone | Description                     | TRL In/Out | Est. Duration | Key Deliverable
-1     | M1        | Preliminary Design Review       | 3/3        | 3 months      | Design document
-1     | M2        | Detailed Design Complete        | 3/4        | 3 months      | Final design, BOM
-2     | M3        | Prototype Build Complete         | 4/4        | 4 months      | First article
-2     | M4        | Component Test Complete          | 4/5        | 2 months      | Test report
-3     | M5        | System Demonstration             | 5/6        | 3 months      | Demo report, video
-```
-
-**User validation gate.** The user confirms, adjusts, or overrides any milestone. If they override, document the rationale.
-
-**Go/no-go gate carry-through.** Every phase-boundary milestone in the derived table must have a measurable go/no-go criterion carried from Block 2 Q7. The criterion must appear in (1) Section 4 Technical Approach by Phase as the phase exit criterion and (2) Section 5 Milestone Schedule as the completion criterion on that milestone. Do not leave go/no-go criteria sitting in Phase 1 intake only.
-
-## Phase 2: Document Assembly
-
-### Phase 2 Invocation Gate
-
-Before invoking the docx skill for document generation, present a Phase 1 Decision Summary in chat. The summary must include:
-- The four framing answers (OT type, performer type, TRL entry/exit, consortium/direct)
-- All derived defaults with one-line rationale for each
-- The phase structure and milestone count
-
-Wait for the user to reply "proceed" (or correct any item) before generating the .docx. Do this even when the user has waived interactive Phase 1. It provides a catch point before a large document generation locks in framing errors and preserves progress if the session is interrupted.
-
-**DO NOT self-approve.** Presenting the Decision Summary and then immediately continuing to docx generation in the same response (e.g., emitting "Proceeding to document assembly now" or similar without waiting for user input) defeats the entire purpose of the gate. The user must have an opportunity to read the summary, catch a wrong default, and redirect before the .docx is built. After presenting the Decision Summary, the response must END. Wait for the next user message containing "proceed" (or a correction) before invoking the docx skill. This applies even when the user's original prompt was richly specified. The intake defaults applied in Phase 1 are your inferences; the user is entitled to review them before commitment.
-
-Generate the project description using the docx skill. If `/mnt/skills/public/docx/SKILL.md` is available (claude.ai sandbox), read it first and use that generator. Otherwise (Claude Code, local installs), use the python-docx library directly to produce the .docx. Do not abort because the sandbox path is missing.
-
-### Project Description Section Structure
-
-This is NOT a FAR Section L/M format. OT project descriptions follow the structure below.
-
-**Section ordering is prescriptive.** The sections below appear in the document in the exact order shown. Do not merge, combine, swap, or rename them. If a conditional section is omitted (Section 12 Cost-Sharing when no cost share applies; Section 13 Production Follow-On when not in scope), renumber subsequent sections sequentially but preserve the relative order of all remaining sections.
-
-**Cross-references in body text must use section titles, not section numbers.** Write "the Production Follow-On section" or "the Data Rights section," not "Section 12" or "Section 7." This prevents broken references when conditional sections are omitted and downstream sections are renumbered.
-
-**Section 1: Agreement Overview**
-- 1.1 Purpose: one paragraph stating the prototype objective
-- 1.2 Authority: cite 10 USC 4021 for prototype, 10 USC 4022(f) for production follow-on
-- 1.3 Parties: Government organization and performer (or "to be determined" if pre-award)
-- 1.4 Agreement Type: Prototype OT | Production Follow-On OT | Research OT
-
-**Section 2: Technical Background and Current State**
-- Problem or capability gap the prototype addresses
-- Current state of the technology (TRL at entry, existing implementations, prior efforts)
-- Why an OT is the appropriate vehicle (speed, innovation, NDC access, flexibility)
-
-**Section 3: Prototype Objectives**
-- Numbered objectives, each with:
-  - Objective statement: "Demonstrate [capability] at [performance level] in [environment]"
-  - Success criteria: measurable, testable, unambiguous
-  - Relationship to phase and TRL exit
-- These are the top-level "what" -- the performer proposes the "how"
-
-**Section 4: Technical Approach by Phase**
-- For each phase:
-  - Phase number and title (e.g., "Phase 1: Design and Preliminary Prototyping")
-  - Entry TRL and exit TRL
-  - Primary activities and focus areas
-  - Key technical risks to retire
-  - Go/no-go criteria for proceeding to next phase
-  - Duration
-
-**Section 5: Milestone Schedule**
-- Milestone table: ID | Phase | Description | Deliverables Due | Completion Criteria | Payment Type (Fixed/Cost)
-- Milestones are payment events tied to technical achievement, not calendar dates
-- Each milestone must have unambiguous completion criteria that the government can verify
-
-**Section 6: Deliverables**
-- Deliverables table: ID | Title | Format | Due Trigger (milestone ID, e.g. "M3") | Acceptance Criteria
-- Column header must read "Due Trigger" (not "Due At" or "Due Date") to make clear that deliverables are triggered by milestone completion, not calendar dates
-- Include both technical deliverables (prototypes, test reports, design docs) and programmatic deliverables (status reports, risk registers)
-
-**Section 7: Data Rights**
-- Data rights assertions by deliverable category
-- Background IP: what the performer brings (performer retains rights)
-- Foreground IP: what the agreement produces (negotiated rights)
-- Reference DFARS 252.227-7013 and -7014 as framework, noting OT flexibility to tailor
-- License rights by category: Unlimited | Government Purpose | Limited | Specifically Negotiated
-- Source code escrow provisions if applicable
-
-**Section 8: Period of Performance**
-- Total PoP and PoP per phase
-- Phase start dates may be contingent on go/no-go decisions
-- Note that go/no-go gates may extend or compress subsequent phases
-
-**Section 9: Government Responsibilities**
-- Government-furnished equipment, facilities, or test environments
-- Government technical points of contact
-- Access to government systems, data, or operational environments for testing
-- Government test team participation
-
-**Section 10: Key Personnel**
-- Roles requiring government approval (Principal Investigator/Technical Lead minimum)
-- Minimum qualifications per role
-- Substitution requires prior written approval from the Agreements Officer
-
-**Section 11: Reporting and Oversight**
-- Technical review schedule (per phase or at milestones)
-- Status reporting requirements (format, frequency)
-- Milestone completion review and acceptance process
-- Risk and issue reporting
-
-**Section 12: Cost-Sharing Arrangement (if applicable)**
-- Include this section ONLY when the performer type requires cost sharing per 10 USC 4022(d)(1)(C) (traditional contractor, no NDC/SB significant participation)
-- Omit entirely when no cost share applies (NDC, small business, or competition commitment path)
-- Content: statutory basis (10 USC 4022(d)(1)(C)), cost-sharing ratio (e.g., 1/3 performer), contribution type (cash vs. in-kind), how the share applies to fixed-price milestones (payment reflects government share only) vs. cost-type milestones (performer identifies share in cost reporting, government reimburses its share up to ceiling), and note that the arrangement satisfies 4022(d) for follow-on production eligibility
-- Do NOT include dollar amounts, funding profiles, or government obligation figures -- those belong in the OT Cost Analysis, not the project description
-
-**Section 13: Production Follow-On Provisions (if applicable)**
-- 10 USC 4022(f) authority for follow-on production without further competition
-- Conditions that must be met: successful prototype completion, production-ready TRL, continued need
-- Transition planning requirements
-- If no follow-on: state "This agreement covers prototype development only. Any production requirement will be addressed through a separate acquisition action."
-
-**Section 14: Constraints and Assumptions**
-- Technical constraints (size/weight/power, interface standards, operating environments)
-- Schedule constraints (event-driven milestones, dependency on external programs)
-- Assumptions about government-furnished resources, access, or participation
-- Any user overrides from Phase 1 validation with rationale
-- **Performance placeholder closeout.** When performance thresholds are unspecified at scope-setting time (range, payload, endurance, accuracy, etc.), use [TBD] placeholders in the Prototype Objectives section. Every [TBD] in the document must have a stated disposition mechanism here. Default disposition: "Bilateral modification at Phase 1 CDR milestone to replace placeholders with measurable thresholds, based on preliminary design trade study results." Do not leave [TBD] without a disposition.
-
-### Language Rules
-
-**OT project descriptions use direct, technical language:**
-- "The performer shall demonstrate..." (milestone completion)
-- "The prototype shall achieve..." (performance requirement)
-- "The government will provide..." (government responsibilities)
-- "Phase [N] concludes upon..." (go/no-go gate)
-
-**Avoid:**
-- FAR-specific terms: "shall perform in accordance with," "deliverable order," "contracting officer" (use "agreements officer" instead)
-- CLIN-based language: "CLIN 0001," "task order," "option year"
-- Performance-based acquisition terms: "acceptable quality level," "QASP," "performance standard" (these are FAR 46 constructs)
-- Vague success criteria: "satisfactory performance," "as determined by the government," "best efforts"
-
-**Every milestone completion criterion must be:** specific (what is demonstrated), measurable (what metric or threshold), testable (how the government verifies), and binary (pass/fail, not subjective).
-
-## Phase 3: Validation and Handoff
-
-**UNCONDITIONAL RULE:** At the end of every run, present the Milestone Handoff Table as a markdown block in chat. Required, not optional, regardless of whether the user mentions the OT Cost Analysis skill. Do not skip or self-edit based on judgment that the user "won't need it."
-
-### Document Review Checklist
-
-**Required emission.** After the .docx is saved to disk and before presenting the Milestone Handoff Table, emit the Document Review Checklist in chat as a checkbox list showing which items pass and which need attention. The user must see the checklist state. Running it mentally and moving on defeats the point; the user has no way to catch a miss otherwise.
-
-Before presenting the final document, verify:
-
-- [ ] Every phase has at least one milestone
-- [ ] Every milestone has completion criteria and at least one deliverable
-- [ ] TRL progression is traceable from entry to exit with no gaps
-- [ ] Go/no-go criteria are defined for each phase transition
-- [ ] Data rights assertions cover all deliverable categories
-- [ ] Cost-sharing path is consistent with performer type (Intake Q2)
-- [ ] Production follow-on provisions match user intent (Intake Q5-21)
-- [ ] No cost estimates, should-cost figures, or funding data in the document
-- [ ] No FAR clause references (this is an OT, not a FAR contract)
-- [ ] Milestone count and structure match the validated table from Phase 1
-- [ ] All user overrides from Phase 1 are documented in Section 13
-
-### Milestone Handoff Table (CHAT OUTPUT ONLY -- NEVER IN THE DOCUMENT)
-
-**After the .docx is saved to disk, present the milestone handoff table as chat output only.** It is NOT a section of the project description. It is NOT saved as a separate file. It exists solely as a markdown table in the conversation so (a) the user can review the milestone structure for cost analysis readiness, and (b) the OT Cost Analysis skill can consume it as input.
-
-**Est. Duration column semantics.** "Est. Duration" means calendar months from completion of the prior milestone, or from phase start for the first milestone in each phase. It is NOT effort days, NOT internal labor hours, and NOT time from agreement award. The OT Cost Analysis uses this column for labor loading; ambiguous durations produce estimates that can differ by 3x or more.
-
-Present it like this, verbatim:
-
-```
-=== MILESTONE HANDOFF TABLE -- FOR OT COST ANALYSIS ===
-Internal government workpaper. NOT part of the project description.
-Do not paste this into the agreement document.
-
-| Milestone ID | Phase | Description                  | Est. Duration | Deliverables             | TRL In/Out | Payment Type |
-|-------------|-------|------------------------------|---------------|--------------------------|-----------|--------------|
-| M1          | 1     | Preliminary Design Review    | 3 months      | Design document, TDP     | 3/4       | Fixed        |
-| M2          | 1     | Detailed Design Complete     | 3 months      | Final design, BOM        | 4/4       | Fixed        |
-| M3          | 2     | Prototype Build Complete     | 4 months      | First article            | 4/5       | Fixed        |
-| M4          | 2     | Component Test Complete      | 2 months      | Test report              | 5/5       | Fixed        |
-| M5          | 3     | System Demonstration         | 3 months      | Demo report, video       | 5/6       | Fixed        |
-
-Performer Type: [from Intake Q2]
-Cost-Sharing Path: [from Intake Q2 and Block 5-Q20]
-Total PoP: [X months]
-Milestone Payment Type: [Fixed / Cost-type / Mixed]
-```
-
-Include rows for every milestone derived in Phase 1. After the table, tell the user in plain chat prose. The canned message has two variants depending on the cost-sharing path. When the performer type triggers 10 USC 4022(d)(1)(C) (traditional prime, no NDC/SB/competition path), use: *"This milestone table is ready for handoff to the OT Cost Analysis. Say 'build the OT cost analysis' and I'll estimate should-costs per milestone, apply the cost-sharing treatment, produce the funding profile, and generate the price reasonableness memo citing 10 USC 4021."* For all other paths (NDC, SB, competition-commitment) where no cost share applies, use: *"This milestone table is ready for handoff to the OT Cost Analysis. Say 'build the OT cost analysis' and I'll estimate should-costs per milestone, produce the funding profile, and generate the price reasonableness memo citing 10 USC 4021."* Do not emit the cost-sharing clause when no cost share applies; the downstream memo will be inconsistent with the performer type.
-
-**DO NOT, under any circumstances:**
-
-- Write the milestone handoff table into the project description body, any section, or any appendix.
-- Save the milestone handoff table as a separate file.
-- Include cost estimates, should-cost figures, or government budget data anywhere in the project description.
-- Include the phrases "OT Cost Analysis skill," "say 'build the OT cost analysis'," or any skill-chain plumbing messaging in the project description document.
-- Emit the table as anything other than a markdown code block or table in the chat conversation.
-
-**Why this rule exists:** The project description defines technical scope and milestones. The cost analysis is a separate government workpaper that evaluates price reasonableness. Mixing them compromises the government's negotiating position and leaks internal cost assumptions to the performer. Same separation principle as the SOW/PWS Builder's staffing handoff.
-
-## Edge Cases
-
-**User doesn't know TRL entry/exit:** Walk through the TRL descriptions and ask what currently exists. Map their description to a TRL level. Example: "You have a working algorithm in a lab environment with test data? That sounds like TRL 4. A relevant-environment demo would be TRL 6. So this is a TRL 4-6 prototype."
-
-**TRL range too wide:** If the requested range spans more than 4 TRL levels (e.g., TRL 2-7), suggest breaking into two agreements: a research/early prototype (TRL 2-4) and a late prototype (TRL 5-7), with a go/no-go between them.
-
-**User wants to skip Phase 1:** Don't let them. The milestone structure is the value. If they say "just write the project description from this white paper," explain: "A white paper describes a concept, but an OT project description requires decisions the paper leaves open -- like milestone definitions, go/no-go criteria, data rights, and cost-sharing path. These take about 15 minutes to walk through, and they're what make the milestones defensible and the agreement executable."
-
-**Existing SOW is heavily FAR-flavored:** When converting a traditional SOW, strip FAR references (Section I/L, FAR clauses, QASP, CLINs), map task areas to TRL phases, and restructure deliverables as milestone completion criteria. Flag the conversion for the user: "I've restructured the task-based scope into TRL phases and mapped deliverables to milestone gates. Review the phase structure to confirm the technology maturation path makes sense."
-
-**Production follow-on scope creep:** If the user starts describing production quantities or sustainment, flag that this may no longer be a prototype. Production follow-on under 4022(f) requires a completed prototype; sustainment is typically a separate FAR-based contract.
-
-**Budget-constrained scope reduction (Workflow C):** Work backwards from the cost analysis or budget ceiling. Options: reduce the number of phases (stop at TRL 5 instead of 6), reduce prototype units, defer certain test events, narrow the integration scope. Present trade-offs: "Stopping at TRL 5 saves [estimated effort] but means you'll need a separate effort to demonstrate in a relevant environment. Reducing from 3 prototype units to 1 saves fabrication cost but limits your test matrix."
-
-**Consortium-specific templates:** If the user identifies a specific consortium (e.g., DIU, AFWERX), note that the project description content follows this skill's structure but the agreement wrapper may use consortium-specific formats. The milestone table and technical content are the same.
-
-## What This Skill Does NOT Cover
-
-- **Cost analysis or should-cost estimates** -- use OT Cost Analysis
-- **Traditional SOW/PWS** -- use SOW/PWS Builder
-- **IGCE for FAR contracts** -- use IGCE Builder skills (FFP, LH/T&M, CR)
-- **NDC eligibility determination** -- agreements officer determination per 10 USC 3014
-- **OT competition strategy** -- this skill accepts the user's competition approach
-- **Agreement terms and conditions** -- legal review required; this skill covers technical scope only
-- **Intellectual property negotiations** -- this skill documents the data rights posture; actual IP terms require legal counsel
-- **10 USC 4022(f) determination** -- the decision to exercise follow-on production authority is a separate action
-
+1. The confirmed authority record
+2. Explicit user decisions
+3. Derived assumptions and their rationale
+4. Pending items and their owner
+5. The full candidate milestone table
+
+Ask the user to confirm, amend, or reject the structure. End immediately after that question. A request to skip questions does not waive this gate unless the user explicitly approves the displayed structure.
+
+## Build the project description
+
+After approval:
+
+1. Read [document-specification.md](references/document-specification.md) and [validation-gates.md](references/validation-gates.md) in full.
+2. Apply the supplied template or the formal baseline. Use real Word heading styles, lists, tables, page-number fields, and a dynamic TOC when required.
+3. Preserve approved milestone IDs, phase relationships, deliverables, completion evidence, timing, payment-type status, and user overrides.
+4. Carry each phase-exit criterion into both the Technical Approach by Phase section and the corresponding Milestone Schedule row.
+5. Include a Contribution Arrangement section only when an approved arrangement affects the agreement. State ratios and cash or in-kind treatment without dollar amounts or funding calculations. Label pending facts.
+6. Include Production Follow-On Provisions only when the user requests them. State conditions and transition planning without making an eligibility finding or promising an award.
+7. Keep the performer responsible for the technical approach unless the Government has intentionally prescribed a method.
+8. Save only the project-description `.docx` as the document artifact.
+
+## Validate and deliver
+
+1. Run `scripts/validate_docx.py <document> --json`.
+2. Render the `.docx` to page images with the available document renderer.
+3. Inspect every page for clipping, overlap, broken tables, blank pages, bad page breaks, unreadable density, missing glyphs, placeholder leakage, and inconsistent hierarchy.
+4. Correct every failure, rerun the validator, rerender, and inspect again.
+5. State whether LibreOffice or Microsoft Word performed the render. Do not claim Word compatibility from LibreOffice alone.
+6. Read [handoff-specification.md](references/handoff-specification.md) and emit the approved milestone handoff in chat. Never save it as a file or add it to the `.docx`.
+7. Report unresolved `[TBD]` items, the source and date of authority facts, and any validation layer that could not run.
+
+## Out of scope
+
+- OT should-costs, proposed-amount comparisons, funding profiles, and price-reasonableness determinations
+- FAR-based SOW, PWS, IGCE, solicitation Section B, CLIN, or QASP artifacts
+- Agreements Officer authority, participant-status, significant-participation, successful-completion, or follow-on-eligibility findings
+- Legal opinions, agreement terms and conditions, and intellectual-property negotiation
+- Unsupported TRL, cost-share, milestone payment type, fee, staffing, schedule, or performance threshold assumptions
 
 ---
 
-*MIT James Jenrette / 1102tools. Source: github.com/1102tools/federal-contracting-skills*
+*MIT © James Jenrette / 1102tools. Source: github.com/1102tools-dev/federal-contracting-skills*

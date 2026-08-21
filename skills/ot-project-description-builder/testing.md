@@ -1,5 +1,7 @@
 # OT Project Description Builder: Testing Record
 
+> Historical record from April 2026. References below to a Path D "competition commitment," Prototype OT authority under 10 U.S.C. 4021, or automatic contribution treatment are preserved as test history but are legally superseded. See `test.md` for the August 2026 modernization results and current gates.
+
 ## The bottom line
 
 One testing wave in April 2026 across six end-to-end scenarios on Claude Opus 4.7 shipped 15 patches to the OT Project Description Builder. All 15 patches validated on regression across three post-patch runs that exercised untested territory (software prototype, consortium, path D competition commitment, research OT, traditional prime, and Workflow C scope reduction). No regressions, no new universal gaps. All three workflows (A full build, B document conversion, C scope reduction) are now covered.
