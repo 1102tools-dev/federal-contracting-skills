@@ -19,6 +19,7 @@ YAML_ERROR = getattr(yaml, "YAMLError", ValueError)
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS = ROOT / "skills"
 EXPECTED = {
+    "acquisition-policy-workflow",
     "igce-builder-cr",
     "igce-builder-ffp",
     "igce-builder-lh-tm",

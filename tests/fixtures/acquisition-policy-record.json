@@ -1,0 +1,253 @@
+{
+  "schema_version": "1.0",
+  "skill": "acquisition-policy-workflow",
+  "workflow_mode": "impact_brief",
+  "request": {
+    "question": "What do the published sources indicate about GSA's use of RFO FAR Part 10 as of August 21, 2026?",
+    "audience_lens": "neutral",
+    "approved_scope": "Published federal sources for the codified baseline, RFO model text, GSA deviation, and related rulemaking",
+    "approved_at": "2026-08-21T18:00:00Z"
+  },
+  "scope": {
+    "as_of_date": "2026-08-21",
+    "agency": "General Services Administration",
+    "far_parts": [10],
+    "citation": "FAR Part 10",
+    "case_number": "FAR Case 2026-002",
+    "docket_id": "FAR-2026-0002",
+    "procurement_dates": {
+      "solicitation_date": ""
+    }
+  },
+  "document_register": [],
+  "capabilities": [
+    {"name": "ecfr", "status": "available", "version": "1.0.4"},
+    {"name": "acquisition_gov", "status": "available", "version": "1.0.0"},
+    {"name": "federal_register", "status": "available", "version": "1.0.3"},
+    {"name": "regulationsgov", "status": "available", "version": "1.0.3"}
+  ],
+  "queries": [
+    {
+      "provider": "ecfr",
+      "operation": "get_cfr_content",
+      "parameters": {"title": 48, "part": 10, "date": "current"},
+      "retrieved_at": "2026-08-21T18:10:00Z",
+      "count": 1,
+      "limitations": "Offline test fixture; no live call was made."
+    },
+    {
+      "provider": "acquisition_gov",
+      "operation": "list_rfo_agency_deviations",
+      "parameters": {"agency": "General Services Administration", "part": 10},
+      "retrieved_at": "2026-08-21T18:11:00Z",
+      "count": 1,
+      "limitations": "Offline test fixture; index and PDF content must be rechecked in a live run."
+    },
+    {
+      "provider": "federal_register",
+      "operation": "far_case_history",
+      "parameters": {"case_number": "2026-002"},
+      "retrieved_at": "2026-08-21T18:12:00Z",
+      "count": 1,
+      "limitations": "Offline test fixture; Unified Agenda entries were excluded from the direct-case count."
+    },
+    {
+      "provider": "regulationsgov",
+      "operation": "get_docket_detail",
+      "parameters": {"docket_id": "FAR-2026-0002"},
+      "retrieved_at": "2026-08-21T18:13:00Z",
+      "count": 1,
+      "limitations": "Offline test fixture; no comment population claim is made."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E001",
+      "source_class": "federal_mcp",
+      "source_type": "codified_text",
+      "title": "48 CFR Part 10",
+      "locator": "Title 48, Chapter 1, Part 10",
+      "canonical_url": "https://www.ecfr.gov/current/title-48/subtitle-A/chapter-1/subchapter-B/part-10",
+      "publication_date": "",
+      "effective_date": "",
+      "retrieved_at": "2026-08-21T18:10:00Z",
+      "fact": "The eCFR source is the codified FAR Part 10 baseline used for this synthetic test record.",
+      "limitations": "eCFR is not the official legal edition and may lag recent effective Federal Register changes.",
+      "content_sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "id": "E002",
+      "source_class": "federal_mcp",
+      "source_type": "model_deviation",
+      "title": "RFO FAR Part 10 - Market Research",
+      "locator": "Acquisition.gov RFO Part 10 page",
+      "canonical_url": "https://www.acquisition.gov/far-overhaul/far-part-deviation-guide/far-overhaul-part-10",
+      "publication_date": "2025-05-22",
+      "effective_date": "",
+      "retrieved_at": "2026-08-21T18:11:00Z",
+      "fact": "Acquisition.gov publishes FAR Council model deviation text for Part 10.",
+      "limitations": "Model text is not agency-operative by itself.",
+      "content_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    {
+      "id": "E003",
+      "source_class": "federal_mcp",
+      "source_type": "agency_deviation",
+      "title": "GSA RFO Deviation for FAR Part 10",
+      "locator": "Posted GSA deviation PDF; synthetic extracted summary for testing",
+      "canonical_url": "https://www.acquisition.gov/sites/default/files/page_file_uploads/GSA_RFO_Deviation_Part-10.pdf",
+      "publication_date": "2025-06-18",
+      "effective_date": "2025-06-18",
+      "retrieved_at": "2026-08-21T18:11:30Z",
+      "fact": "The test fixture represents a posted GSA class deviation that adopts the RFO Part 10 model text for its stated scope.",
+      "limitations": "This is an offline synthetic record; exact scope and transition language require live PDF verification.",
+      "content_sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    {
+      "id": "E004",
+      "source_class": "federal_mcp",
+      "source_type": "federal_register_document",
+      "title": "FAR Case 2026-002",
+      "locator": "Federal Register case-history fixture",
+      "canonical_url": "https://www.federalregister.gov/",
+      "publication_date": "2026-06-23",
+      "effective_date": "",
+      "retrieved_at": "2026-08-21T18:12:00Z",
+      "fact": "The fixture represents formal rulemaking activity related to RFO Part 10.",
+      "limitations": "The proposal does not establish current policy and the live document number must be verified.",
+      "content_sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    {
+      "id": "E005",
+      "source_class": "federal_mcp",
+      "source_type": "regulations_docket",
+      "title": "FAR-2026-0002 docket",
+      "locator": "Regulations.gov docket fixture",
+      "canonical_url": "https://www.regulations.gov/",
+      "publication_date": "2026-06-23",
+      "effective_date": "",
+      "retrieved_at": "2026-08-21T18:13:00Z",
+      "fact": "The fixture records a rulemaking docket associated with the proposed FAR changes.",
+      "limitations": "No claim is made that the reviewed materials constitute the full docket population.",
+      "content_sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+    }
+  ],
+  "policy_items": [
+    {
+      "id": "P001",
+      "status": "codified_current",
+      "citation": "48 CFR Part 10",
+      "agency": "",
+      "text": "Codified FAR Part 10 baseline",
+      "effective_from": "",
+      "effective_to": "",
+      "operative_for_agency": false,
+      "applicability_summary": "Codified baseline; agency-specific deviations must be evaluated separately.",
+      "evidence_ids": ["E001"]
+    },
+    {
+      "id": "P002",
+      "status": "model_deviation",
+      "citation": "RFO FAR Part 10",
+      "agency": "",
+      "text": "FAR Council model deviation text",
+      "effective_from": "",
+      "effective_to": "",
+      "operative_for_agency": false,
+      "applicability_summary": "Published model text; not operative for an agency by itself.",
+      "evidence_ids": ["E002"]
+    },
+    {
+      "id": "P003",
+      "status": "agency_class_deviation",
+      "citation": "GSA RFO Part 10 deviation",
+      "agency": "General Services Administration",
+      "text": "Posted agency deviation represented in the test fixture",
+      "effective_from": "2025-06-18",
+      "effective_to": "",
+      "operative_for_agency": true,
+      "applicability_summary": "The posted deviation supplies the agency-specific scope and timing; transaction-specific treatment still requires official confirmation.",
+      "evidence_ids": ["E003", "E002"]
+    },
+    {
+      "id": "P004",
+      "status": "proposed_rule",
+      "citation": "FAR Case 2026-002",
+      "agency": "",
+      "text": "Proposed formal codification",
+      "effective_from": "",
+      "effective_to": "",
+      "operative_for_agency": false,
+      "applicability_summary": "Rulemaking pipeline evidence only; not current regulation.",
+      "evidence_ids": ["E004", "E005"]
+    }
+  ],
+  "findings": [
+    {
+      "id": "F001",
+      "finding_type": "source_fact",
+      "text": "eCFR supplies the codified FAR Part 10 baseline, while Acquisition.gov separately publishes the RFO model text.",
+      "evidence_ids": ["E001", "E002"],
+      "policy_item_ids": ["P001", "P002"]
+    },
+    {
+      "id": "F002",
+      "finding_type": "documented_status",
+      "text": "The posted GSA deviation is the source that supplies agency-specific adoption, scope, and timing in this test record; the model text alone does not.",
+      "evidence_ids": ["E002", "E003"],
+      "policy_item_ids": ["P002", "P003"]
+    },
+    {
+      "id": "F003",
+      "finding_type": "source_fact",
+      "text": "The related proposed rule remains part of the formal rulemaking pipeline and is not treated as current codified policy.",
+      "evidence_ids": ["E004", "E005"],
+      "policy_item_ids": ["P004"]
+    }
+  ],
+  "timeline": [
+    {"date": "2025-05-22", "event": "FAR Council model text for RFO Part 10 was issued.", "status": "Model text", "evidence_ids": ["E002"]},
+    {"date": "2025-06-18", "event": "The test fixture represents GSA issuance of its Part 10 class deviation.", "status": "Agency deviation", "evidence_ids": ["E003"]},
+    {"date": "2026-06-23", "event": "The test fixture represents publication of related proposed rulemaking.", "status": "Proposed rule", "evidence_ids": ["E004", "E005"]}
+  ],
+  "stakeholder_positions": [],
+  "limitations": [
+    "This is an offline synthetic fixture used to test evidence and artifact controls; all dates and document scope must be refreshed from live sources before operational use.",
+    "The analysis does not include unpublished or internal GSA policy.",
+    "Procurement-specific applicability remains an agency determination."
+  ],
+  "conflicts": [],
+  "unresolved_questions": [
+    "What solicitation, award, modification, or option date governs the actual procurement?"
+  ],
+  "outputs": [
+    {"type": "docx", "name": "acquisition-policy-impact-brief.docx"}
+  ],
+  "validation": {
+    "findings_approved": true,
+    "brief_approved": true,
+    "executive_summary": "Published sources must be read as separate layers. eCFR provides the codified baseline, the FAR Council model text is not agency-operative by itself, the posted GSA deviation supplies agency-specific scope and timing, and the proposed rule remains non-operative rulemaking evidence.",
+    "source_hierarchy": [
+      "Codified eCFR text is the baseline reflected in the electronic Code of Federal Regulations. [E001]",
+      "The agency deviation controls the documented agency-adoption analysis within its stated scope and timing. [E003]",
+      "RFO model text, proposed rules, guidance, and comments remain distinct supporting layers. [E002, E004, E005]"
+    ],
+    "impacts": {
+      "government": [
+        {"text": "Confirm that the procurement falls within the agency deviation's stated scope and transition terms before relying on the RFO text.", "evidence_ids": ["E003"]},
+        {"text": "Document the codified baseline and the deviation separately in the acquisition file.", "evidence_ids": ["E001", "E003"]}
+      ],
+      "industry": [
+        {"text": "Read the solicitation's incorporated language and ask the contracting officer to resolve any conflict between codified and deviation text.", "evidence_ids": ["E001", "E003"]},
+        {"text": "Monitor the formal rulemaking separately because the proposal is not current regulation.", "evidence_ids": ["E004", "E005"]}
+      ]
+    },
+    "open_issues": [
+      {"text": "The operational analysis requires the actual procurement date and solicitation language.", "evidence_ids": ["E001", "E003"]}
+    ],
+    "operational_considerations": [
+      {"text": "Preserve the agency-deviation PDF and retrieval date with the analysis because posted documents can be updated or superseded.", "evidence_ids": ["E003"]},
+      {"text": "Refresh the Federal Register and docket status before relying on a prior brief.", "evidence_ids": ["E004", "E005"]}
+    ]
+  }
+}
