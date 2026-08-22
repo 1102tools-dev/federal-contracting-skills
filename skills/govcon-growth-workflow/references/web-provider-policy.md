@@ -4,7 +4,7 @@
 
 Before any public web research, show the provider choices below as part of the research-plan approval. Mark the first choice recommended, but do not infer a choice from silence.
 
-1. **Tavily with native fallback (Recommended):** Use Tavily Search and Extract for discovery. Use the host's native search or fetch capability to verify primary sources and automatically when Tavily is unavailable, rate-limited, malformed, or missing the required operations.
+1. **Tavily with native fallback (Recommended):** Use Tavily Search and Extract for discovery. Use the host's native search or fetch capability to verify primary sources and automatically after a Tavily connection failure or timeout, 401 or 403 response, 429 response, 5xx response, malformed response, missing required operation, or incompatible operation schema.
 2. **Native search only:** Use only the host's built-in web search and fetch capabilities. Never invoke a Tavily research operation.
 3. **Tavily only:** Use Tavily Search and Extract. Do not switch to native web research without new approval.
 4. **No public web:** Use supplied documents and approved federal MCP evidence only. Apply the reduced-completeness label required by the skill.
@@ -33,7 +33,7 @@ Apply these restrictions to Tavily and native public web tools alike:
 
 ## Provider execution and fallback
 
-- **Tavily with native fallback:** Use only the actual semantic operations `tavily_search` and `tavily_extract` when available. Never invoke Tavily Crawl, Map, or Research, even if the provider advertises them. Verify consequential claims against the underlying primary-source page. When Tavily fails, switch automatically to an already approved native capability, record the failure and switch, and tell the user in the next findings update.
+- **Tavily with native fallback:** Use only the actual semantic operations `tavily_search` and `tavily_extract` when available. Never invoke Tavily Crawl, Map, or Research, even if the provider advertises them. Verify consequential claims against the underlying primary-source page. On any listed connection, authentication, rate-limit, server, response, tool, or schema failure, switch automatically to an already approved native capability, record the exact non-sensitive failure class and switch, and tell the user in the next findings update.
 - **Native search only:** Do not invoke Tavily. If native search is unavailable, offer Tavily or no-public-web mode and wait.
 - **Tavily only:** If Tavily fails, offer native or no-public-web mode and wait.
 - **No public web:** Invoke neither Tavily nor native public web tools.
