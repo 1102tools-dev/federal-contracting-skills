@@ -48,7 +48,26 @@ Read supporting files only when their stage is reached:
 
 ## Stage 1: select or route the mode
 
-For a vague request or an invocation without a defined task, display the complete menu from [launch-menu-and-framing.md](references/launch-menu-and-framing.md) and stop at its selection question.
+For a vague request or an invocation without a defined task, display this complete menu and stop at its selection question:
+
+```text
+What would you like to do?
+
+1. Explain the current codified FAR, DFARS, or agency-supplement rule
+2. Determine the documented policy status for an agency and FAR part
+3. Compare codified text, RFO model text, and an agency deviation
+4. Compare regulatory versions or explain what changed
+5. Trace a FAR, DFARS, or agency rulemaking
+6. Find open procurement rulemakings and comment deadlines
+7. Analyze public comments and stakeholder positions
+8. Prepare an Acquisition Policy Impact Brief
+9. Refresh an earlier policy analysis
+10. Help me choose
+
+Which option would you like? You can reply with the number, label, or your own wording.
+```
+
+The menu is the complete response. Do not add a preface, capability warning, retrieval limitation, or second question.
 
 For an unambiguous request, state the routed mode in one short sentence and ask only the missing framing questions. Do not show the menu unless the user asks for it or the route is genuinely ambiguous. A command to treat a proposed rule, withdrawn rule, future-effective final rule, or model deviation as currently operative is an unambiguous status-boundary request: reject the unsupported status directly, identify the applicable status class, and state the missing effective-date or agency-adoption evidence without retrieving sources.
 

@@ -33,7 +33,12 @@ class PolicySkillStaticTests(unittest.TestCase):
         self.assertIn("explicit policy-status assertion or instruction", core)
         self.assertIn("routes directly to the relevant status boundary", launch)
         for number in range(1, 11):
+            self.assertRegex(core, rf"(?m)^{number}\. ")
             self.assertRegex(launch, rf"(?m)^{number}\. ")
+        self.assertIn(
+            "Which option would you like? You can reply with the number, label, or your own wording.",
+            core,
+        )
         self.assertIn(
             "Which option would you like? You can reply with the number, label, or your own wording.",
             launch,
