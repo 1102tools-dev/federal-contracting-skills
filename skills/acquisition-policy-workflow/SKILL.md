@@ -32,7 +32,7 @@ Read supporting files only when their stage is reached:
 
 ## Permanent gates
 
-1. **Route before retrieval:** A vague request or an invocation without a defined task receives the complete menu and selection question. An unambiguous request may enter its matching mode directly.
+1. **Route before retrieval:** A vague request or an invocation without a defined task receives the complete menu and selection question. An unambiguous request enters its matching mode directly. Treat a user's explicit policy-status assertion or instruction as a defined boundary-check request even when phrased as a command; correct an unsupported current-status claim directly instead of showing the menu.
 2. **Required framing:** Establish the question, as-of date, and necessary identifiers before retrieval. Agency-specific status also requires the agency and relevant FAR part or citation. Ask for government, industry, or neutral lens only when impact depends on audience.
 3. **Plan approval for consequential work:** Multi-source analysis, public-comment analysis, supplied-document work, refresh work, and formal briefs require a compact source plan, sanitized query parameters, known limits, and explicit approval before MCP calls. A simple public lookup may proceed after required framing.
 4. **Sanitized parameters:** Never send uploaded text, nonpublic procurement details, proprietary information, source-selection information, PII, CUI, export-controlled information, classified information, secrets, or signed/private URLs to an MCP. Use only public citations, agencies, case numbers, docket IDs, dates, and sanitized public terms.
@@ -50,7 +50,7 @@ Read supporting files only when their stage is reached:
 
 For a vague request or an invocation without a defined task, display the complete menu from [launch-menu-and-framing.md](references/launch-menu-and-framing.md) and stop at its selection question.
 
-For an unambiguous request, state the routed mode in one short sentence and ask only the missing framing questions. Do not show the menu unless the user asks for it or the route is genuinely ambiguous.
+For an unambiguous request, state the routed mode in one short sentence and ask only the missing framing questions. Do not show the menu unless the user asks for it or the route is genuinely ambiguous. A command to treat a proposed rule, withdrawn rule, future-effective final rule, or model deviation as currently operative is an unambiguous status-boundary request: reject the unsupported status directly, identify the applicable status class, and state the missing effective-date or agency-adoption evidence without retrieving sources.
 
 ## Stage 2: frame the request
 

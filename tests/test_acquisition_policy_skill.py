@@ -29,7 +29,9 @@ class PolicySkillStaticTests(unittest.TestCase):
     def test_menu_and_direct_routing_are_present(self):
         core = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         launch = (SKILL / "references" / "launch-menu-and-framing.md").read_text(encoding="utf-8")
-        self.assertIn("An unambiguous request may enter its matching mode directly", core)
+        self.assertIn("An unambiguous request enters its matching mode directly", core)
+        self.assertIn("explicit policy-status assertion or instruction", core)
+        self.assertIn("routes directly to the relevant status boundary", launch)
         for number in range(1, 11):
             self.assertRegex(launch, rf"(?m)^{number}\. ")
         self.assertIn(

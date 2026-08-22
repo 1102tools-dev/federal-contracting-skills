@@ -32,6 +32,7 @@ Route a clear request without forcing the menu:
 - A request to compare FAR/eCFR, model text, and an agency deviation routes to mode 3.
 - Before-and-after or change requests route to mode 4.
 - A FAR/DFARS case, RIN, rule history, proposed rule, final rule, or withdrawal request routes to mode 5.
+- A command or assertion that a proposed rule, withdrawn rule, future-effective final rule, or model deviation is already current or operative routes directly to the relevant status boundary. Correct the classification and state the missing effective-date or agency-adoption evidence; do not show the menu merely because the request is phrased as an instruction.
 - Open comment periods or deadlines route to mode 6.
 - Comment themes, associations, stakeholder positions, or docket comments route to mode 7.
 - A formal brief routes to mode 8.
