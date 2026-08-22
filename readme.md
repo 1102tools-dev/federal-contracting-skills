@@ -1,14 +1,14 @@
 # 1102tools Agent Skills
 
-Nine portable agent skills for federal acquisition policy, market research, GovCon growth, SOW/PWS, IGCE, and Other Transaction workflows. These are not giant prompt files. Each capability is a complete, multi-file skill package with a compact orchestration core, supporting references, deterministic validators, client metadata, and its own test record.
+Portable, host-neutral workflow packages for federal acquisition policy, market research, GovCon growth, SOW/PWS, IGCE, and Other Transaction work. These are not giant prompt files. Each capability is a complete, multi-file package with a compact orchestration core, supporting references, deterministic validators, client metadata, and its own test record.
 
 Website: [1102tools.com](https://1102tools.com)
 
-## The fastest install: hand this PDF to your AI
+## Most users should start with an agent
 
-[![The 1102tools universal setup guide covers agent marketplace and standalone skill and MCP installation, with tested surfaces and open limits stated.](docs/setup-guide-promo.png?v=3)](https://1102tools.com/downloads/1102tools-universal-setup.pdf)
+The packaged [1102tools agents](https://github.com/1102tools-dev/federal-contracting-agents) already combine the appropriate workflow and source connections for one job. The beginner-facing [Agent Setup Guide](https://1102tools.com/downloads/1102tools-agent-setup-guide.pdf) covers Codex, Claude Code, and DeepSeek Harness.
 
-**[Download the universal setup guide (PDF)](https://1102tools.com/downloads/1102tools-universal-setup.pdf)**, then drop it into Claude, ChatGPT (Codex), Gemini (Antigravity), Copilot, DeepSeek Harness, Grok, Cursor, opencode, or LibreChat and say what you want installed. The AI reads the guide and walks you through agent marketplace installation, API keys, standalone configuration, restart, verification, updates, and removal. The guide distinguishes tested surfaces from pending ones.
+Use this repository when you specifically want to inspect, adapt, or install a standalone skill. Follow the selected skill directory's README and testing record; the agent setup guide does not cover standalone installation.
 
 **Before you build:** Not every acquisition capability should be an AI tool. Dozens of potential skills were evaluated and several were intentionally excluded because they cross the line from data assembly into professional judgment. See **[ai-boundaries.md](ai-boundaries.md)**.
 
@@ -45,13 +45,13 @@ The result is still simple to install: copy or upload one skill folder. Internal
 
 For federal API and published policy sources (SAM.gov, BLS wages, GSA CALC+ rates, GSA Per Diem, USASpending, eCFR, Federal Register, Regulations.gov, and Acquisition.gov), use the companion repo:
 
-**[federal-contracting-mcps](https://github.com/1102tools-dev/federal-contracting-mcps)**: nine MCP servers covering those sources, installed with one config block per server in any MCP client.
+**[federal-contracting-mcps](https://github.com/1102tools-dev/federal-contracting-mcps)**: source-specific servers covering those federal systems, with advanced installation documented in the selected server directory.
 
 The two repos work together: MCPs handle data, skills handle deliverables.
 
 ## Companion MCP safety release (August 2026)
 
-The nine MCP servers include synchronized cross-process anti-burst pacing. Default intervals are three seconds for SAM.gov, BLS OEWS, USASpending, GSA CALC+, eCFR, Federal Register, and Acquisition.gov, and four seconds for GSA Per Diem and Regulations.gov. This is a 1102tools safety safeguard, not a provider quota guarantee, and it cannot coordinate the same key across different computers. Current package versions are listed in the companion repository and universal setup guide.
+The MCP servers include synchronized cross-process anti-burst pacing. Default intervals are three seconds for SAM.gov, BLS OEWS, USASpending, GSA CALC+, eCFR, Federal Register, and Acquisition.gov, and four seconds for GSA Per Diem and Regulations.gov. This is a 1102tools safety safeguard, not a provider quota guarantee, and it cannot coordinate the same key across different computers. Current package versions and setup details live in the companion repository.
 
 **Check any IGCE you built between roughly April and August 2026.** The BLS OEWS server was defaulting to a data year that BLS had withdrawn when it published the 2025 estimates. Wage lookups returned empty values rather than an error, which is indistinguishable from a privacy-suppressed cell. All three IGCE Builders and OT Cost Analysis price labor off that server. If an estimate from that window shows missing or suppressed wages, or you worked around them by hand, rebuild it.
 
@@ -70,8 +70,8 @@ The five API data-source skills (BLS OEWS, GSA CALC+, GSA Per Diem, SAM.gov, USA
 1. **Deterministic tool calls.** MCP servers execute tested Python code. The model does not generate API-call code on the fly. Skills drifted across runs; MCPs do not. Same input, same output.
 2. **Updated independently of the skills.** When an upstream API changes, the MCP ships a fix and you get it on the next launch. Nothing to re-upload. A data-source skill would have to be re-downloaded and re-installed by every user.
 3. **Less context cost.** Tool schemas are ~100 tokens each. The old API skills cost 500-1000 lines of context per run.
-4. **Tested source adapters.** The original eight MCPs went through 3-6 audit rounds with live production-API testing. Acquisition.gov adds deterministic parser, PDF, transport, and security tests and remains behind an explicit live upstream gate while linked RFO pages time out.
-5. **Cross-client support.** MCP is an open standard, so the same servers run in Claude Desktop, Claude Code, Codex, Antigravity, and Copilot. This was the strongest argument for the split in April, when skills were Claude-only. It has since weakened: `SKILL.md` is now read by nearly every runtime too. The other four reasons still hold, and are why the split stays.
+4. **Tested source adapters.** The established MCP servers went through 3-6 audit rounds with live production-API testing. Acquisition.gov adds deterministic parser, PDF, transport, and security tests and remains behind an explicit live upstream gate while linked RFO pages time out.
+5. **Cross-client support.** MCP is an open standard, so the same servers can run in multiple compatible local clients. This was the strongest argument for the split in April, when skills were Claude-only. It has since weakened: `SKILL.md` is now read by many runtimes too. The other four reasons still hold, and are why the split stays.
 
 The orchestration skills in this repo stay as skills. Their value is decision trees, FAR-compliant narrative, and document generation, not API calls.
 
