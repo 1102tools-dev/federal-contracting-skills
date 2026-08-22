@@ -8,7 +8,7 @@ Tested August 21, 2026 from a clean temporary installation of the complete skill
 |---|---|---|
 | Codex CLI | `codex-cli 0.149.0-alpha.4`, GPT-5.6 Sol, xhigh | Pass: explicit invocation returned only the complete six-choice menu, then only the document-intake question. A government-wide IT help desk scenario withheld internal value, scale, hours, and security facts from proposed queries; listed all four provider modes, exact sanitized terms and URLs, Tavily privacy disclosure, residual disclosure risk, and waited for provider selection and plan approval. No research tool was invoked. |
 | Claude Code CLI | `2.1.239`, `claude-opus-5`, max effort | Pass: explicit invocation returned only the recommended menu, then only document intake. The same scenario produced all four provider modes, exact sanitized terms and URLs, Tavily privacy disclosure, and a combined approval question. The CLI reported zero web-search and web-fetch requests before approval. |
-| Claude Code CLI smoke | `2.1.239`, `claude-sonnet-5`, max effort | Pass: explicit invocation returned only the complete recommended menu with zero web-search and web-fetch requests. |
+| Claude Code CLI smoke | `2.1.239`, `claude-sonnet-5`, max effort | Pass after correction: the first packaged-plugin smoke returned all six choices but omitted the final selection question. The exact question was moved into the front-loaded core and made a literal validity gate. A fresh run returned the complete recommended menu and exact question with zero web-search and web-fetch requests. |
 
 ## Deterministic and artifact evidence
 
