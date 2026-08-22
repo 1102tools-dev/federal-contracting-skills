@@ -70,14 +70,14 @@ The five API data-source skills (BLS OEWS, GSA CALC+, GSA Per Diem, SAM.gov, USA
 1. **Deterministic tool calls.** MCP servers execute tested Python code. The model does not generate API-call code on the fly. Skills drifted across runs; MCPs do not. Same input, same output.
 2. **Updated independently of the skills.** When an upstream API changes, the MCP ships a fix and you get it on the next launch. Nothing to re-upload. A data-source skill would have to be re-downloaded and re-installed by every user.
 3. **Less context cost.** Tool schemas are ~100 tokens each. The old API skills cost 500-1000 lines of context per run.
-4. **Tested source adapters.** The established MCP servers went through 3-6 audit rounds with live production-API testing. Acquisition.gov adds deterministic parser, PDF, transport, and security tests and remains behind an explicit live upstream gate while linked RFO pages time out.
+4. **Tested source adapters.** The established MCP servers went through 3-6 audit rounds with live production-API testing. Acquisition.gov adds deterministic parser, PDF, transport, and security tests; its serialized live checks now pass against the RFO index, model text, an agency-deviation PDF, and published guidance.
 5. **Cross-client support.** MCP is an open standard, so the same servers can run in multiple compatible local clients. This was the strongest argument for the split in April, when skills were Claude-only. It has since weakened: `SKILL.md` is now read by many runtimes too. The other four reasons still hold, and are why the split stays.
 
 The orchestration skills in this repo stay as skills. Their value is decision trees, FAR-compliant narrative, and document generation, not API calls.
 
 ## The orchestration skills
 
-> **August 21, 2026 modernization and expansion:** OpenAI Codex using GPT-5.6 Sol restructured the original six skills into portable, progressive-disclosure packages and added Market Research Workflow, GovCon Growth Workflow, and Acquisition Policy Workflow. The first eight have the recorded client evidence described in their `test.md` files. Acquisition Policy has passed deterministic routing, record, and artifact gates and remains a release candidate pending its clean-client and live-source matrix.
+> **August 21, 2026 modernization and expansion:** OpenAI Codex using GPT-5.6 Sol restructured the original six skills into portable, progressive-disclosure packages and added Market Research Workflow, GovCon Growth Workflow, and Acquisition Policy Workflow. The first eight have the recorded client evidence described in their `test.md` files. Acquisition Policy has passed deterministic routing, record, artifact, and live-source gates and remains a release candidate pending its clean-client matrix.
 
 ### FAR contracts
 
