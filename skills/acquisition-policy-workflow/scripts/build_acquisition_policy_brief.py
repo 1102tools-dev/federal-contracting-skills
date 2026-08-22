@@ -448,7 +448,24 @@ def build(record: dict, output: Path) -> None:
     add_bullets(document, validation.get("operational_considerations", []), "No operational consideration was approved.")
     if record.get("conflicts"):
         document.add_heading("Conflicts", level=2)
-        add_bullets(document, record["conflicts"], "")
+        add_table(
+            document,
+            ["ID", "Issue", "Status", "Resolution and source"],
+            [
+                [
+                    item.get("id", ""),
+                    item.get("issue", ""),
+                    item.get("status", "").replace("_", " ").title(),
+                    (
+                        f"{item.get('resolution', '')} ({item.get('resolved_by', '')}; {item.get('resolved_at', '')})"
+                        if item.get("resolution")
+                        else "Reserved to an authorized official"
+                    ),
+                ]
+                for item in record["conflicts"]
+            ],
+            [850, 4200, 1700, 2610],
+        )
     if record.get("unresolved_questions"):
         document.add_heading("Unresolved questions", level=2)
         add_bullets(document, record["unresolved_questions"], "")

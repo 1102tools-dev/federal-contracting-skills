@@ -51,6 +51,7 @@ Read supporting files only when their stage is reached:
 11. **Evidence integrity:** Label sourced fact, inference, user statement, user decision, and unresolved question. Every finding in the research record cites stable evidence IDs.
 12. **Honest completeness:** Without web access and commercial-market evidence, label the result a federal-data desk-research draft. Do not call it complete or contract-file-ready.
 13. **Artifact validation:** A generated `.docx` must pass structural validation, independent numeric recomputation, LibreOffice open/save and PDF conversion, text and citation extraction, and visual inspection of every page.
+14. **Explicit decision approval:** A bare `Approved` does not approve multiple reserved decisions or unresolved items. It counts only when the immediately preceding response presented one complete numbered decision-and-disposition register and asked the user to approve that exact register. Otherwise require an explicit response for each `D###` and `U###`, including an express instruction such as `defer U001 and include it as a limitation` when an item remains unresolved.
 
 ## Stage 1: launch menu
 
@@ -169,7 +170,9 @@ Present findings with evidence IDs, conflicts, missing evidence, and explicit in
 
 Use [decision-boundaries.md](references/decision-boundaries.md). Present decision areas with the supporting and contrary evidence, remaining uncertainty, and permitted options. Historical percentages may inform a decision but may not make it.
 
-Ask the user or authorized Contracting Officer to decide or approve the necessary acquisition conclusions. Stop and wait.
+Assign every proposed decision a stable `D###` identifier and every unresolved item a stable `U###` identifier. Present one complete numbered decision-and-disposition register. Ask the user or authorized Contracting Officer to decide, approve, or explicitly defer each item. Stop and wait.
+
+Do not treat a generic approval as approval of unresolved acquisition choices. A bare `Approved` is valid only when it directly answers the complete register in the immediately preceding response. If the prior response contained narrative findings, open questions, alternatives, or more than one possible disposition without a single complete approval register, ask for the missing `D###` and `U###` choices. Record an unresolved item as approved for report inclusion only when the user expressly defers that item and directs that it be carried as a limitation.
 
 For the FAR 19.502-2 Rule of Two, require evidence of at least two responsible small-business concerns that are competitive in market prices, quality, and delivery. Historical set-aside percentages alone do not establish the rule.
 
@@ -183,10 +186,10 @@ For Pre-Award Agent preparation, produce a structured handoff containing scope, 
 
 ### Full report mode
 
-After findings and decisions are approved:
+After findings, acquisition decisions, and every unresolved-item disposition are explicitly approved:
 
 1. Read [report-specification.md](references/report-specification.md).
-2. Save the normalized record as JSON and run `scripts/validate_research_record.py`.
+2. Save the normalized schema `1.2` record as JSON and run `scripts/validate_research_record.py`. Archived schema `1.1` records may be read or refreshed, but they must be migrated to `1.2` before formal artifact generation.
 3. Run `scripts/build_market_research_report.py <record.json> <output.docx>`.
 4. Run `scripts/validate_market_research_report.py <output.docx> --record <record.json>`.
 5. Independently recompute numeric tables from the record and compare them with the document.

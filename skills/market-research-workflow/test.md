@@ -31,3 +31,9 @@ All federal results in the fixture are synthetic. No live federal API call was m
 - Implicit activation remains advisory and is not counted as a deterministic invocation path.
 - Live Tavily tool discovery and one sanitized provider query are recorded at the agent-package release layer because the standalone skill does not install MCP configuration.
 - Full live-source, commercial-evidence, upload-only-client, and complete artifact scenarios remain release-candidate coverage.
+
+## August 22 stabilization regression
+
+- The record contract advanced to schema `1.2`. Formal reports now require separately timestamped approval of findings, reserved acquisition decisions, and every unresolved-item disposition.
+- Decision and unresolved entries require stable `D###` and `U###` identifiers. A schema `1.1` record remains readable for refresh intake but fails the artifact-generation gate until migrated.
+- Deterministic tests confirmed that a generic approval record cannot pass when decision or unresolved-disposition approval is absent. Clean Codex and Claude behavioral replay remains required at the agent-package release layer.

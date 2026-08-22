@@ -105,6 +105,38 @@ class PolicyRecordTests(unittest.TestCase):
         self.assert_fails_with(record, "sample_method must be a non-empty string")
         self.assert_fails_with(record, "limitations must be a non-empty string")
 
+    def conflicting_threshold_record(self):
+        record = self.fixture()
+        record["conflicts"] = [{
+            "id": "C001",
+            "issue": "The model text states a $9 million threshold while the agency deviation summary table states $7.5 million.",
+            "evidence_ids": ["E002", "E003"],
+            "status": "unresolved",
+            "resolution": "",
+            "resolved_by": "",
+            "resolved_at": "",
+        }]
+        record["findings"][1]["status_resolution"] = "documented_conflict"
+        record["findings"][1]["conflict_ids"] = ["C001"]
+        record["findings"][1]["text"] = "The cited model text and agency deviation summary state different thresholds; published sources do not resolve the discrepancy."
+        record["limitations"].append("An authorized official must resolve the threshold conflict for procurement-specific use.")
+        return record
+
+    def test_unresolved_policy_conflict_is_valid_when_reserved(self):
+        record = self.conflicting_threshold_record()
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "pass", result["failures"])
+
+    def test_unresolved_policy_conflict_rejects_controlling_value_claim(self):
+        record = self.conflicting_threshold_record()
+        record["findings"][1]["text"] = "The $9 million model-text threshold controls."
+        self.assert_fails_with(record, "controlling-value claim")
+
+    def test_unresolved_policy_conflict_cannot_be_marked_authorized_resolution(self):
+        record = self.conflicting_threshold_record()
+        record["findings"][1]["status_resolution"] = "authorized_resolution"
+        self.assert_fails_with(record, "requires official resolution")
+
 
 class PolicyArtifactTests(unittest.TestCase):
     def test_build_and_validate_brief(self):

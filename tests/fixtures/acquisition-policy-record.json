@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "skill": "acquisition-policy-workflow",
   "workflow_mode": "impact_brief",
   "request": {
@@ -193,6 +193,8 @@
     {
       "id": "F002",
       "finding_type": "documented_status",
+      "status_resolution": "documented_clear",
+      "conflict_ids": [],
       "text": "The posted GSA deviation is the source that supplies agency-specific adoption, scope, and timing in this test record; the model text alone does not.",
       "evidence_ids": ["E002", "E003"],
       "policy_item_ids": ["P002", "P003"]

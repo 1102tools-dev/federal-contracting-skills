@@ -137,9 +137,15 @@ def cite_ids(paragraph, ids: list[str]) -> None:
 
 
 def build(record: dict, output: Path) -> None:
+    validation = record.get("validation", {})
+    if record.get("schema_version") != "1.2":
+        raise ValueError("market research records must be migrated to schema 1.2 before report generation")
+    for field in ("findings_approved", "decisions_approved", "unresolved_items_disposition_approved"):
+        if validation.get(field) is not True:
+            raise ValueError(f"{field} must be true before report generation")
     document = Document()
     configure(document)
-    complete = bool(record.get("validation", {}).get("commercial_evidence_complete"))
+    complete = bool(validation.get("commercial_evidence_complete"))
     title = "FAR Part 10 Market Research Report" if complete else "Federal-Data Desk-Research Draft"
     subtitle = record.get("question", "Market research")
     as_of = record.get("scope", {}).get("as_of_date", "Not stated")

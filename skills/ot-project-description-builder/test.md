@@ -49,3 +49,7 @@ Surface: Codex CLI 0.149.0-alpha.4, GPT-5.6 Sol, extra-high reasoning, explicit 
 - Research OT and primary follow-on-production project descriptions were not generated as DOCX fixtures in this pass.
 - Claude web, Claude Code after automatic compaction, Codex Desktop UI, and Microsoft Word were not rerun for this skill.
 - Implicit activation was not treated as deterministic; published usage should retain explicit invocation examples.
+
+## August 22 delivery-instruction regression
+
+The delivery contract now gives one tested dynamic-field refresh sequence: open the document in Word, select all with `Ctrl+A` or `Cmd+A`, then press `F9` or `Fn+F9`. A right-click-only TOC instruction is not accepted. Client replay remains required at the agent-package release layer.

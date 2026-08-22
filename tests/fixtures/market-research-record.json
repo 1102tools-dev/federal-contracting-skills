@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "skill": "market-research-workflow",
   "workflow_mode": "complete_report",
   "question": "What evidence informs acquisition of nationwide help desk support services?",
@@ -37,6 +37,7 @@
   },
   "queries": [
     {
+      "id": "Q001",
       "provider": "federal_mcp",
       "operation": "USASpending spending over time",
       "parameters": {"naics": ["541513"], "psc": ["DA01"], "start_date": "2021-10-01", "end_date": "2026-08-21"},
@@ -109,14 +110,20 @@
     }
   ],
   "user_decisions": [
-    "The user approved the research scope but has not made the reserved acquisition decisions."
+    "D001: The user explicitly deferred the acquisition-strategy decision and approved documenting it as unresolved."
   ],
   "conflicts": [],
   "unresolved_questions": [
-    "Which acquisition strategy will the Contracting Officer approve after reviewing complete market evidence?"
+    "U001: Which acquisition strategy will the Contracting Officer approve after reviewing complete market evidence? Deferred by the user and approved for inclusion as a limitation."
   ],
   "outputs": [],
   "validation": {
+    "findings_approved": true,
+    "findings_approved_at": "2026-08-21T18:20:00Z",
+    "decisions_approved": true,
+    "decisions_approved_at": "2026-08-21T18:21:00Z",
+    "unresolved_items_disposition_approved": true,
+    "unresolved_items_disposition_approved_at": "2026-08-21T18:21:00Z",
     "commercial_evidence_complete": false,
     "executive_summary": "This offline fixture demonstrates evidence traceability and decision boundaries for a help desk market-research draft.",
     "methodology": "The fixture separates supplied-document evidence from a synthetic federal-data result and preserves the partial-year limitation.",

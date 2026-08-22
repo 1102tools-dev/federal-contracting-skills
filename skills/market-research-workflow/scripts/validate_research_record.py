@@ -9,6 +9,7 @@ import json
 import math
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, urlparse
@@ -42,6 +43,7 @@ SKILLS = {
     "govcon-growth-workflow",
 }
 ID_PATTERNS = {
+    "queries": re.compile(r"^Q\d{3,}$"),
     "evidence": re.compile(r"^E\d{3,}$"),
     "findings": re.compile(r"^F\d{3,}$"),
     "inferences": re.compile(r"^I\d{3,}$"),
@@ -71,6 +73,9 @@ WEB_MODES = {
 }
 QUERY_PROVIDERS = {"federal_mcp", "tavily", "native_web"}
 TAVILY_OPERATIONS = {"tavily_search", "tavily_extract"}
+MARKET_SKILLS = {"market-research-workflow", "market-research-builder"}
+DECISION_ID = re.compile(r"^D\d{3,}\s*[:\-]")
+UNRESOLVED_ID = re.compile(r"^U\d{3,}\s*[:\-]")
 SENSITIVE_URL_KEYS = {
     "access_token",
     "api_key",
@@ -123,7 +128,17 @@ def walk(value: Any):
             yield from walk(child)
 
 
-def validate_record(record: Any) -> dict[str, Any]:
+def valid_utc_timestamp(value: object) -> bool:
+    if not isinstance(value, str) or not value.strip():
+        return False
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return parsed.tzinfo is not None
+
+
+def validate_record(record: Any, *, purpose: str = "artifact") -> dict[str, Any]:
     failures: list[str] = []
     if not isinstance(record, dict):
         return {"status": "fail", "failures": ["record root must be an object"]}
@@ -135,9 +150,17 @@ def validate_record(record: Any) -> dict[str, Any]:
     if unknown:
         failures.append("unknown top-level fields: " + ", ".join(unknown))
 
-    if record.get("schema_version") != "1.1":
-        failures.append("schema_version must be 1.1")
-    if record.get("skill") not in SKILLS:
+    skill = record.get("skill")
+    schema_version = record.get("schema_version")
+    if skill in MARKET_SKILLS:
+        if schema_version == "1.1" and purpose == "read":
+            pass
+        elif schema_version != "1.2":
+            failures.append("market research schema_version must be 1.2 for artifact generation")
+    elif skill == "govcon-growth-workflow":
+        if schema_version != "1.1":
+            failures.append("GovCon Growth schema_version must be 1.1")
+    if skill not in SKILLS:
         failures.append("skill must identify an approved 1102tools research skill")
     if not isinstance(record.get("workflow_mode"), str) or not record.get("workflow_mode", "").strip():
         failures.append("workflow_mode must be a non-empty string")
@@ -240,6 +263,11 @@ def validate_record(record: Any) -> dict[str, Any]:
                 failures.append(f"duplicate ID: {item_id}")
             ids[collection].add(item_id)
 
+    query_map = {
+        item.get("id"): item
+        for item in record.get("queries", [])
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    }
     for index, item in enumerate(record.get("evidence", [])):
         if not isinstance(item, dict):
             continue
@@ -248,6 +276,21 @@ def validate_record(record: Any) -> dict[str, Any]:
         for field in ("title", "locator", "retrieved_at", "fact", "limitations"):
             if not isinstance(item.get(field), str):
                 failures.append(f"evidence[{index}].{field} must be a string")
+        if skill == "govcon-growth-workflow" and item.get("source_class") in {"federal_mcp", "official_web", "other_web"}:
+            source_call_ids = item.get("source_call_ids")
+            if not isinstance(source_call_ids, list) or not source_call_ids:
+                failures.append(f"evidence[{index}].source_call_ids must cite at least one source call")
+                source_call_ids = []
+            unknown_calls = sorted(set(source_call_ids) - ids["queries"])
+            if unknown_calls:
+                failures.append(f"evidence[{index}] cites unknown source call IDs: {', '.join(unknown_calls)}")
+            linked_times = {
+                query_map[call_id].get("retrieved_at")
+                for call_id in source_call_ids
+                if call_id in query_map
+            }
+            if source_call_ids and item.get("retrieved_at") not in linked_times:
+                failures.append(f"evidence[{index}].retrieved_at must match a linked source-call timestamp")
 
     for collection in ("findings", "inferences"):
         for index, item in enumerate(record.get(collection, [])):
@@ -274,6 +317,8 @@ def validate_record(record: Any) -> dict[str, Any]:
             failures.append(f"queries[{index}].operation must be a non-empty string")
         elif provider == "tavily" and query.get("operation") not in TAVILY_OPERATIONS:
             failures.append(f"queries[{index}] uses a prohibited Tavily operation")
+        if not isinstance(query.get("retrieved_at"), str) or not query.get("retrieved_at", "").strip():
+            failures.append(f"queries[{index}].retrieved_at must be the non-empty source-call timestamp")
         params = query.get("parameters", {})
         if not isinstance(params, dict):
             failures.append(f"queries[{index}].parameters must be an object")
@@ -294,6 +339,26 @@ def validate_record(record: Any) -> dict[str, Any]:
                     if problem:
                         failures.append(f"queries[{index}].parameters.{key} {problem}")
 
+    if skill in MARKET_SKILLS and record.get("workflow_mode") == "complete_report" and purpose == "artifact":
+        validation = record.get("validation", {})
+        approval_fields = (
+            ("findings_approved", "findings_approved_at"),
+            ("decisions_approved", "decisions_approved_at"),
+            ("unresolved_items_disposition_approved", "unresolved_items_disposition_approved_at"),
+        )
+        if isinstance(validation, dict):
+            for approved_field, timestamp_field in approval_fields:
+                if validation.get(approved_field) is not True:
+                    failures.append(f"validation.{approved_field} must be true before report generation")
+                if not valid_utc_timestamp(validation.get(timestamp_field)):
+                    failures.append(f"validation.{timestamp_field} must be a timezone-aware timestamp")
+        for index, decision in enumerate(record.get("user_decisions", [])):
+            if not isinstance(decision, str) or not DECISION_ID.match(decision):
+                failures.append(f"user_decisions[{index}] must begin with a stable D### identifier")
+        for index, question in enumerate(record.get("unresolved_questions", [])):
+            if not isinstance(question, str) or not UNRESOLVED_ID.match(question):
+                failures.append(f"unresolved_questions[{index}] must begin with a stable U### identifier")
+
     return {
         "status": "pass" if not failures else "fail",
         "evidence_count": len(ids["evidence"]),
@@ -307,13 +372,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("record", type=Path)
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--purpose", choices=("artifact", "read"), default="artifact")
     args = parser.parse_args()
     try:
         record = json.loads(args.record.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         print(f"ERROR: cannot read record: {exc}", file=sys.stderr)
         return 2
-    result = validate_record(record)
+    result = validate_record(record, purpose=args.purpose)
     if args.json:
         print(json.dumps(result, indent=2, sort_keys=True))
     elif result["status"] == "pass":

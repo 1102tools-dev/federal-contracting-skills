@@ -24,6 +24,10 @@ A documented-status finding may say what the cited sources indicate for a named 
 4. State conflicts, missing internal policy, and source limitations.
 5. End with the procurement-specific determination boundary.
 
+Every documented-status finding records `status_resolution` as `documented_clear`, `documented_conflict`, or `authorized_resolution`, plus the IDs of any material conflicts. If a cited conflict is unresolved, the finding must use `documented_conflict`; it may describe both source positions but may not decide which value controls, governs, applies, or is the operative threshold.
+
+Only an authorized official's explicit resolution may change a conflict to `resolved_by_authorized_official`. Model inference, source hierarchy, incorporation language, drafting context, repetition count, or the fact that one document is newer does not resolve the conflict. Preserve the official's role, resolution, and timestamp in the record.
+
 Permitted example: `The cited agency class deviation states that covered procurements use the incorporated RFO Part 10 text effective July 8, 2025; eCFR remains the codified baseline. Confirm transaction-specific treatment with the agency policy office.`
 
 Prohibited example: `RFO Part 10 legally governs this procurement.`

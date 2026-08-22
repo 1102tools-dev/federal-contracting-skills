@@ -88,6 +88,13 @@ FINDING_TYPES = {
     "inference",
     "documented_status",
 }
+STATUS_RESOLUTIONS = {"documented_clear", "documented_conflict", "authorized_resolution"}
+CONFLICT_STATUSES = {"unresolved", "resolved_by_authorized_official"}
+UNRESOLVED_CONTROL_CLAIMS = re.compile(
+    r"(?<!does not )\bcontrols\b|(?<!does not )\bgoverns\b|\boperative threshold\b|"
+    r"\bapplicable threshold\b|\blegally applies\b",
+    re.I,
+)
 PROVIDERS = {"ecfr", "federal_register", "regulationsgov", "acquisition_gov"}
 CAPABILITY_STATUSES = {"available", "missing", "unauthenticated", "limited", "not_required"}
 ID_PATTERNS = {
@@ -95,6 +102,7 @@ ID_PATTERNS = {
     "policy_items": re.compile(r"^P\d{3,}$"),
     "findings": re.compile(r"^F\d{3,}$"),
     "stakeholder_positions": re.compile(r"^S\d{3,}$"),
+    "conflicts": re.compile(r"^C\d{3,}$"),
 }
 SECRET_PATTERNS = [
     re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b"),
@@ -198,8 +206,8 @@ def validate_record(record: Any) -> dict[str, Any]:
         failures.append(f"missing top-level fields: {', '.join(missing)}")
     if extra:
         failures.append(f"unknown top-level fields: {', '.join(extra)}")
-    if record.get("schema_version") != "1.0":
-        failures.append("schema_version must be '1.0'")
+    if record.get("schema_version") != "1.1":
+        failures.append("schema_version must be '1.1'")
     if record.get("skill") != "acquisition-policy-workflow":
         failures.append("skill must be acquisition-policy-workflow")
     if not isinstance(record.get("workflow_mode"), str) or not record.get("workflow_mode", "").strip():
@@ -337,6 +345,35 @@ def validate_record(record: Any) -> dict[str, Any]:
             if "agency_deviation" not in source_types:
                 failures.append(f"policy_items[{index}] operative agency deviation must cite agency_deviation evidence")
 
+    unresolved_conflict_ids: set[str] = set()
+    for index, item in enumerate(record.get("conflicts", [])):
+        if not isinstance(item, dict):
+            continue
+        required_string(item, "issue", f"conflicts[{index}]", failures)
+        status = item.get("status")
+        if status not in CONFLICT_STATUSES:
+            failures.append(f"conflicts[{index}].status is not approved")
+        refs = item.get("evidence_ids")
+        if not isinstance(refs, list) or len(refs) < 2:
+            failures.append(f"conflicts[{index}] must cite at least two evidence IDs")
+            refs = []
+        unknown = sorted(set(refs) - ids["evidence"])
+        if unknown:
+            failures.append(f"conflicts[{index}] cites unknown evidence IDs: {', '.join(unknown)}")
+        for field in ("resolution", "resolved_by", "resolved_at"):
+            required_string(item, field, f"conflicts[{index}]", failures)
+        conflict_id = item.get("id")
+        if status == "unresolved":
+            if isinstance(conflict_id, str):
+                unresolved_conflict_ids.add(conflict_id)
+            if any(str(item.get(field, "")).strip() for field in ("resolution", "resolved_by", "resolved_at")):
+                failures.append(f"conflicts[{index}] unresolved conflict must leave resolution fields empty")
+        elif status == "resolved_by_authorized_official":
+            for field in ("resolution", "resolved_by", "resolved_at"):
+                if not str(item.get(field, "")).strip():
+                    failures.append(f"conflicts[{index}].{field} is required for authorized resolution")
+
+    documented_conflict_refs: set[str] = set()
     for index, item in enumerate(record.get("findings", [])):
         if not isinstance(item, dict):
             continue
@@ -359,6 +396,46 @@ def validate_record(record: Any) -> dict[str, Any]:
             failures.append(f"findings[{index}] cites unknown policy item IDs: {', '.join(unknown_policy)}")
         if item.get("finding_type") == "documented_status" and not policy_refs:
             failures.append(f"findings[{index}] documented_status must cite a policy item")
+        if item.get("finding_type") == "documented_status":
+            status_resolution = item.get("status_resolution")
+            if status_resolution not in STATUS_RESOLUTIONS:
+                failures.append(f"findings[{index}].status_resolution is not approved")
+            conflict_refs = item.get("conflict_ids")
+            if not isinstance(conflict_refs, list):
+                failures.append(f"findings[{index}].conflict_ids must be a list")
+                conflict_refs = []
+            unknown_conflicts = sorted(set(conflict_refs) - ids["conflicts"])
+            if unknown_conflicts:
+                failures.append(f"findings[{index}] cites unknown conflict IDs: {', '.join(unknown_conflicts)}")
+            cited_unresolved = set(conflict_refs) & unresolved_conflict_ids
+            if cited_unresolved:
+                documented_conflict_refs.update(cited_unresolved)
+                if status_resolution != "documented_conflict":
+                    failures.append(f"findings[{index}] with unresolved conflicts must use documented_conflict")
+                if UNRESOLVED_CONTROL_CLAIMS.search(str(item.get("text", ""))):
+                    failures.append(f"findings[{index}] makes a controlling-value claim despite an unresolved conflict")
+            if status_resolution == "documented_conflict" and not conflict_refs:
+                failures.append(f"findings[{index}] documented_conflict must cite at least one conflict ID")
+            if status_resolution == "authorized_resolution":
+                if not conflict_refs:
+                    failures.append(f"findings[{index}] authorized_resolution must cite a conflict ID")
+                elif any(
+                    item_maps["conflicts"].get(ref, {}).get("status") != "resolved_by_authorized_official"
+                    for ref in conflict_refs
+                ):
+                    failures.append(f"findings[{index}] authorized_resolution requires official resolution of every conflict")
+
+    unreported_conflicts = sorted(unresolved_conflict_ids - documented_conflict_refs)
+    if unreported_conflicts:
+        failures.append("unresolved conflicts must be reported by a documented_conflict finding: " + ", ".join(unreported_conflicts))
+    if unresolved_conflict_ids:
+        limitation_text = " ".join(str(item) for item in record.get("limitations", [])).lower()
+        has_reserved_boundary = any(
+            phrase in limitation_text
+            for phrase in ("authorized official", "agency official", "contracting official", "policy official", "legal official")
+        )
+        if not has_reserved_boundary:
+            failures.append("unresolved conflicts require a limitation reserving resolution to an authorized official")
 
     for index, item in enumerate(record.get("timeline", [])):
         if not isinstance(item, dict):

@@ -37,6 +37,7 @@
   },
   "queries": [
     {
+      "id": "Q001",
       "provider": "federal_mcp",
       "operation": "SAM.gov opportunity detail fixture",
       "parameters": {"notice_id": "EXAMPLE-123"},
@@ -75,13 +76,24 @@
       "as_of_date": "2026-08-21",
       "fact": "Three synthetic candidate values total 6000000.00.",
       "limitations": "Synthetic values used only for deterministic validation"
+    },
+    {
+      "id": "E004",
+      "source_class": "federal_mcp",
+      "source_call_ids": ["Q001"],
+      "title": "SAM.gov opportunity detail fixture",
+      "locator": "notice EXAMPLE-123",
+      "retrieved_at": "2026-08-21T18:15:00Z",
+      "as_of_date": "2026-08-21",
+      "fact": "The fixture represents one public sources-sought notice.",
+      "limitations": "Synthetic offline fixture; not a live federal result"
     }
   ],
   "findings": [
     {
       "id": "F001",
       "text": "The public notice is relevant to the company's reported service experience, but it is only an early market-research signal.",
-      "evidence_ids": ["E001", "E002"]
+      "evidence_ids": ["E001", "E002", "E004"]
     }
   ],
   "inferences": [

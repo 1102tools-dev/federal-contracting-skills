@@ -31,5 +31,6 @@ Describe operations by capability. Do not hardcode host-generated tool names, sa
 ## Delivery
 
 - Present the `.docx` through the host's file-delivery capability.
+- For a dynamic TOC, state: `Open the document in Word, press Ctrl+A (Cmd+A on Mac), then F9 (or Fn+F9) to update all fields and page numbers.`
 - Emit the milestone handoff in chat only.
 - Never create a second handoff file merely because the runtime supports multiple artifacts.

@@ -146,6 +146,7 @@ After approval:
 5. State whether LibreOffice or Microsoft Word performed the render. Do not claim Word compatibility from LibreOffice alone.
 6. Read [handoff-specification.md](references/handoff-specification.md) and emit the approved milestone handoff in chat. Never save it as a file or add it to the `.docx`.
 7. Report unresolved `[TBD]` items, the source and date of authority facts, and any validation layer that could not run.
+8. If the document contains a dynamic TOC, tell the user: `Open the document in Word, press Ctrl+A (Cmd+A on Mac), then F9 (or Fn+F9) to update all fields and page numbers.` Do not rely on a right-click-only instruction.
 
 ## Out of scope
 

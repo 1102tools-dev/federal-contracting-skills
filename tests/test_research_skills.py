@@ -49,6 +49,14 @@ class SkillStaticTests(unittest.TestCase):
         for number in range(1, 10):
             self.assertRegex(growth, rf"(?m)^{number}\. ")
 
+    def test_behavioral_regression_gates_are_explicit(self):
+        market = (ROOT / "skills/market-research-workflow/SKILL.md").read_text(encoding="utf-8")
+        policy = (ROOT / "skills/acquisition-policy-workflow/SKILL.md").read_text(encoding="utf-8")
+        ot = (ROOT / "skills/ot-project-description-builder/SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("A bare `Approved` does not approve multiple reserved decisions", market)
+        self.assertIn("record a structured conflict and report `documented_conflict`", policy)
+        self.assertIn("Ctrl+A (Cmd+A on Mac), then F9 (or Fn+F9)", ot)
+
 
 class RecordValidationTests(unittest.TestCase):
     @classmethod
@@ -71,6 +79,33 @@ class RecordValidationTests(unittest.TestCase):
         record["skill"] = "market-research-builder"
         result = self.validator.validate_record(record)
         self.assertEqual(result["status"], "pass", result["failures"])
+
+    def test_schema_11_market_record_is_readable_but_not_artifact_ready(self):
+        record = self.fixture("market-research-record.json")
+        record["schema_version"] = "1.1"
+        read_result = self.validator.validate_record(record, purpose="read")
+        self.assertEqual(read_result["status"], "pass", read_result["failures"])
+        artifact_result = self.validator.validate_record(record)
+        self.assertEqual(artifact_result["status"], "fail")
+        self.assertTrue(any("schema_version must be 1.2" in item for item in artifact_result["failures"]))
+
+    def test_complete_report_requires_explicit_decision_and_unresolved_disposition_approvals(self):
+        record = self.fixture("market-research-record.json")
+        record["validation"]["decisions_approved"] = False
+        record["validation"]["unresolved_items_disposition_approved"] = False
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "fail")
+        self.assertTrue(any("decisions_approved must be true" in item for item in result["failures"]))
+        self.assertTrue(any("unresolved_items_disposition_approved must be true" in item for item in result["failures"]))
+
+    def test_complete_report_requires_stable_decision_and_unresolved_ids(self):
+        record = self.fixture("market-research-record.json")
+        record["user_decisions"] = ["Approved"]
+        record["unresolved_questions"] = ["Which strategy applies?"]
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "fail")
+        self.assertTrue(any("stable D###" in item for item in result["failures"]))
+        self.assertTrue(any("stable U###" in item for item in result["failures"]))
 
     def test_unknown_evidence_reference_fails(self):
         record = self.fixture("market-research-record.json")
@@ -132,6 +167,7 @@ class RecordValidationTests(unittest.TestCase):
             "reason": "Simulated rate limit",
         }]
         record["queries"].append({
+            "id": "Q002",
             "provider": "native_web",
             "operation": "native search",
             "parameters": {"query": "official federal market research guidance"},
@@ -145,6 +181,7 @@ class RecordValidationTests(unittest.TestCase):
     def test_unapproved_provider_fails(self):
         record = self.web_fixture("native_only", ["native_web"], ["native_web"])
         record["queries"].append({
+            "id": "Q002",
             "provider": "tavily",
             "operation": "tavily_search",
             "parameters": {"query": "public query"},
@@ -190,6 +227,7 @@ class RecordValidationTests(unittest.TestCase):
             with self.subTest(url=url):
                 record = copy.deepcopy(base)
                 record["queries"].append({
+                    "id": "Q002",
                     "provider": "tavily",
                     "operation": "tavily_extract",
                     "parameters": {"urls": [url]},
@@ -204,6 +242,7 @@ class RecordValidationTests(unittest.TestCase):
     def test_public_extraction_url_passes(self):
         record = self.web_fixture("tavily_only", ["tavily"], ["tavily"])
         record["queries"].append({
+            "id": "Q002",
             "provider": "tavily",
             "operation": "tavily_extract",
             "parameters": {"urls": ["https://www.acquisition.gov/far/part-10"]},
@@ -217,6 +256,7 @@ class RecordValidationTests(unittest.TestCase):
     def test_nonapproved_tavily_tool_fails(self):
         record = self.web_fixture("tavily_only", ["tavily"], ["tavily"])
         record["queries"].append({
+            "id": "Q002",
             "provider": "tavily",
             "operation": "tavily_research",
             "parameters": {"query": "public query"},
@@ -227,6 +267,17 @@ class RecordValidationTests(unittest.TestCase):
         result = self.validator.validate_record(record)
         self.assertEqual(result["status"], "fail")
         self.assertTrue(any("prohibited Tavily operation" in item for item in result["failures"]))
+
+    def test_growth_source_timestamp_must_match_linked_source_call(self):
+        growth_validator = load_module(
+            ROOT / "skills/govcon-growth-workflow/scripts/validate_research_record.py",
+            "growth_record_validator_timestamp",
+        )
+        record = self.fixture("govcon-growth-record.json")
+        record["evidence"][-1]["retrieved_at"] = "2026-08-21T19:00:00Z"
+        result = growth_validator.validate_record(record)
+        self.assertEqual(result["status"], "fail")
+        self.assertTrue(any("linked source-call timestamp" in item for item in result["failures"]))
 
 
 class ArtifactTests(unittest.TestCase):

@@ -1,10 +1,10 @@
 # Policy-research evidence contract
 
-Use schema version `1.0` and `skill: acquisition-policy-workflow`.
+Use schema version `1.1` and `skill: acquisition-policy-workflow`.
 
 ```json
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "skill": "acquisition-policy-workflow",
   "workflow_mode": "impact_brief",
   "request": {
@@ -61,6 +61,12 @@ Policy item IDs use `P001` or higher. Each item contains `status`, `citation`, `
 ## Findings
 
 Finding IDs use `F001` or higher. `finding_type` is `source_fact`, `user_supplied_fact`, `inference`, or `documented_status`. Every finding contains `text`, `evidence_ids`, and `policy_item_ids`.
+
+Every `documented_status` finding also contains `status_resolution` and `conflict_ids`. Approved resolution states are `documented_clear`, `documented_conflict`, and `authorized_resolution`. An unresolved conflict requires `documented_conflict`; it cannot support a controlling-value conclusion.
+
+## Conflicts
+
+Conflict IDs use `C001` or higher. Each conflict contains `issue`, `evidence_ids`, `status`, `resolution`, `resolved_by`, and `resolved_at`. Status is `unresolved` or `resolved_by_authorized_official`. An unresolved conflict leaves the resolution fields empty. A resolved conflict records the authorized official's role, explicit resolution, and timestamp. Model inference cannot close a conflict.
 
 ## Timeline and stakeholder samples
 

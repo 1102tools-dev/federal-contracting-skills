@@ -175,7 +175,7 @@ Maintain the normalized record in [evidence-contract.md](references/evidence-con
 - Label top-N, keyword, or otherwise biased samples.
 - Identify partial periods and incomplete attachment coverage.
 - State when absence of public evidence is not evidence of absence.
-- Preserve search parameters and retrieval times.
+- Preserve search parameters and the timestamp returned or recorded at each actual source call. Never substitute report-build time for retrieval time.
 
 Present findings, contrary evidence, conflicts, missing evidence, and explicit inferences before giving an assessment.
 

@@ -30,3 +30,9 @@ All federal results in the fixture are synthetic. No live federal API call was m
 - Each menu branch has a scenario specification, but the complete live-source branch matrix remains release-candidate coverage.
 - Implicit activation remains advisory and is not counted as a deterministic invocation path.
 - Full upload-only-client and real-opportunity artifact scenarios remain open.
+
+## August 22 stabilization regression
+
+- Source calls now carry stable `Q###` identifiers. Public or federal evidence must cite the source call whose recorded retrieval timestamp it uses.
+- The deterministic validator rejects evidence stamped with report-build time when that timestamp does not match a linked source call.
+- Clean-client artifact replay remains required at the agent-package release layer.

@@ -44,6 +44,7 @@ Read supporting files only when their stage is reached:
 10. **Documented status only:** State what cited published sources indicate as of a date. Reserve procurement-specific applicability, legal advice, policy approval, and official determinations to authorized officials.
 11. **Evidence integrity:** Every consequential finding cites stable evidence IDs. Keep source fact, user-supplied fact, inference, and documented-status finding distinct.
 12. **Artifact gate:** Generate a `.docx` only after the record and findings are approved. The document must pass record validation, structural validation, link and text extraction, LibreOffice conversion, and visual review of every page.
+13. **Unresolved policy conflicts:** When cited sources disagree about a material threshold, status, scope, date, or applicability term, record a structured conflict and report `documented_conflict`. Do not decide that one value controls, governs, or is operative. Only a resolution supplied by an authorized official may close the conflict.
 
 ## Stage 1: select or route the mode
 
@@ -99,7 +100,7 @@ Use [source-routing.md](references/source-routing.md) to minimize calls. Preserv
 
 ## Stage 6: classify status and analyze
 
-Read [status-and-decision-boundaries.md](references/status-and-decision-boundaries.md). Classify each relevant item before synthesizing it. Surface conflicts instead of silently choosing among them.
+Read [status-and-decision-boundaries.md](references/status-and-decision-boundaries.md). Classify each relevant item before synthesizing it. Surface conflicts instead of silently choosing among them. A hierarchy inference, incorporation theory, repeated value, drafting pattern, or model-text comparison cannot resolve a material source conflict.
 
 For agency-specific RFO analysis:
 
