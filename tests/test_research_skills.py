@@ -40,6 +40,10 @@ class SkillStaticTests(unittest.TestCase):
             self.assertIn("native only", text)
             self.assertIn("Tavily only", text)
             self.assertIn("no public web", text)
+            self.assertGreaterEqual(
+                text.count("Which option would you like? You can reply with the number, label, or your own wording."),
+                2,
+            )
         for number in range(1, 7):
             self.assertRegex(market, rf"(?m)^{number}\. ")
         for number in range(1, 10):

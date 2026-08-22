@@ -38,7 +38,7 @@ Read supporting files only when their mode is reached:
 
 ## Permanent release gates
 
-1. **Menu first:** The entire first-turn response consists only of the complete nine-choice menu and its selection question. Do not announce the skill, acknowledge the request, summarize the workflow, or add any preface or postscript. No research, file generation, capability preflight, web-research request, or MCP tool invocation occurs first.
+1. **Menu first:** The entire first-turn response consists only of the complete nine-choice menu and its selection question. The exact final line is `Which option would you like? You can reply with the number, label, or your own wording.` A menu without that question is invalid. Do not announce the skill, acknowledge the request, summarize the workflow, or add any preface or postscript. No research, file generation, capability preflight, web-research request, or MCP tool invocation occurs first.
 2. **Confirmed mode:** A clear opening request may cause one choice to be marked `Recommended`, but the user still confirms it.
 3. **Relevant intake only:** After selection, ask only for information and optional documents relevant to that mode. If none are available, record that and proceed.
 4. **Approval before calls:** Present a research plan, sources, sanitized parameters, exact public URLs proposed for extraction, limits, expected output, and the four web-provider choices. Obtain explicit provider selection and approval before any research tool invocation.
@@ -68,7 +68,7 @@ What would you like to do?
 9. Help me choose
 ```
 
-Use a structured selection interface only if it can display every choice without omission. Otherwise use the numbered menu in chat. Accept the number, label, or free text. When the opening request clearly maps to one choice, mark that choice `Recommended`, but still require the user to confirm. End at the selection question and wait.
+Use a structured selection interface only if it can display every choice without omission. Otherwise use the numbered menu in chat. Accept the number, label, or free text. When the opening request clearly maps to one choice, mark that choice `Recommended`, but still require the user to confirm. End with the exact line `Which option would you like? You can reply with the number, label, or your own wording.` and wait.
 
 The menu is the whole response. Do not precede it with a skill-use announcement or any acknowledgment.
 
