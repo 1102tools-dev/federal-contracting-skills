@@ -66,6 +66,7 @@ WEB_MODES = {
     "no_public_web": set(),
 }
 QUERY_PROVIDERS = {"federal_mcp", "tavily", "native_web"}
+TAVILY_OPERATIONS = {"tavily_search", "tavily_extract"}
 SENSITIVE_URL_KEYS = {
     "access_token",
     "api_key",
@@ -267,6 +268,8 @@ def validate_record(record: Any) -> dict[str, Any]:
             failures.append(f"queries[{index}] uses a web provider not approved for this run")
         if not isinstance(query.get("operation"), str) or not query.get("operation", "").strip():
             failures.append(f"queries[{index}].operation must be a non-empty string")
+        elif provider == "tavily" and query.get("operation") not in TAVILY_OPERATIONS:
+            failures.append(f"queries[{index}] uses a prohibited Tavily operation")
         params = query.get("parameters", {})
         if not isinstance(params, dict):
             failures.append(f"queries[{index}].parameters must be an object")

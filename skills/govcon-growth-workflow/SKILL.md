@@ -115,7 +115,7 @@ After approval, inspect only capabilities required by the plan:
 - SAM.gov for live opportunities, notice details, entities, registration, exclusions, certifications, public award references, or organization data.
 - USASpending for award, recipient, transaction, spending, agency, geography, and subaward evidence.
 - GSA CALC+ for published ceiling-rate context when pricing or labor rates are selected.
-- Tavily Search and Extract when the approved mode includes Tavily. Match the `tavily-web` server by semantic operations `tavily-search` and `tavily-extract`, not generated prefixes.
+- Tavily Search and Extract when the approved mode includes Tavily. Match the `tavily-web` server by its actual semantic operations `tavily_search` and `tavily_extract`, not generated prefixes or documentation display labels. Never invoke Tavily Crawl, Map, or Research operations.
 - The host's native web search and fetch capabilities when the approved mode includes native web access.
 - Python and DOCX tools only if a brief is requested.
 

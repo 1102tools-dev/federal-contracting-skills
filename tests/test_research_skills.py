@@ -136,7 +136,7 @@ class RecordValidationTests(unittest.TestCase):
         record = self.web_fixture("native_only", ["native_web"], ["native_web"])
         record["queries"].append({
             "provider": "tavily",
-            "operation": "tavily-search",
+            "operation": "tavily_search",
             "parameters": {"query": "public query"},
             "retrieved_at": "2026-08-21T19:06:00Z",
             "count": 1,
@@ -181,7 +181,7 @@ class RecordValidationTests(unittest.TestCase):
                 record = copy.deepcopy(base)
                 record["queries"].append({
                     "provider": "tavily",
-                    "operation": "tavily-extract",
+                    "operation": "tavily_extract",
                     "parameters": {"urls": [url]},
                     "retrieved_at": "2026-08-21T19:06:00Z",
                     "count": 0,
@@ -195,7 +195,7 @@ class RecordValidationTests(unittest.TestCase):
         record = self.web_fixture("tavily_only", ["tavily"], ["tavily"])
         record["queries"].append({
             "provider": "tavily",
-            "operation": "tavily-extract",
+            "operation": "tavily_extract",
             "parameters": {"urls": ["https://www.acquisition.gov/far/part-10"]},
             "retrieved_at": "2026-08-21T19:06:00Z",
             "count": 1,
@@ -203,6 +203,20 @@ class RecordValidationTests(unittest.TestCase):
         })
         result = self.validator.validate_record(record)
         self.assertEqual(result["status"], "pass", result["failures"])
+
+    def test_nonapproved_tavily_tool_fails(self):
+        record = self.web_fixture("tavily_only", ["tavily"], ["tavily"])
+        record["queries"].append({
+            "provider": "tavily",
+            "operation": "tavily_research",
+            "parameters": {"query": "public query"},
+            "retrieved_at": "2026-08-21T19:06:00Z",
+            "count": 0,
+            "limitations": "Synthetic prohibited-tool fixture",
+        })
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "fail")
+        self.assertTrue(any("prohibited Tavily operation" in item for item in result["failures"]))
 
 
 class ArtifactTests(unittest.TestCase):

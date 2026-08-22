@@ -133,7 +133,7 @@ Only after plan approval, inspect available capabilities by server, semantic ope
 
 - USASpending for award, recipient, spending, competition, and agency evidence.
 - SAM.gov for entity, opportunity, award, registration, exclusion, or responsibility-related public evidence when needed.
-- Tavily Search and Extract when the approved mode includes Tavily. Match the `tavily-web` server by semantic operations `tavily-search` and `tavily-extract`, not generated prefixes.
+- Tavily Search and Extract when the approved mode includes Tavily. Match the `tavily-web` server by its actual semantic operations `tavily_search` and `tavily_extract`, not generated prefixes or documentation display labels. Never invoke Tavily Crawl, Map, or Research operations.
 - The host's native web search and fetch capabilities when the approved mode includes native web access.
 - Python and DOCX capabilities only if a report is requested.
 

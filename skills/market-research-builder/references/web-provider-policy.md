@@ -33,7 +33,7 @@ Apply these restrictions to Tavily and native public web tools alike:
 
 ## Provider execution and fallback
 
-- **Tavily with native fallback:** Use the semantic `tavily-search` and `tavily-extract` operations when available. Verify consequential claims against the underlying primary-source page. When Tavily fails, switch automatically to an already approved native capability, record the failure and switch, and tell the user in the next findings update.
+- **Tavily with native fallback:** Use only the actual semantic operations `tavily_search` and `tavily_extract` when available. Never invoke Tavily Crawl, Map, or Research, even if the provider advertises them. Verify consequential claims against the underlying primary-source page. When Tavily fails, switch automatically to an already approved native capability, record the failure and switch, and tell the user in the next findings update.
 - **Native search only:** Do not invoke Tavily. If native search is unavailable, offer Tavily or no-public-web mode and wait.
 - **Tavily only:** If Tavily fails, offer native or no-public-web mode and wait.
 - **No public web:** Invoke neither Tavily nor native public web tools.
