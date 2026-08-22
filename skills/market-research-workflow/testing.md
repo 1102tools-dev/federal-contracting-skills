@@ -1,6 +1,8 @@
-# Market Research Builder test specification
+# Market Research Workflow test specification
 
 ## Release-blocking launch tests
+
+The canonical explicit invocation is `$market-research-workflow`. The prior `$market-research-builder` invocation is retired; archived research records carrying the prior identifier remain accepted during the release-candidate transition and are migrated when refreshed.
 
 Run explicit invocation in a clean workspace on every release client:
 

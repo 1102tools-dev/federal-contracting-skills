@@ -1,6 +1,8 @@
-# Market Research Builder current test evidence
+# Market Research Workflow current test evidence
 
 Tested August 21, 2026 from a clean temporary installation of the complete skill folder.
+
+The canonical name changed from `market-research-builder` to `market-research-workflow` before final release because the capability routes a staged research process with multiple valid outputs. New records and invocations use the workflow name. The record validator temporarily accepts the legacy identifier so archived RC records remain refreshable.
 
 ## Current result
 
@@ -12,7 +14,7 @@ Tested August 21, 2026 from a clean temporary installation of the complete skill
 
 ## Deterministic and artifact evidence
 
-- Both `quick_validate.py` and the repository eight-skill validator passed.
+- Both `quick_validate.py` and the repository nine-skill validator passed.
 - The shared evidence contract, web-provider policy, and research-record validator copies were byte-identical.
 - Four provider modes validated. Unapproved providers, unapproved plans, missing disclosure acknowledgment, unknown evidence IDs, sensitive query keys, credential-like content, local/private/internal URLs, and signed or credential-bearing URLs failed as expected.
 - An approved Tavily-to-native fallback record passed with provider, timestamp, reason, and sanitized query preserved.

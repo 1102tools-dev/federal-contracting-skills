@@ -5,7 +5,7 @@ The internal JSON record uses schema version `1.1` and these top-level fields:
 ```json
 {
   "schema_version": "1.1",
-  "skill": "market-research-builder",
+  "skill": "market-research-workflow",
   "workflow_mode": "complete_report",
   "question": "What market evidence informs this acquisition?",
   "scope": {"as_of_date": "2026-08-21", "agency": null, "naics": [], "psc": [], "period": null},

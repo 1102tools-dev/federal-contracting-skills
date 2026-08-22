@@ -36,7 +36,11 @@ REQUIRED = {
 }
 LIST_FIELDS = REQUIRED - {"schema_version", "skill", "workflow_mode", "question", "scope", "web_research", "validation"}
 SOURCE_CLASSES = {"document", "federal_mcp", "official_web", "other_web", "user_statement", "calculation"}
-SKILLS = {"market-research-builder", "govcon-growth-workflow"}
+SKILLS = {
+    "market-research-workflow",
+    "market-research-builder",  # Legacy record identifier accepted during the RC transition.
+    "govcon-growth-workflow",
+}
 ID_PATTERNS = {
     "evidence": re.compile(r"^E\d{3,}$"),
     "findings": re.compile(r"^F\d{3,}$"),

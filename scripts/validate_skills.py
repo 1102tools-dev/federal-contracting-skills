@@ -23,7 +23,7 @@ EXPECTED = {
     "igce-builder-cr",
     "igce-builder-ffp",
     "igce-builder-lh-tm",
-    "market-research-builder",
+    "market-research-workflow",
     "govcon-growth-workflow",
     "ot-cost-analysis",
     "ot-project-description-builder",
@@ -130,15 +130,15 @@ def validate() -> list[str]:
 
     shared_pairs = [
         (
-            SKILLS / "market-research-builder" / "references" / "evidence-contract.md",
+            SKILLS / "market-research-workflow" / "references" / "evidence-contract.md",
             SKILLS / "govcon-growth-workflow" / "references" / "evidence-contract.md",
         ),
         (
-            SKILLS / "market-research-builder" / "references" / "web-provider-policy.md",
+            SKILLS / "market-research-workflow" / "references" / "web-provider-policy.md",
             SKILLS / "govcon-growth-workflow" / "references" / "web-provider-policy.md",
         ),
         (
-            SKILLS / "market-research-builder" / "scripts" / "validate_research_record.py",
+            SKILLS / "market-research-workflow" / "scripts" / "validate_research_record.py",
             SKILLS / "govcon-growth-workflow" / "scripts" / "validate_research_record.py",
         ),
     ]

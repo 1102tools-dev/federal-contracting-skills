@@ -77,7 +77,7 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 
 ## The orchestration skills
 
-> **August 21, 2026 modernization and expansion:** OpenAI Codex using GPT-5.6 Sol restructured the original six skills into portable, progressive-disclosure packages and added Market Research Builder, GovCon Growth Workflow, and Acquisition Policy Workflow. The first eight have the recorded client evidence described in their `test.md` files. Acquisition Policy has passed deterministic routing, record, and artifact gates and remains a release candidate pending its clean-client and live-source matrix.
+> **August 21, 2026 modernization and expansion:** OpenAI Codex using GPT-5.6 Sol restructured the original six skills into portable, progressive-disclosure packages and added Market Research Workflow, GovCon Growth Workflow, and Acquisition Policy Workflow. The first eight have the recorded client evidence described in their `test.md` files. Acquisition Policy has passed deterministic routing, record, and artifact gates and remains a release candidate pending its clean-client and live-source matrix.
 
 ### FAR contracts
 
@@ -99,7 +99,7 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 
 | Skill | Requires | Description |
 |-------|----------|-------------|
-| [Market Research Builder](skills/market-research-builder) | SAM.gov, USASpending, and approved web access for complete reports | Begins with a required workflow menu and separate acquisition-document intake, then produces evidence-backed FAR Part 10 findings or a validated report without originating reserved acquisition decisions. Web research can use optional Tavily, the host's native search, or both. |
+| [Market Research Workflow](skills/market-research-workflow) | SAM.gov, USASpending, and approved web access for complete reports | Begins with a required workflow menu and separate acquisition-document intake, then produces evidence-backed FAR Part 10 findings or a validated report without originating reserved acquisition decisions. Web research can use optional Tavily, the host's native search, or both. |
 | [GovCon Growth Workflow](skills/govcon-growth-workflow) | SAM.gov and USASpending; GSA CALC+ only for pricing context; approved web access by mode | Opportunity, bid-screen, competitor, recompete, teaming, agency-market, and pricing-context research for industry. Web research can use optional Tavily, the host's native search, or both. Public evidence alone never produces a bid decision. |
 | [Acquisition Policy Workflow](skills/acquisition-policy-workflow) | eCFR, Federal Register, Regulations.gov, and Acquisition.gov by mode | Routes clear policy questions directly and vague requests through a ten-choice menu. Keeps codified text, RFO model text, agency deviations, rulemaking status, and public comments separately classified, with an optional validated Acquisition Policy Impact Brief. |
 

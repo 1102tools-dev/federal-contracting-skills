@@ -1,5 +1,5 @@
 ---
-name: market-research-builder
+name: market-research-workflow
 description: >
   Trigger for: federal acquisition market research; FAR Part 10 reports;
   refreshing an existing market research report; analyzing commerciality,
@@ -11,7 +11,7 @@ description: >
   user approves the research plan, findings, and acquisition decisions.
 ---
 
-# Market Research Builder
+# Market Research Workflow
 
 ## Purpose
 
@@ -20,6 +20,8 @@ Build evidence-backed federal acquisition market research in chat or as a valida
 Complete reports require Python 3, `python-docx`, LibreOffice or an equivalent DOCX renderer, SAM.gov and USASpending MCP servers, and approved web access. Web research may use the optional Tavily remote MCP, the host's native search capabilities, or both. Tavily is never the sole supported path. Federal-data desk research can proceed with reduced capabilities when clearly labeled.
 
 This skill supports FAR Part 10 research. It does not originate a Contracting Officer determination. Historical percentages are evidence, never automatic decision thresholds.
+
+The canonical identifier is `market-research-workflow`. When refreshing an archived record whose `skill` field is `market-research-builder`, treat it as this workflow and migrate the field to the canonical identifier before saving the refreshed record. The validator accepts the legacy value during the release-candidate transition, but all new records and explicit invocations use `market-research-workflow`.
 
 Read supporting files only when their stage is reached:
 

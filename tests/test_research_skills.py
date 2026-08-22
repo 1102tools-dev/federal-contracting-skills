@@ -29,7 +29,7 @@ class SkillStaticTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_mandatory_launch_sequences_are_front_loaded(self):
-        market = (ROOT / "skills/market-research-builder/SKILL.md").read_text(encoding="utf-8")
+        market = (ROOT / "skills/market-research-workflow/SKILL.md").read_text(encoding="utf-8")
         growth = (ROOT / "skills/govcon-growth-workflow/SKILL.md").read_text(encoding="utf-8")
         self.assertLess(market.index("## Stage 1: launch menu"), market.index("## Stage 2: mandatory document intake"))
         self.assertLess(market.index("## Stage 2: mandatory document intake"), market.index("## Stage 6: capability preflight"))
@@ -54,7 +54,7 @@ class RecordValidationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.validator = load_module(
-            ROOT / "skills/market-research-builder/scripts/validate_research_record.py",
+            ROOT / "skills/market-research-workflow/scripts/validate_research_record.py",
             "research_record_validator",
         )
 
@@ -65,6 +65,12 @@ class RecordValidationTests(unittest.TestCase):
         for name in ("market-research-record.json", "govcon-growth-record.json"):
             result = self.validator.validate_record(self.fixture(name))
             self.assertEqual(result["status"], "pass", result["failures"])
+
+    def test_legacy_market_skill_identifier_remains_valid_during_rc_transition(self):
+        record = self.fixture("market-research-record.json")
+        record["skill"] = "market-research-builder"
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "pass", result["failures"])
 
     def test_unknown_evidence_reference_fails(self):
         record = self.fixture("market-research-record.json")
@@ -254,7 +260,7 @@ class ArtifactTests(unittest.TestCase):
 
     def test_market_report(self):
         self.build_and_validate(
-            "market-research-builder",
+            "market-research-workflow",
             "market-research-record.json",
             "build_market_research_report.py",
             "validate_market_research_report.py",
