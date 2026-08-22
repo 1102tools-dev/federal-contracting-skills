@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import copy
 import shutil
 import subprocess
 import sys
@@ -32,8 +33,13 @@ class SkillStaticTests(unittest.TestCase):
         growth = (ROOT / "skills/govcon-growth-workflow/SKILL.md").read_text(encoding="utf-8")
         self.assertLess(market.index("## Stage 1: launch menu"), market.index("## Stage 2: mandatory document intake"))
         self.assertLess(market.index("## Stage 2: mandatory document intake"), market.index("## Stage 6: capability preflight"))
-        self.assertIn("No research, file generation, capability preflight, web search, or MCP call occurs first", market)
-        self.assertIn("No research, file generation, capability preflight, web search, or MCP call occurs first", growth)
+        self.assertIn("No research, file generation, capability preflight, web-research request, or MCP tool invocation occurs first", market)
+        self.assertIn("No research, file generation, capability preflight, web-research request, or MCP tool invocation occurs first", growth)
+        for text in (market, growth):
+            self.assertIn("Tavily with native fallback", text)
+            self.assertIn("native only", text)
+            self.assertIn("Tavily only", text)
+            self.assertIn("no public web", text)
         for number in range(1, 7):
             self.assertRegex(market, rf"(?m)^{number}\. ")
         for number in range(1, 10):
@@ -76,6 +82,127 @@ class RecordValidationTests(unittest.TestCase):
         result = self.validator.validate_record(record)
         self.assertEqual(result["status"], "fail")
         self.assertTrue(any("credential" in item for item in result["failures"]))
+
+    def web_fixture(self, mode: str, planned: list[str], used: list[str] | None = None):
+        record = self.fixture("market-research-record.json")
+        record["web_research"] = {
+            "mode": mode,
+            "approved": True,
+            "approved_at": "2026-08-21T19:00:00Z",
+            "disclosure_acknowledged": True,
+            "planned_providers": planned,
+            "providers_used": list(used or []),
+            "fallback_events": [],
+        }
+        return record
+
+    def test_all_provider_modes_validate(self):
+        modes = {
+            "tavily_with_native_fallback": ["tavily", "native_web"],
+            "native_only": ["native_web"],
+            "tavily_only": ["tavily"],
+            "no_public_web": [],
+        }
+        for mode, providers in modes.items():
+            with self.subTest(mode=mode):
+                record = self.web_fixture(mode, providers)
+                result = self.validator.validate_record(record)
+                self.assertEqual(result["status"], "pass", result["failures"])
+
+    def test_combined_mode_records_approved_fallback(self):
+        record = self.web_fixture(
+            "tavily_with_native_fallback",
+            ["tavily", "native_web"],
+            ["tavily", "native_web"],
+        )
+        record["web_research"]["fallback_events"] = [{
+            "timestamp": "2026-08-21T19:05:00Z",
+            "failed_provider": "tavily",
+            "replacement_provider": "native_web",
+            "reason": "Simulated rate limit",
+        }]
+        record["queries"].append({
+            "provider": "native_web",
+            "operation": "native search",
+            "parameters": {"query": "official federal market research guidance"},
+            "retrieved_at": "2026-08-21T19:06:00Z",
+            "count": 3,
+            "limitations": "Synthetic fallback fixture",
+        })
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "pass", result["failures"])
+
+    def test_unapproved_provider_fails(self):
+        record = self.web_fixture("native_only", ["native_web"], ["native_web"])
+        record["queries"].append({
+            "provider": "tavily",
+            "operation": "tavily-search",
+            "parameters": {"query": "public query"},
+            "retrieved_at": "2026-08-21T19:06:00Z",
+            "count": 1,
+            "limitations": "Synthetic fixture",
+        })
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "fail")
+        self.assertTrue(any("not approved" in item for item in result["failures"]))
+
+    def test_fallback_event_requires_combined_mode_and_provider_switch(self):
+        record = self.web_fixture("tavily_only", ["tavily"], ["tavily"])
+        record["web_research"]["fallback_events"] = [{
+            "timestamp": "2026-08-21T19:05:00Z",
+            "failed_provider": "tavily",
+            "replacement_provider": "tavily",
+            "reason": "Synthetic invalid fallback",
+        }]
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "fail")
+        self.assertTrue(any("allowed only" in item for item in result["failures"]))
+        self.assertTrue(any("must switch providers" in item for item in result["failures"]))
+
+    def test_unapproved_or_unacknowledged_plan_fails(self):
+        record = self.web_fixture("tavily_only", ["tavily"])
+        record["web_research"]["approved"] = False
+        record["web_research"]["disclosure_acknowledged"] = False
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "fail")
+        self.assertTrue(any("approved must be true" in item for item in result["failures"]))
+        self.assertTrue(any("disclosure_acknowledged" in item for item in result["failures"]))
+
+    def test_private_and_signed_urls_fail(self):
+        base = self.web_fixture("tavily_only", ["tavily"], ["tavily"])
+        bad_urls = (
+            "file:///Users/example/private.pdf",
+            "http://127.0.0.1/report",
+            "https://intranet.internal/report",
+            "https://example.com/report?token=secret-value",
+        )
+        for url in bad_urls:
+            with self.subTest(url=url):
+                record = copy.deepcopy(base)
+                record["queries"].append({
+                    "provider": "tavily",
+                    "operation": "tavily-extract",
+                    "parameters": {"urls": [url]},
+                    "retrieved_at": "2026-08-21T19:06:00Z",
+                    "count": 0,
+                    "limitations": "Synthetic safety fixture",
+                })
+                result = self.validator.validate_record(record)
+                self.assertEqual(result["status"], "fail")
+                self.assertTrue(any("parameters.urls" in item for item in result["failures"]))
+
+    def test_public_extraction_url_passes(self):
+        record = self.web_fixture("tavily_only", ["tavily"], ["tavily"])
+        record["queries"].append({
+            "provider": "tavily",
+            "operation": "tavily-extract",
+            "parameters": {"urls": ["https://www.acquisition.gov/far/part-10"]},
+            "retrieved_at": "2026-08-21T19:06:00Z",
+            "count": 1,
+            "limitations": "Synthetic safety fixture",
+        })
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "pass", result["failures"])
 
 
 class ArtifactTests(unittest.TestCase):

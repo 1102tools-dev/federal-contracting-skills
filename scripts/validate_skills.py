@@ -133,6 +133,10 @@ def validate() -> list[str]:
             SKILLS / "govcon-growth-workflow" / "references" / "evidence-contract.md",
         ),
         (
+            SKILLS / "market-research-builder" / "references" / "web-provider-policy.md",
+            SKILLS / "govcon-growth-workflow" / "references" / "web-provider-policy.md",
+        ),
+        (
             SKILLS / "market-research-builder" / "scripts" / "validate_research_record.py",
             SKILLS / "govcon-growth-workflow" / "scripts" / "validate_research_record.py",
         ),

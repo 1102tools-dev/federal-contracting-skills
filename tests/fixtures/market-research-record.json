@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "skill": "market-research-builder",
   "workflow_mode": "complete_report",
   "question": "What evidence informs acquisition of nationwide help desk support services?",
@@ -26,8 +26,18 @@
   "assumptions": [
     "NAICS 541513 is a research filter, not an approved NAICS determination."
   ],
+  "web_research": {
+    "mode": "no_public_web",
+    "approved": true,
+    "approved_at": "2026-08-21T17:55:00Z",
+    "disclosure_acknowledged": true,
+    "planned_providers": [],
+    "providers_used": [],
+    "fallback_events": []
+  },
   "queries": [
     {
+      "provider": "federal_mcp",
       "operation": "USASpending spending over time",
       "parameters": {"naics": ["541513"], "psc": ["DA01"], "start_date": "2021-10-01", "end_date": "2026-08-21"},
       "retrieved_at": "2026-08-21T18:00:00Z",

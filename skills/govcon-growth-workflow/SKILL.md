@@ -17,7 +17,7 @@ description: >
 
 Help federal contractors discover, qualify, understand, and pursue public-sector business using traceable evidence. Quick results remain in chat. Complete runs may produce a validated `.docx` GovCon Growth Brief.
 
-Full workflows use SAM.gov, USASpending, and optional GSA CALC+ MCP servers, web access, and Python 3. DOCX briefs require `python-docx` and LibreOffice or an equivalent renderer. SAM is required only for SAM-specific modes; CALC+ is required only for pricing context.
+Full workflows use SAM.gov, USASpending, and optional GSA CALC+ MCP servers, approved web access, and Python 3. Web research may use the optional Tavily remote MCP, the host's native search capabilities, or both. Tavily is never the sole supported path. DOCX briefs require `python-docx` and LibreOffice or an equivalent renderer. SAM is required only for SAM-specific modes; CALC+ is required only for pricing context.
 
 This skill informs company decisions. It does not replace company leadership, legal, contracts, pricing, security, or compliance judgment.
 
@@ -31,22 +31,24 @@ Read supporting files only when their mode is reached:
 - [market-and-agency-intelligence.md](references/market-and-agency-intelligence.md) for customer and market work.
 - [pricing-context.md](references/pricing-context.md) for CALC+ and labor-rate context.
 - [evidence-limitations.md](references/evidence-limitations.md) before interpreting public data.
+- [web-provider-policy.md](references/web-provider-policy.md) before asking the user to approve any public web provider or query.
 - [brief-specification.md](references/brief-specification.md) before building a `.docx`.
 - [evidence-contract.md](references/evidence-contract.md) whenever creating or updating the research record.
 - [runtime-adaptation.md](references/runtime-adaptation.md) for host capability handling.
 
 ## Permanent release gates
 
-1. **Menu first:** The entire first-turn response consists only of the complete nine-choice menu and its selection question. Do not announce the skill, acknowledge the request, summarize the workflow, or add any preface or postscript. No research, file generation, capability preflight, web search, or MCP call occurs first.
+1. **Menu first:** The entire first-turn response consists only of the complete nine-choice menu and its selection question. Do not announce the skill, acknowledge the request, summarize the workflow, or add any preface or postscript. No research, file generation, capability preflight, web-research request, or MCP tool invocation occurs first.
 2. **Confirmed mode:** A clear opening request may cause one choice to be marked `Recommended`, but the user still confirms it.
 3. **Relevant intake only:** After selection, ask only for information and optional documents relevant to that mode. If none are available, record that and proceed.
-4. **Approval before calls:** Present a research plan, sources, sanitized parameters, limits, and expected output. Obtain approval before external research.
-5. **MCP boundary:** Use installed MCP operations. Never improvise direct API calls or shell requests around a missing MCP.
-6. **Minimum tool surface:** SAM is required only for live-opportunity, registration, exclusion, certification, or other SAM-specific work. CALC+ is required only for pricing context.
-7. **Evidence integrity:** Label sourced fact, inference, user statement, user decision, and unresolved question. Every finding cites stable evidence IDs.
-8. **Bid boundary:** Never issue a bid or no-bid recommendation from public data alone. A recommendation requires complete internal company context and stated tolerances.
-9. **Sensitive-query boundary:** Do not put proprietary, procurement-sensitive, export-controlled, source-selection, privacy, or classified content into public searches or MCP inputs.
-10. **Artifact validation:** A generated `.docx` must pass structural validation, numeric recomputation, LibreOffice open/save and PDF conversion, text and citation extraction, and visual inspection of every page.
+4. **Approval before calls:** Present a research plan, sources, sanitized parameters, exact public URLs proposed for extraction, limits, expected output, and the four web-provider choices. Obtain explicit provider selection and approval before any research tool invocation.
+5. **Provider choice in every plan:** A plan-approval response is invalid unless it ends with all four provider choices, the Tavily third-party disclosure, and a question asking the user to select a provider mode and approve the plan. Never substitute a generic plan-approval question.
+6. **MCP boundary:** Use installed MCP operations. Never improvise direct API calls or shell requests around a missing MCP.
+7. **Minimum tool surface:** SAM is required only for live-opportunity, registration, exclusion, certification, or other SAM-specific work. CALC+ is required only for pricing context.
+8. **Evidence integrity:** Label sourced fact, inference, user statement, user decision, and unresolved question. Every finding cites stable evidence IDs.
+9. **Bid boundary:** Never issue a bid or no-bid recommendation from public data alone. A recommendation requires complete internal company context and stated tolerances.
+10. **Sensitive-query boundary:** Do not put proprietary, procurement-sensitive, export-controlled, source-selection, privacy, or classified content into public searches or MCP inputs.
+11. **Artifact validation:** A generated `.docx` must pass structural validation, numeric recomputation, LibreOffice open/save and PDF conversion, text and citation extraction, and visual inspection of every page.
 
 ## Stage 1: launch menu
 
@@ -91,7 +93,7 @@ Collect the minimum missing facts for the selected mode, then distinguish user f
 
 ## Stage 3: research-plan approval
 
-Present:
+Read [web-provider-policy.md](references/web-provider-policy.md). Present:
 
 1. The business question and selected mode.
 2. Internal context and missing context.
@@ -99,8 +101,12 @@ Present:
 4. Sanitized parameters and date range.
 5. Evidence limitations and exclusions.
 6. Planned output: chat findings, structured data, or optional brief.
+7. The required provider selection: Tavily with native fallback, native only, Tavily only, or no public web.
+8. The Tavily third-party disclosure, exact sanitized search terms and public identifiers, proposed public extraction URLs, and any risk that the sanitized query could still reveal capture or procurement intent.
 
-Ask the user to approve or revise the plan. End at the question and wait.
+Ask the user to select a provider mode and approve or revise the plan. Mark Tavily with native fallback recommended, but do not infer a choice. End at the question and wait.
+
+The last section must list all four choices by name and state that Tavily is a provider-hosted third party whose keyless service is rate-limited and whose published privacy policy covers query collection, possible response improvement, and limited use of third-party search-index providers. End with one question that asks which provider mode the user selects and whether the plan and disclosure are approved. Do not end with only `Approve this plan?` or another generic approval question.
 
 ## Stage 4: capability preflight
 
@@ -109,10 +115,11 @@ After approval, inspect only capabilities required by the plan:
 - SAM.gov for live opportunities, notice details, entities, registration, exclusions, certifications, public award references, or organization data.
 - USASpending for award, recipient, transaction, spending, agency, geography, and subaward evidence.
 - GSA CALC+ for published ceiling-rate context when pricing or labor rates are selected.
-- Web access for official agency, forecast, vehicle, contract, and other primary sources.
+- Tavily Search and Extract when the approved mode includes Tavily. Match the `tavily-web` server by semantic operations `tavily-search` and `tavily-extract`, not generated prefixes.
+- The host's native web search and fetch capabilities when the approved mode includes native web access.
 - Python and DOCX tools only if a brief is requested.
 
-Match tools by server, semantic operation, and input schema, not generated prefixes. Report missing or unauthenticated capabilities precisely. Offer a narrower supported product when possible and obtain approval. Do not bypass MCPs through direct HTTP or shell calls.
+Match tools by server, semantic operation, and input schema, not generated prefixes. Report missing or unauthenticated capabilities precisely. Follow [web-provider-policy.md](references/web-provider-policy.md) for approved fallback behavior. Offer a narrower supported product when possible and obtain approval. Do not bypass MCPs or web providers through direct HTTP, shell calls, or an unapproved provider.
 
 ## Stage 5: mode execution
 
@@ -161,7 +168,7 @@ Register the prior brief and its as-of date, identify stale sources and changed 
 
 ## Stage 6: analysis and findings
 
-Maintain the normalized record in [evidence-contract.md](references/evidence-contract.md). Apply [evidence-limitations.md](references/evidence-limitations.md):
+Maintain the normalized record in [evidence-contract.md](references/evidence-contract.md), including approved web mode, disclosure acknowledgment, planned and used providers, provider on every query, and fallback events. Apply [evidence-limitations.md](references/evidence-limitations.md):
 
 - Resolve entity and recipient ambiguity before aggregation.
 - Distinguish current award amount, potential ceiling, obligations, deobligations, transactions, and subawards.

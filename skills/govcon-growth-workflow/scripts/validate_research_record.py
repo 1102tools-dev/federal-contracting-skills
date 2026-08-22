@@ -4,12 +4,14 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import math
 import re
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qsl, urlparse
 
 
 REQUIRED = {
@@ -21,6 +23,7 @@ REQUIRED = {
     "document_register",
     "user_context",
     "assumptions",
+    "web_research",
     "queries",
     "evidence",
     "findings",
@@ -31,7 +34,7 @@ REQUIRED = {
     "outputs",
     "validation",
 }
-LIST_FIELDS = REQUIRED - {"schema_version", "skill", "workflow_mode", "question", "scope", "validation"}
+LIST_FIELDS = REQUIRED - {"schema_version", "skill", "workflow_mode", "question", "scope", "web_research", "validation"}
 SOURCE_CLASSES = {"document", "federal_mcp", "official_web", "other_web", "user_statement", "calculation"}
 SKILLS = {"market-research-builder", "govcon-growth-workflow"}
 ID_PATTERNS = {
@@ -56,6 +59,53 @@ UNSAFE_QUERY_KEYS = {
     "token",
     "secret",
 }
+WEB_MODES = {
+    "tavily_with_native_fallback": {"tavily", "native_web"},
+    "native_only": {"native_web"},
+    "tavily_only": {"tavily"},
+    "no_public_web": set(),
+}
+QUERY_PROVIDERS = {"federal_mcp", "tavily", "native_web"}
+SENSITIVE_URL_KEYS = {
+    "access_token",
+    "api_key",
+    "apikey",
+    "auth",
+    "authorization",
+    "key",
+    "password",
+    "secret",
+    "sig",
+    "signature",
+    "token",
+    "x-amz-credential",
+    "x-amz-signature",
+}
+
+
+def public_url_failure(value: str) -> str | None:
+    try:
+        parsed = urlparse(value)
+    except ValueError:
+        return "is not a valid URL"
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return "must be a public HTTP or HTTPS URL"
+    if parsed.username or parsed.password:
+        return "must not contain URL credentials"
+    hostname = parsed.hostname.lower().rstrip(".")
+    if hostname == "localhost" or hostname.endswith((".localhost", ".local", ".internal", ".test")):
+        return "must not target a local or internal host"
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        address = None
+    if address and not address.is_global:
+        return "must not target a private, loopback, link-local, or reserved address"
+    query_keys = {key.lower() for key, _ in parse_qsl(parsed.query, keep_blank_values=True)}
+    unsafe = sorted(query_keys & SENSITIVE_URL_KEYS)
+    if unsafe:
+        return "contains a credential-like query key: " + ", ".join(unsafe)
+    return None
 
 
 def walk(value: Any):
@@ -80,8 +130,8 @@ def validate_record(record: Any) -> dict[str, Any]:
     if unknown:
         failures.append("unknown top-level fields: " + ", ".join(unknown))
 
-    if record.get("schema_version") != "1.0":
-        failures.append("schema_version must be 1.0")
+    if record.get("schema_version") != "1.1":
+        failures.append("schema_version must be 1.1")
     if record.get("skill") not in SKILLS:
         failures.append("skill must identify an approved 1102tools research skill")
     if not isinstance(record.get("workflow_mode"), str) or not record.get("workflow_mode", "").strip():
@@ -97,6 +147,66 @@ def validate_record(record: Any) -> dict[str, Any]:
     for field in sorted(LIST_FIELDS):
         if not isinstance(record.get(field), list):
             failures.append(f"{field} must be an array")
+
+    web = record.get("web_research")
+    approved_web_providers: set[str] = set()
+    if not isinstance(web, dict):
+        failures.append("web_research must be an object")
+    else:
+        expected_web_fields = {
+            "mode",
+            "approved",
+            "approved_at",
+            "disclosure_acknowledged",
+            "planned_providers",
+            "providers_used",
+            "fallback_events",
+        }
+        missing_web = sorted(expected_web_fields - set(web))
+        unknown_web = sorted(set(web) - expected_web_fields)
+        if missing_web:
+            failures.append("web_research missing fields: " + ", ".join(missing_web))
+        if unknown_web:
+            failures.append("web_research unknown fields: " + ", ".join(unknown_web))
+        mode = web.get("mode")
+        if mode not in WEB_MODES:
+            failures.append("web_research.mode is not approved")
+            expected_providers: set[str] = set()
+        else:
+            expected_providers = WEB_MODES[mode]
+            approved_web_providers = set(expected_providers)
+        if web.get("approved") is not True:
+            failures.append("web_research.approved must be true before validation")
+        if not isinstance(web.get("approved_at"), str) or not web.get("approved_at", "").strip():
+            failures.append("web_research.approved_at must be a non-empty string")
+        if web.get("disclosure_acknowledged") is not True:
+            failures.append("web_research.disclosure_acknowledged must be true")
+        planned = web.get("planned_providers")
+        used = web.get("providers_used")
+        events = web.get("fallback_events")
+        if not isinstance(planned, list) or set(planned) != expected_providers:
+            failures.append("web_research.planned_providers must match the approved mode")
+        if not isinstance(used, list) or not set(used).issubset(expected_providers):
+            failures.append("web_research.providers_used must be a subset of approved providers")
+        if not isinstance(events, list):
+            failures.append("web_research.fallback_events must be an array")
+        else:
+            if events and mode != "tavily_with_native_fallback":
+                failures.append("web_research.fallback_events are allowed only in tavily_with_native_fallback mode")
+            for index, event in enumerate(events):
+                if not isinstance(event, dict):
+                    failures.append(f"web_research.fallback_events[{index}] must be an object")
+                    continue
+                if set(event) != {"timestamp", "failed_provider", "replacement_provider", "reason"}:
+                    failures.append(f"web_research.fallback_events[{index}] has invalid fields")
+                    continue
+                if event.get("failed_provider") not in expected_providers or event.get("replacement_provider") not in expected_providers:
+                    failures.append(f"web_research.fallback_events[{index}] uses an unapproved provider")
+                if event.get("failed_provider") == event.get("replacement_provider"):
+                    failures.append(f"web_research.fallback_events[{index}] must switch providers")
+                for field in ("timestamp", "reason"):
+                    if not isinstance(event.get(field), str) or not event.get(field, "").strip():
+                        failures.append(f"web_research.fallback_events[{index}].{field} must be a non-empty string")
 
     serialized = json.dumps(record, ensure_ascii=False)
     for pattern in SECRET_PATTERNS:
@@ -150,6 +260,13 @@ def validate_record(record: Any) -> dict[str, Any]:
         if not isinstance(query, dict):
             failures.append(f"queries[{index}] must be an object")
             continue
+        provider = query.get("provider")
+        if provider not in QUERY_PROVIDERS:
+            failures.append(f"queries[{index}].provider is not approved")
+        elif provider in {"tavily", "native_web"} and provider not in approved_web_providers:
+            failures.append(f"queries[{index}] uses a web provider not approved for this run")
+        if not isinstance(query.get("operation"), str) or not query.get("operation", "").strip():
+            failures.append(f"queries[{index}].operation must be a non-empty string")
         params = query.get("parameters", {})
         if not isinstance(params, dict):
             failures.append(f"queries[{index}].parameters must be an object")
@@ -157,6 +274,18 @@ def validate_record(record: Any) -> dict[str, Any]:
         unsafe = sorted({str(key).lower() for key in params} & UNSAFE_QUERY_KEYS)
         if unsafe:
             failures.append(f"queries[{index}] contains unsafe parameter keys: {', '.join(unsafe)}")
+        if provider in {"tavily", "native_web"}:
+            for key, value in params.items():
+                if str(key).lower() not in {"url", "urls"}:
+                    continue
+                urls = value if isinstance(value, list) else [value]
+                for url in urls:
+                    if not isinstance(url, str):
+                        failures.append(f"queries[{index}].parameters.{key} must contain URL strings")
+                        continue
+                    problem = public_url_failure(url)
+                    if problem:
+                        failures.append(f"queries[{index}].parameters.{key} {problem}")
 
     return {
         "status": "pass" if not failures else "fail",

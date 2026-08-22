@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "skill": "govcon-growth-workflow",
   "workflow_mode": "bid_screen",
   "question": "Should the company continue evaluating an example help desk opportunity?",
@@ -26,8 +26,18 @@
   "assumptions": [
     "The public sources-sought notice may change before solicitation."
   ],
+  "web_research": {
+    "mode": "no_public_web",
+    "approved": true,
+    "approved_at": "2026-08-21T18:13:00Z",
+    "disclosure_acknowledged": true,
+    "planned_providers": [],
+    "providers_used": [],
+    "fallback_events": []
+  },
   "queries": [
     {
+      "provider": "federal_mcp",
       "operation": "SAM.gov opportunity detail fixture",
       "parameters": {"notice_id": "EXAMPLE-123"},
       "retrieved_at": "2026-08-21T18:15:00Z",
