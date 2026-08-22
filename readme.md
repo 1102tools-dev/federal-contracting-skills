@@ -6,7 +6,7 @@ Website: [1102tools.com](https://1102tools.com)
 
 ## Most users should start with an agent
 
-The packaged [1102tools agents](https://github.com/1102tools-dev/federal-contracting-agents) already combine the appropriate workflow and source connections for one job. The beginner-facing [Agent Setup Guide](https://1102tools.com/downloads/1102tools-agent-setup-guide.pdf) covers Codex, Claude Code, and DeepSeek Harness.
+The packaged [1102tools agents](https://github.com/1102tools-dev/federal-contracting-agents) already combine the appropriate workflow and source connections for one job. The beginner-facing [Agent Setup Guide](https://1102tools.com/downloads/1102tools-agent-setup-guide.pdf) covers Codex and Claude Code.
 
 Use this repository when you specifically want to inspect, adapt, or install a standalone skill. Follow the selected skill directory's README and testing record; the agent setup guide does not cover standalone installation.
 
@@ -121,7 +121,6 @@ The GovCon Growth and Market Research agent packages configure Tavily's official
 |---|---|
 | Claude Code | `~/.claude/skills/` |
 | Codex | `~/.agents/skills/` |
-| DeepSeek Harness | `~/.dsh/skills/` or `~/.agents/skills/` |
 | opencode | `.opencode/skills/`, or a path in `skills.paths` |
 | LibreChat | imports the `.zip` directly |
 
