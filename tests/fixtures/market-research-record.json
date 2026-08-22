@@ -1,0 +1,119 @@
+{
+  "schema_version": "1.0",
+  "skill": "market-research-builder",
+  "workflow_mode": "complete_report",
+  "question": "What evidence informs acquisition of nationwide help desk support services?",
+  "scope": {
+    "as_of_date": "2026-08-21",
+    "agency": "Example Agency",
+    "naics": ["541513"],
+    "psc": ["DA01"],
+    "period": "FY2022 through FY2026, with FY2026 identified as partial"
+  },
+  "document_register": [
+    {
+      "file": "Example_PWS.docx",
+      "document_type": "Performance Work Statement",
+      "status": "draft",
+      "role": "Defines service scope and performance standards",
+      "controlling_location": "Sections 3 through 6",
+      "gaps_or_conflicts": "Acquisition strategy and final contract type are not approved"
+    }
+  ],
+  "user_context": [
+    "The user stated that nationwide remote support and one on-site transition team are required."
+  ],
+  "assumptions": [
+    "NAICS 541513 is a research filter, not an approved NAICS determination."
+  ],
+  "queries": [
+    {
+      "operation": "USASpending spending over time",
+      "parameters": {"naics": ["541513"], "psc": ["DA01"], "start_date": "2021-10-01", "end_date": "2026-08-21"},
+      "retrieved_at": "2026-08-21T18:00:00Z",
+      "count": 5,
+      "limitations": "Fixture data; FY2026 is partial"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E001",
+      "source_class": "document",
+      "title": "Example PWS",
+      "locator": "Example_PWS.docx, section 3.2",
+      "retrieved_at": "2026-08-21T17:45:00Z",
+      "as_of_date": "2026-08-20",
+      "fact": "The draft scope requires nationwide remote help desk service.",
+      "limitations": "Draft document; user confirmation required"
+    },
+    {
+      "id": "E002",
+      "source_class": "federal_mcp",
+      "title": "USASpending fixture trend",
+      "locator": "spending over time fixture",
+      "retrieved_at": "2026-08-21T18:00:00Z",
+      "as_of_date": "2026-08-21",
+      "fact": "The fixture contains three complete fiscal years and one partial fiscal year.",
+      "limitations": "Synthetic offline fixture; not a live federal result"
+    },
+    {
+      "id": "E003",
+      "source_class": "user_statement",
+      "title": "User-provided acquisition context",
+      "locator": "workflow intake",
+      "retrieved_at": "2026-08-21T17:40:00Z",
+      "as_of_date": "2026-08-21",
+      "fact": "The user requested analysis but did not approve a set-aside, contract type, or commerciality determination.",
+      "limitations": "User statement; decisions remain pending"
+    },
+    {
+      "id": "E004",
+      "source_class": "calculation",
+      "title": "Offline obligation sum",
+      "locator": "validation.numeric_checks[0]",
+      "retrieved_at": "2026-08-21T18:05:00Z",
+      "as_of_date": "2026-08-21",
+      "fact": "The three complete-year fixture values total 6000000.00.",
+      "limitations": "Synthetic values used only for deterministic validation"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F001",
+      "text": "The draft requirement is for nationwide help desk support, but key acquisition-strategy decisions remain pending.",
+      "evidence_ids": ["E001", "E003"]
+    },
+    {
+      "id": "F002",
+      "text": "The trend analysis must exclude the partial fiscal year from full-year comparisons.",
+      "evidence_ids": ["E002"]
+    }
+  ],
+  "inferences": [
+    {
+      "id": "I001",
+      "text": "Additional commercial-market evidence is needed before the report can be called complete.",
+      "reasoning": "The offline fixture contains federal and document evidence but no current commercial source.",
+      "uncertainty": "High until commercial evidence is gathered",
+      "evidence_ids": ["E001", "E002"]
+    }
+  ],
+  "user_decisions": [
+    "The user approved the research scope but has not made the reserved acquisition decisions."
+  ],
+  "conflicts": [],
+  "unresolved_questions": [
+    "Which acquisition strategy will the Contracting Officer approve after reviewing complete market evidence?"
+  ],
+  "outputs": [],
+  "validation": {
+    "commercial_evidence_complete": false,
+    "executive_summary": "This offline fixture demonstrates evidence traceability and decision boundaries for a help desk market-research draft.",
+    "methodology": "The fixture separates supplied-document evidence from a synthetic federal-data result and preserves the partial-year limitation.",
+    "small_business_analysis": "No set-aside conclusion is made. Historical data alone cannot establish the Rule of Two.",
+    "pricing_analysis": "No contract-type or price-reasonableness determination is made.",
+    "numeric_checks": [
+      {"label": "Complete-year fixture obligations", "components": [1000000, 2000000, 3000000], "reported_total": 6000000}
+    ]
+  }
+}

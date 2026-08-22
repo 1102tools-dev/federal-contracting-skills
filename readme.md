@@ -1,16 +1,14 @@
 # 1102tools Agent Skills
 
-Portable agent skills for federal acquisition deliverables: SOW / PWS, IGCEs, OT project descriptions, and OT cost analyses. These are not six giant prompt files. Each capability is now a complete, multi-file skill package with a compact orchestration core, supporting references, deterministic validators, client metadata, and its own test record.
+Eight portable agent skills for federal acquisition, market research, GovCon growth, SOW/PWS, IGCE, and Other Transaction workflows. These are not giant prompt files. Each capability is a complete, multi-file skill package with a compact orchestration core, supporting references, deterministic validators, client metadata, and its own test record.
 
 Website: [1102tools.com](https://1102tools.com)
 
 ## The fastest install: hand this PDF to your AI
 
-[![The 1102tools universal setup guide: one PDF for two agent plugins, eight MCP servers, and six standalone skills. Repository-marketplace instructions cover Codex, Claude Code, and Copilot CLI; standalone setup covers major clients with tested surfaces and open limits stated. August 2026.](docs/setup-guide-promo.png?v=3)](https://1102tools.com/downloads/1102tools-universal-setup.pdf)
+[![The 1102tools universal setup guide: one PDF for four agent plugins, eight MCP servers, and eight standalone skills. Repository-marketplace instructions cover Codex, Claude Code, and Copilot CLI; standalone setup covers major clients with tested surfaces and open limits stated. August 2026.](docs/setup-guide-promo.png?v=3)](https://1102tools.com/downloads/1102tools-universal-setup.pdf)
 
-**[Download the universal setup guide (PDF)](https://1102tools.com/downloads/1102tools-universal-setup.pdf)**, then drop it into Claude, ChatGPT (Codex), Gemini (Antigravity), Copilot, DeepSeek Harness, Grok, Cursor, opencode, or LibreChat and say what you want installed. The AI reads the guide and walks you through agent marketplace installation, free API keys, exact standalone configuration, restart, verification, updates, and removal. If 39 pages is more than your chat will accept, paste in just the section for your platform; every option is written to stand alone. The guide distinguishes tested surfaces from pending ones, and Part 9 is troubleshooting built from errors I actually encountered.
-
-![Architecture diagram showing how each instrument chains scope, pricing, and data sources. FAR contracts: SOW/PWS Builder feeds three IGCE Builders (FFP, LH/T&M, Cost-Reimbursement) pulling from BLS OEWS, GSA CALC+, and GSA Per Diem. Other Transactions: OT Project Description Builder feeds OT Cost Analysis pulling from the same three data sources.](docs/architecture-v6.png)
+**[Download the universal setup guide (PDF)](https://1102tools.com/downloads/1102tools-universal-setup.pdf)**, then drop it into Claude, ChatGPT (Codex), Gemini (Antigravity), Copilot, DeepSeek Harness, Grok, Cursor, opencode, or LibreChat and say what you want installed. The AI reads the guide and walks you through agent marketplace installation, API keys, standalone configuration, restart, verification, updates, and removal. The guide distinguishes tested surfaces from pending ones.
 
 **Before you build:** Not every acquisition capability should be an AI tool. Dozens of potential skills were evaluated and several were intentionally excluded because they cross the line from data assembly into professional judgment. See **[ai-boundaries.md](ai-boundaries.md)**.
 
@@ -41,7 +39,7 @@ This separation is functional, not cosmetic:
 
 The result is still simple to install: copy or upload one skill folder. Internally, however, it is a tested capability package rather than a long prompt wearing a skill name.
 
-**Install the entire skill directory or ZIP, not only `SKILL.md`.** The references and scripts are part of the capability and its validation system.
+**Install the entire skill directory, not only `SKILL.md`.** The references and scripts are part of the capability and its validation system. Upload-only clients may use a temporary local ZIP of one complete folder; this repository and website do not maintain separate skill ZIP releases.
 
 ## Companion repo: MCPs for API data
 
@@ -51,13 +49,13 @@ For federal API data (SAM.gov, BLS wages, GSA CALC+ rates, GSA Per Diem, USASpen
 
 The two repos work together: MCPs handle data, skills handle deliverables.
 
-## Companion MCPs updated to 1.0.0 (August 2026)
+## Companion MCP safety release (August 2026)
 
-The MCP servers these skills call were rebuilt on v2 of the MCP Python SDK and published at 1.0.0. **Update them**, then read the two notes below, because both affect estimates you may already have produced.
+The eight MCP servers now include synchronized cross-process anti-burst pacing. Default intervals are three seconds for SAM.gov, BLS OEWS, USASpending, GSA CALC+, eCFR, and Federal Register, and four seconds for GSA Per Diem and Regulations.gov. This is a 1102tools safety safeguard, not a provider quota guarantee, and it cannot coordinate the same key across different computers. Current package versions are listed in the companion repository and universal setup guide.
 
 **Check any IGCE you built between roughly April and August 2026.** The BLS OEWS server was defaulting to a data year that BLS had withdrawn when it published the 2025 estimates. Wage lookups returned empty values rather than an error, which is indistinguishable from a privacy-suppressed cell. All three IGCE Builders and OT Cost Analysis price labor off that server. If an estimate from that window shows missing or suppressed wages, or you worked around them by hand, rebuild it.
 
-**The skills in this repo were also carrying the old vintage.** They hardcoded May 2024 as the BLS data vintage and computed the wage aging factor from it. Pairing an updated MCP with the old skill would age 2025 wages from a 2024 vintage, adding a full extra year of escalation and overstating every labor line by roughly one year of your escalation rate. The vintage is now May 2025, and each pricing skill carries a standing instruction to confirm it with `detect_latest_year()` before pricing rather than trusting the constant. **Re-download the four pricing skills.**
+**The April skills were also carrying the old vintage.** They hardcoded May 2024 as the BLS data vintage and computed the wage aging factor from it. Pairing an updated MCP with the old skill would age 2025 wages from a 2024 vintage, adding a full extra year of escalation. The vintage is now May 2025, and each pricing skill confirms it through the installed BLS operation rather than trusting a constant. Update the complete four pricing-skill folders if you still have an April copy.
 
 Apologies to anyone who lost time to either one. The MCP-side detail is in each server's `changelog.md`.
 
@@ -79,7 +77,7 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 
 ## The orchestration skills
 
-> **August 21, 2026 modernization:** OpenAI Codex using GPT-5.6 Sol restructured all six skills into portable, progressive-disclosure packages while preserving the correctness gates from the original test program. Behavioral gates were tested with explicit invocation in Codex CLI using GPT-5.6 Sol at xhigh reasoning and Claude Code CLI using Opus 5. FFP also received claude.ai Opus 5 Max and Codex Desktop coverage. Pricing fixtures passed formula-structure audits, independent Python recomputation, and LibreOffice formula execution. Document fixtures passed deterministic validation and all-page rendering review. Every skill directory includes a current [`test.md`](skills/igce-builder-ffp/test.md); open coverage and client-specific limitations are recorded there. Explicit invocation remains the deterministic CLI test path.
+> **August 21, 2026 modernization and expansion:** OpenAI Codex using GPT-5.6 Sol restructured the original six skills into portable, progressive-disclosure packages and added Market Research Builder and GovCon Growth Workflow as the seventh and eighth skills. The new launch gates were tested through explicit invocation in Codex CLI with GPT-5.6 Sol at xhigh and Claude Code CLI with Opus 5 at max effort plus Sonnet 5 smoke runs. Offline records, prompt-injection handling, numeric recomputation, LibreOffice conversion, citation extraction, and every rendered artifact page were checked. Each directory includes a current `test.md` with open coverage stated plainly.
 
 ### FAR contracts
 
@@ -96,6 +94,13 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 |-------|----------|-------------|
 | [OT Project Description Builder](skills/ot-project-description-builder) | None | Milestone-based project descriptions that distinguish Research OTs under 10 U.S.C. 4021, Prototype OTs under 10 U.S.C. 4022, and follow-on production under 10 U.S.C. 4022(f). Uses observable maturity evidence and go/no-go gates without forcing TRLs onto every project. |
 | [OT Cost Analysis](skills/ot-cost-analysis) | BLS OEWS, GSA CALC+, GSA Per Diem MCPs | Should-cost estimates and neutral price comparisons for OT agreements. Handles authority-specific contribution rules, consortium fees, fixed-price and cost-type milestones, and proposed-amount normalization without originating the Agreements Officer's determination. |
+
+### Research and growth
+
+| Skill | Requires | Description |
+|-------|----------|-------------|
+| [Market Research Builder](skills/market-research-builder) | SAM.gov, USASpending, web access for complete reports | Begins with a required workflow menu and separate acquisition-document intake, then produces evidence-backed FAR Part 10 findings or a validated report without originating reserved acquisition decisions. |
+| [GovCon Growth Workflow](skills/govcon-growth-workflow) | SAM.gov and USASpending; GSA CALC+ only for pricing context | Opportunity, bid-screen, competitor, recompete, teaming, agency-market, and pricing-context research for industry. Public evidence alone never produces a bid decision. |
 
 "Requires" lists the MCP servers each skill calls at runtime. Install them from the companion repo.
 

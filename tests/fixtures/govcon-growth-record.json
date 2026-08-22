@@ -1,0 +1,105 @@
+{
+  "schema_version": "1.0",
+  "skill": "govcon-growth-workflow",
+  "workflow_mode": "bid_screen",
+  "question": "Should the company continue evaluating an example help desk opportunity?",
+  "scope": {
+    "as_of_date": "2026-08-21",
+    "agency": "Example Agency",
+    "naics": ["541513"],
+    "psc": ["DA01"],
+    "period": "Current opportunity window"
+  },
+  "document_register": [
+    {
+      "file": "Example_Sources_Sought.pdf",
+      "document_type": "Sources sought notice",
+      "status": "public",
+      "role": "Describes a potential requirement",
+      "controlling_location": "Pages 1 through 4",
+      "gaps_or_conflicts": "No solicitation or final acquisition strategy is available"
+    }
+  ],
+  "user_context": [
+    "The company reports relevant help desk past performance and nationwide remote staffing capacity."
+  ],
+  "assumptions": [
+    "The public sources-sought notice may change before solicitation."
+  ],
+  "queries": [
+    {
+      "operation": "SAM.gov opportunity detail fixture",
+      "parameters": {"notice_id": "EXAMPLE-123"},
+      "retrieved_at": "2026-08-21T18:15:00Z",
+      "count": 1,
+      "limitations": "Synthetic offline fixture; not a live federal result"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E001",
+      "source_class": "document",
+      "title": "Example sources-sought notice",
+      "locator": "Example_Sources_Sought.pdf, pages 1-4",
+      "retrieved_at": "2026-08-21T18:10:00Z",
+      "as_of_date": "2026-08-20",
+      "fact": "The notice describes nationwide service and requests capability information.",
+      "limitations": "Sources sought is not a solicitation or commitment"
+    },
+    {
+      "id": "E002",
+      "source_class": "user_statement",
+      "title": "Company context",
+      "locator": "workflow intake",
+      "retrieved_at": "2026-08-21T18:12:00Z",
+      "as_of_date": "2026-08-21",
+      "fact": "The company reports relevant past performance and remote staffing capacity.",
+      "limitations": "Not independently verified"
+    },
+    {
+      "id": "E003",
+      "source_class": "calculation",
+      "title": "Offline pipeline value sum",
+      "locator": "validation.numeric_checks[0]",
+      "retrieved_at": "2026-08-21T18:16:00Z",
+      "as_of_date": "2026-08-21",
+      "fact": "Three synthetic candidate values total 6000000.00.",
+      "limitations": "Synthetic values used only for deterministic validation"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F001",
+      "text": "The public notice is relevant to the company's reported service experience, but it is only an early market-research signal.",
+      "evidence_ids": ["E001", "E002"]
+    }
+  ],
+  "inferences": [
+    {
+      "id": "I001",
+      "text": "Continued monitoring may be useful, but a bid decision is premature.",
+      "reasoning": "A solicitation, vehicle path, clearances, teaming approach, and risk and margin tolerances are not established.",
+      "uncertainty": "High",
+      "evidence_ids": ["E001", "E002"]
+    }
+  ],
+  "user_decisions": [],
+  "conflicts": [],
+  "unresolved_questions": [
+    "What vehicle access, clearance, teaming, and margin constraints apply?"
+  ],
+  "outputs": [],
+  "validation": {
+    "bid_context_complete": false,
+    "executive_summary": "This offline fixture demonstrates an evidence brief that deliberately withholds a bid decision.",
+    "missing_bid_context": ["Vehicle access", "Clearance requirements", "Teaming strategy", "Risk tolerance", "Margin tolerance"],
+    "assessment": "The notice is a relevant signal for monitoring. No bid or no-bid recommendation is made.",
+    "next_actions": ["Monitor for an official solicitation", "Confirm vehicle and clearance constraints", "Complete the internal bid-screen inputs"],
+    "numeric_checks": [
+      {"label": "Synthetic pipeline value", "components": [1000000, 2000000, 3000000], "reported_total": 6000000}
+    ],
+    "pipeline": [
+      {"candidate": "Example opportunity", "signal": "Sources sought", "timing": "Unconfirmed", "confidence": "Low", "next_validation": "Monitor SAM.gov notice and amendments"}
+    ]
+  }
+}
