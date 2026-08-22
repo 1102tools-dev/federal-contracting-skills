@@ -38,6 +38,5 @@
 ## Client release matrix
 
 - Codex CLI and Desktop.
-- Claude Code with current Opus and Sonnet models.
-- GitHub Copilot CLI and VS Code/Copilot.
+- Claude Desktop (Code) and Claude Code CLI, with current Opus and Sonnet models.
 - Explicit invocation is release blocking. Natural-language routing is release blocking for the precise policy prompts and advisory for broad ambiguous prompts.

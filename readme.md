@@ -8,7 +8,7 @@ Website: [1102tools.com](https://1102tools.com)
 
 The packaged [1102tools agents](https://github.com/1102tools-dev/federal-contracting-agents) already combine the appropriate workflow and source connections for one job. The beginner-facing [Agent Setup Guide](https://1102tools.com/downloads/1102tools-agent-setup-guide.pdf) covers Codex and Claude Code.
 
-Use this repository when you specifically want to inspect, adapt, or install a standalone skill. Follow the selected skill directory's README and testing record; the agent setup guide does not cover standalone installation.
+Use this repository when you specifically want to inspect, adapt, or install a standalone skill. Follow the selected skill directory's `SKILL.md` and its testing record; the agent setup guide does not cover standalone installation.
 
 **Before you build:** Not every acquisition capability should be an AI tool. Dozens of potential skills were evaluated and several were intentionally excluded because they cross the line from data assembly into professional judgment. See **[ai-boundaries.md](ai-boundaries.md)**.
 
