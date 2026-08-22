@@ -99,10 +99,16 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 
 | Skill | Requires | Description |
 |-------|----------|-------------|
-| [Market Research Builder](skills/market-research-builder) | SAM.gov, USASpending, web access for complete reports | Begins with a required workflow menu and separate acquisition-document intake, then produces evidence-backed FAR Part 10 findings or a validated report without originating reserved acquisition decisions. |
-| [GovCon Growth Workflow](skills/govcon-growth-workflow) | SAM.gov and USASpending; GSA CALC+ only for pricing context | Opportunity, bid-screen, competitor, recompete, teaming, agency-market, and pricing-context research for industry. Public evidence alone never produces a bid decision. |
+| [Market Research Builder](skills/market-research-builder) | SAM.gov, USASpending, and approved web access for complete reports | Begins with a required workflow menu and separate acquisition-document intake, then produces evidence-backed FAR Part 10 findings or a validated report without originating reserved acquisition decisions. Web research can use optional Tavily, the host's native search, or both. |
+| [GovCon Growth Workflow](skills/govcon-growth-workflow) | SAM.gov and USASpending; GSA CALC+ only for pricing context; approved web access by mode | Opportunity, bid-screen, competitor, recompete, teaming, agency-market, and pricing-context research for industry. Web research can use optional Tavily, the host's native search, or both. Public evidence alone never produces a bid decision. |
 
 "Requires" lists the MCP servers each skill calls at runtime. Install them from the companion repo.
+
+### Optional web providers and privacy
+
+The two research skills are provider-aware but do not install a search service. Each research plan requires the user to choose Tavily with native fallback, native search only, Tavily only, or no public web before any search request. The plan shows the exact sanitized terms and public URLs first. Uploaded document text, proprietary or procurement-sensitive information, PII, CUI, private URLs, and credentials never enter a public search provider.
+
+The GovCon Growth and Market Research agent packages configure Tavily's official keyless remote MCP. Tavily is a third-party service, not an 1102tools service, and its privacy terms apply. Standalone users may rely only on their host's native search or separately configure Tavily. Tavily is optional and is never the sole supported path.
 
 ## Install
 
