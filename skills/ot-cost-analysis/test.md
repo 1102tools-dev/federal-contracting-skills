@@ -47,3 +47,7 @@ Surface: Codex CLI 0.149.0-alpha.4, GPT-5.6 Sol, extra-high reasoning, explicit 
 - No live BLS, CALC+, Per Diem, SAM.gov, or other federal API call was made during this pass.
 - Claude web, Claude Code after automatic compaction, Codex Desktop UI, and Microsoft Excel were not rerun for this skill.
 - Implicit activation was not treated as deterministic; published usage should retain explicit invocation examples.
+
+## August 23 host-capability correction
+
+A normal Codex CLI mixed-milestone workbook run preserved approvals and stopped because the host's governing spreadsheet skill did not expose its supported dependency loader. Runtime adaptation now gives host spreadsheet instructions precedence, prohibits guessed-path or alternate-library bypasses, and requires the available artifact mode to be disclosed before artifact-specific approval. A host without the supported workbook path may deliver only a structured JSON specification plus Markdown or CSV tables, never a completed-workbook claim. Desktop and Claude workbook lanes remain the full-artifact gates.

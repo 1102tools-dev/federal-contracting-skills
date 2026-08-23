@@ -27,7 +27,14 @@ If a stable operation is not exposed, inspect available schemas for an equivalen
 
 ## Workbook authoring and deterministic validation
 
-Use a host-supported spreadsheet authoring capability when it can create an `.xlsx` with the exact formulas, cell formats, sheet names, and source notes required by the workbook specification. Otherwise use Python and openpyxl for workbook construction. The authoring route does not change any workbook or validation gate.
+Follow the host's authoritative spreadsheet instructions before choosing an authoring route. Use a host-supported spreadsheet authoring capability when it can create an `.xlsx` with the exact formulas, cell formats, sheet names, and source notes required by the workbook specification. Use Python and openpyxl only when the host does not provide a governing spreadsheet workflow that prohibits or hard-stops that substitute. Never bypass a host spreadsheet hard stop by guessing dependency paths or switching authoring libraries.
+
+Before the first artifact-specific approval, state which mode is available:
+
+- **Full workbook mode:** the host can create and deterministically validate the required `.xlsx`.
+- **Structured fallback mode:** the host cannot use its supported workbook path. Preserve all approved inputs and offer the workbook specification as structured JSON plus Markdown or CSV tables, or ask the user to continue in a maintained client surface that supports workbook generation. Do not label the fallback as a completed workbook.
+
+The authoring route does not change any workbook or validation gate.
 
 Confirm that the runtime can execute Python 3.10 or later and import openpyxl before Step 8.5. The bundled deterministic validators require them even when another capability authored the workbook. If they are unavailable, report that deterministic validation cannot be completed and do not present the workbook as fully validated.
 

@@ -19,6 +19,10 @@ Historical April tests remain in [testing.md](testing.md). This file records tes
 | Stage A terminator | Only decomposition confirmation, no Stage B question | Pass |
 | Keyed federal APIs | No call during boundary or Stage A | Pass |
 
+## August 23 host-capability correction
+
+Runtime adaptation now follows a governing host spreadsheet workflow and its hard stops before choosing Python/openpyxl. When the supported workbook path is unavailable, the skill must disclose structured fallback mode before artifact-specific approval and may deliver only a structured JSON specification plus Markdown or CSV tables. Installed-client degradation replay remains an agent-package gate.
+
 ## Workbook fixture
 
 A one-category T&M fixture with cloud-hosting materials was generated outside the repository.

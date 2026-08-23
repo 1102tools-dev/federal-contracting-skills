@@ -48,3 +48,7 @@ Six fault-injection workbooks were rejected for their intended defects, includin
 ## Open limitation
 
 Claude Code post-compaction replay was not tested with a controlled harness. The core keeps every load-bearing gate front-loaded, and detailed references remain one level deep.
+
+## August 23 host-capability correction
+
+A normal Codex CLI run correctly stopped because the host's governing spreadsheet skill did not expose its supported dependency loader. Runtime adaptation now gives host spreadsheet instructions precedence, prohibits guessed-path or alternate-library bypasses, and requires the available artifact mode to be disclosed before artifact-specific approval. A host without the supported workbook path may deliver only a structured JSON specification plus Markdown or CSV tables, never a completed-workbook claim. Desktop and Claude workbook lanes remain the full-artifact gates.

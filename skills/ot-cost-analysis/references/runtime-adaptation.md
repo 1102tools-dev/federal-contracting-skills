@@ -16,7 +16,9 @@ If the stable operation is absent, inspect the same server for an equivalent sch
 
 ## Workbook authoring
 
-Use a host spreadsheet workflow when it preserves exact formulas, formats, names, and source notes. Otherwise use Python and openpyxl. Resolve bundled scripts relative to the skill directory. Require Python 3.10 or later and openpyxl for deterministic validation.
+Follow the host's authoritative spreadsheet instructions before choosing an authoring route. Use a host spreadsheet workflow when it preserves exact formulas, formats, names, and source notes. Use Python and openpyxl only when the host does not provide a governing spreadsheet workflow that prohibits or hard-stops that substitute. Never bypass a host spreadsheet hard stop by guessing dependency paths or switching authoring libraries. Resolve bundled scripts relative to the skill directory. Require Python 3.10 or later and openpyxl for deterministic validation.
+
+Before the first artifact-specific approval, state whether full workbook mode is available. If it is not, preserve all approved inputs and offer the workbook specification as structured JSON plus Markdown or CSV tables, or ask the user to continue in a maintained client surface that supports workbook generation. Do not label the fallback as a completed workbook.
 
 ## Formula execution
 

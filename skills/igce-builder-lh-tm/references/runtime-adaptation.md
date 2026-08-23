@@ -16,7 +16,9 @@ Declared MCP dependencies do not prove that a server is installed, authenticated
 
 ## Files and Python
 
-Use the host's file-reading, file-writing, and Python capabilities. Resolve referenced files relative to this skill directory when possible. If the host does not expose the skill directory, report which reference or script cannot be loaded and stop before a step that depends on it.
+Use the host's file-reading, file-writing, and Python capabilities. Follow any authoritative host spreadsheet workflow and its hard stops. Use Python and openpyxl for workbook authoring only when no governing host spreadsheet workflow prohibits that substitute; never guess dependency paths or bypass a host hard stop. Resolve referenced files relative to this skill directory when possible. If the host does not expose the skill directory, report which reference or script cannot be loaded and stop before a step that depends on it.
+
+Before the first artifact-specific approval, state whether full workbook mode is available. If it is not, preserve all approved inputs and offer the workbook specification as structured JSON plus Markdown or CSV tables, or ask the user to continue in a maintained client surface that supports workbook generation. Do not label the fallback as a completed workbook.
 
 ## Formula verification
 

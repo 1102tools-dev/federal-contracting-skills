@@ -38,6 +38,8 @@ class SkillStaticTests(unittest.TestCase):
         self.assertIn("Restrictions do not suppress activation", market)
         self.assertIn("never disables this skill or permits a generic answer", market)
         self.assertIn("No research, file generation, capability preflight, web-research request, or MCP tool invocation occurs first", growth)
+        self.assertIn("specific opportunity, bid screen, attached notice, company, or desired analysis", growth)
+        self.assertIn("Do not replace the menu with intake questions", growth)
         for text in (market, growth):
             self.assertIn("Native web only", text)
             self.assertIn("Native web with Tavily fallback", text)
@@ -96,6 +98,22 @@ class SkillStaticTests(unittest.TestCase):
             self.assertIn("Zero results, thin or inconclusive results", policy)
             self.assertIn("not local or private browsing", policy)
             self.assertIn("Approved federal MCP calls and supplied-document analysis remain permitted", policy)
+
+    def test_spreadsheet_host_precedence_and_fallback_are_explicit(self):
+        paths = [
+            ROOT / "skills/igce-builder-cr/references/runtime-adaptation.md",
+            ROOT / "skills/igce-builder-ffp/references/runtime-adaptation.md",
+            ROOT / "skills/igce-builder-lh-tm/references/runtime-adaptation.md",
+            ROOT / "skills/ot-cost-analysis/references/runtime-adaptation.md",
+        ]
+        for path in paths:
+            text = path.read_text(encoding="utf-8")
+            with self.subTest(path=path.name):
+                self.assertIn("host", text.lower())
+                self.assertIn("hard stop", text.lower())
+                self.assertIn("structured JSON", text)
+                self.assertIn("Markdown or CSV", text)
+                self.assertIn("Do not label the fallback as a completed workbook", text)
 
 
 class RecordValidationTests(unittest.TestCase):

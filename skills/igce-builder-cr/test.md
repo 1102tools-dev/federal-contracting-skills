@@ -18,6 +18,10 @@ Historical April tests remain in [testing.md](testing.md). This file records tes
 | Raw exploratory-research BAA with no contract type | Do not self-select CPFF; decompose; Stage A only | Claude bundled an assumptions-or-hold choice into Stage A | Instruction strengthened; exact rerun ended at decomposition confirmation and passed |
 | Keyed federal APIs | No calls in boundary or Stage A tests | None | Pass |
 
+## August 23 host-capability correction
+
+Runtime adaptation now follows a governing host spreadsheet workflow and its hard stops before choosing Python/openpyxl. When the supported workbook path is unavailable, the skill must disclose structured fallback mode before artifact-specific approval and may deliver only a structured JSON specification plus Markdown or CSV tables. Installed-client degradation replay remains an agent-package gate.
+
 ## Workbook fixture
 
 A one-labor-category CPFF fixture with non-fee-bearing travel was generated outside the repository. Results:
