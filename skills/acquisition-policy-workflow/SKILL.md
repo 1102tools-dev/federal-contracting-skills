@@ -84,6 +84,8 @@ Read [launch-menu-and-framing.md](references/launch-menu-and-framing.md). Establ
 - Government, industry, or neutral lens when impact differs by audience.
 - Desired chat or brief output.
 
+For mode 2 agency-policy status, procurement timing can change deviation treatment. If the user has not supplied it, ask for the relevant solicitation, award, modification, option, or performance date before asking about an audience lens. Do not ask for an audience lens for a status-only answer unless the user also requests impact analysis.
+
 Ask whether the user has internal or additional policy documents only when they may materially affect the requested status. If supplied, follow [document-intake.md](references/document-intake.md).
 
 ## Stage 3: approve the source plan when required

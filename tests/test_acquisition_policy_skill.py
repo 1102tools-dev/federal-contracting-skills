@@ -50,6 +50,8 @@ class PolicySkillStaticTests(unittest.TestCase):
         self.assertIn("Never describe a proposed rule", core)
         self.assertIn("Public comments are stakeholder evidence", core)
         self.assertIn("Do not substitute direct HTTP", core)
+        self.assertIn("ask for the relevant solicitation, award, modification, option, or performance date", core)
+        self.assertIn("Do not ask for an audience lens for a status-only answer", core)
 
 
 class PolicyRecordTests(unittest.TestCase):
