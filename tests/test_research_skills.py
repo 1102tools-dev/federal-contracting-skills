@@ -67,6 +67,15 @@ class SkillStaticTests(unittest.TestCase):
         self.assertIn("Ctrl+A (Cmd+A on Mac), then F9 (or Fn+F9)", ot)
 
     def test_native_web_is_recommended_and_tavily_requires_explicit_selection(self):
+        skill_texts = [
+            (ROOT / "skills/market-research-workflow/SKILL.md").read_text(encoding="utf-8"),
+            (ROOT / "skills/govcon-growth-workflow/SKILL.md").read_text(encoding="utf-8"),
+        ]
+        for skill in skill_texts:
+            self.assertIn("**Provider-selection hard gate:**", skill)
+            self.assertIn("`OK`, `go ahead`, `native`", skill)
+            self.assertIn("preserve approved federal MCP", skill)
+            self.assertIn("without asking the user to create an account or pay", skill)
         policies = [
             (ROOT / "skills/market-research-workflow/references/web-provider-policy.md").read_text(encoding="utf-8"),
             (ROOT / "skills/govcon-growth-workflow/references/web-provider-policy.md").read_text(encoding="utf-8"),
@@ -86,6 +95,7 @@ class SkillStaticTests(unittest.TestCase):
             self.assertIn("an ambiguous response such as `native` does not select a mode", policy)
             self.assertIn("Zero results, thin or inconclusive results", policy)
             self.assertIn("not local or private browsing", policy)
+            self.assertIn("Approved federal MCP calls and supplied-document analysis remain permitted", policy)
 
 
 class RecordValidationTests(unittest.TestCase):
