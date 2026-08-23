@@ -114,6 +114,8 @@ For T&M, include one row per item:
 
 Material handling must be a supported indirect cost clearly excluded from labor rates. It is not fee or profit. Do not apply the labor multiplier, G&A, or a default handling percentage.
 
+Use numeric zero when no supported basis was supplied. When a user supplies a supported accounting or solicitation basis, record every nonzero material-handling cell in the validation sidecar under `material_handling_assertions` with the exact cell, numeric value or formula, and basis text. The bundled validator rejects nonzero or formula-driven material handling that is not disclosed there.
+
 For LH, show `Materials Not Applicable to Labor-Hour Contract` and numeric zero.
 
 ## 6. Methodology

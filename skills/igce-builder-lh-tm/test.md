@@ -23,6 +23,19 @@ Historical April tests remain in [testing.md](testing.md). This file records tes
 
 Runtime adaptation now follows a governing host spreadsheet workflow and its hard stops before choosing Python/openpyxl. When the supported workbook path is unavailable, the skill must disclose structured fallback mode before artifact-specific approval and may deliver only a structured JSON specification plus Markdown or CSV tables. Installed-client degradation replay remains an agent-package gate.
 
+## August 23 material-handling validator correction
+
+A multi-period Claude T&M qualification workbook exposed a validator-coverage defect: an injected undisclosed 7% material-handling formula passed the canonical validator even though an independent integrity audit rejected it. The delivered workbook was not defective; all of its handling inputs were numeric zero.
+
+The canonical validator now audits every populated cell beneath a `Material Handling` header. Zero remains the default. A nonzero numeric input or formula passes only when `material_handling_assertions` identifies the exact cell and value or formula and records a non-empty user-supplied accounting or solicitation basis.
+
+Deterministic regression results:
+
+- Valid numeric-zero handling fixture: pass through the integrated validator.
+- Undisclosed `=D2*E2*0.07` injection: rejected through the integrated validator.
+- The same formula with an exact sidecar assertion and disclosed basis: pass.
+- Delivered seven-sheet Claude T&M workbook: pass after LibreOffice recalculation and cached-value audit.
+
 ## Workbook fixture
 
 A one-category T&M fixture with cloud-hosting materials was generated outside the repository.

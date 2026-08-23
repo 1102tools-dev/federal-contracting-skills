@@ -82,6 +82,125 @@ def check_formula(
             failures.append(f"{sheet.title}!{coordinate} formula contains forbidden text {item}")
 
 
+def material_handling_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
+    """Reject undisclosed material-handling amounts or formulas.
+
+    Zero remains the default. A nonzero numeric input or formula is allowed only
+    when the validation sidecar identifies the exact cell and value/formula and
+    records the user-supplied accounting or solicitation basis.
+    """
+
+    failures: list[str] = []
+    if "Materials Detail" not in workbook.sheetnames:
+        return failures
+
+    assumptions = payload.get("assumptions", {})
+    contract_type = assumptions.get("contract_type", "") if isinstance(assumptions, dict) else ""
+    is_tm = isinstance(contract_type, str) and contract_type.upper() in {"T&M", "TM"}
+    sheet = workbook["Materials Detail"]
+
+    headers: list[Any] = []
+    for row in sheet.iter_rows():
+        for cell in row:
+            label = re.sub(r"[^A-Z0-9]+", " ", str(cell.value or "").upper()).strip()
+            if label in {
+                "MATERIAL HANDLING",
+                "MATERIAL HANDLING COST",
+                "MATERIAL HANDLING INDIRECT",
+                "MATERIAL HANDLING INDIRECT COST",
+                "APPLICABLE MATERIAL HANDLING INDIRECT COST",
+            }:
+                headers.append(cell)
+    if is_tm and not headers:
+        failures.append("Materials Detail has no Material Handling column")
+        return failures
+
+    raw_assertions = payload.get("material_handling_assertions", [])
+    if not isinstance(raw_assertions, list):
+        raise InputError("material_handling_assertions must be an array")
+
+    assertions: dict[str, dict[str, Any]] = {}
+    for index, assertion in enumerate(raw_assertions):
+        if not isinstance(assertion, dict):
+            raise InputError(f"material_handling_assertions[{index}] must be an object")
+        reference = assertion.get("cell")
+        basis = assertion.get("basis")
+        expected = assertion.get("equals")
+        if not isinstance(reference, str):
+            raise InputError(f"material_handling_assertions[{index}].cell must be a string")
+        if not isinstance(basis, str) or not basis.strip():
+            raise InputError(
+                f"material_handling_assertions[{index}].basis must be a non-empty string"
+            )
+        if isinstance(expected, bool) or not isinstance(expected, (int, float, str)):
+            raise InputError(
+                f"material_handling_assertions[{index}].equals must be a number or formula string"
+            )
+        if isinstance(expected, (int, float)) and (
+            not math.isfinite(float(expected)) or float(expected) < 0
+        ):
+            raise InputError(
+                f"material_handling_assertions[{index}].equals must be finite and non-negative"
+            )
+        if isinstance(expected, str) and not expected.startswith("="):
+            raise InputError(
+                f"material_handling_assertions[{index}].equals string must be a formula"
+            )
+        sheet_name, coordinate = parse_cell_ref(reference)
+        if sheet_name != "Materials Detail":
+            raise InputError(
+                f"material_handling_assertions[{index}].cell must reference Materials Detail"
+            )
+        normalized_reference = f"Materials Detail!{coordinate}"
+        if normalized_reference in assertions:
+            raise InputError(f"duplicate material-handling assertion: {reference}")
+        assertions[normalized_reference] = {
+            "equals": expected,
+            "basis": basis.strip(),
+        }
+
+    inspected: set[str] = set()
+    for header in headers:
+        for row_number in range(header.row + 1, sheet.max_row + 1):
+            cell = sheet.cell(row_number, header.column)
+            value = cell.value
+            if value is None or value == "":
+                continue
+            reference = f"Materials Detail!{cell.coordinate}"
+            inspected.add(reference)
+            assertion = assertions.get(reference)
+
+            if isinstance(value, bool):
+                failures.append(f"{reference} must be a numeric input or disclosed formula")
+                continue
+            if isinstance(value, (int, float)) and float(value) == 0 and assertion is None:
+                continue
+            if not is_tm:
+                failures.append(f"{reference} must be zero for a Labor-Hour estimate")
+                continue
+            if assertion is None:
+                failures.append(
+                    f"{reference} contains undisclosed material handling {value!r}; "
+                    "zero is required unless the sidecar records the exact value/formula and basis"
+                )
+                continue
+
+            expected = assertion["equals"]
+            if isinstance(expected, str):
+                if not isinstance(value, str) or normalize_formula(value) != normalize_formula(expected):
+                    failures.append(f"{reference} does not match its disclosed material-handling formula")
+            elif isinstance(value, bool) or not isinstance(value, (int, float)):
+                failures.append(f"{reference} is not the disclosed numeric material-handling input")
+            elif not math.isclose(float(value), float(expected), rel_tol=0, abs_tol=1e-9):
+                failures.append(
+                    f"{reference} is {float(value):.6f}, expected disclosed input {float(expected):.6f}"
+                )
+
+    for reference in sorted(set(assertions) - inspected):
+        failures.append(f"material-handling assertion references no populated handling cell: {reference}")
+    return failures
+
+
 def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
     failures: list[str] = []
     required_sheets = payload.get("required_sheets", DEFAULT_SHEETS)
@@ -197,6 +316,8 @@ def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
                             f"{sheet_name}!{cell.coordinate} uses Scenario Analysis row {referenced_row} "
                             "as a cross-sheet input; that row is Aged Annual Wage, not Direct Labor"
                         )
+
+    failures.extend(material_handling_audit(workbook, payload))
 
     assertions = payload.get("formula_assertions", [])
     if not isinstance(assertions, list):
