@@ -31,4 +31,4 @@ Registration does not establish capability or responsibility. An active opportun
 
 If a required server, operation, credential, or schema is missing, report the exact capability and affected research question. Offer a narrower product and obtain approval. Do not call the upstream API directly.
 
-Agent configurations pin `sam-gov-mcp==1.0.8` and `usaspending-gov-mcp==1.0.4` with an explicit three-second pacing safeguard. USASpending uses the `acquisition-agent` tool profile in packaged agents while the standalone server retains its complete tool catalog.
+Agent configurations pin `sam-gov-mcp==1.0.9` and `usaspending-gov-mcp==1.0.4` with an explicit three-second pacing safeguard. USASpending uses the `acquisition-agent` tool profile in packaged agents while the standalone server retains its complete tool catalog.
