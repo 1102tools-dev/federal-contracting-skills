@@ -51,9 +51,15 @@ class SkillStaticTests(unittest.TestCase):
 
     def test_behavioral_regression_gates_are_explicit(self):
         market = (ROOT / "skills/market-research-workflow/SKILL.md").read_text(encoding="utf-8")
+        market_web = (ROOT / "skills/market-research-workflow/references/web-research-method.md").read_text(encoding="utf-8")
         policy = (ROOT / "skills/acquisition-policy-workflow/SKILL.md").read_text(encoding="utf-8")
         ot = (ROOT / "skills/ot-project-description-builder/SKILL.md").read_text(encoding="utf-8")
         self.assertIn("A bare `Approved` does not approve multiple reserved decisions", market)
+        for text in (market, market_web):
+            self.assertIn("newly discovered URL", text)
+            self.assertIn("explicit updated approval", text)
+            self.assertIn("Provider fallback", text)
+        self.assertLess(market.index("**Exact-URL approval:**"), market.index("## Stage 7: evidence gathering"))
         self.assertIn("record a structured conflict and report `documented_conflict`", policy)
         self.assertIn("Ctrl+A (Cmd+A on Mac), then F9 (or Fn+F9)", ot)
 

@@ -47,11 +47,12 @@ Read supporting files only when their stage is reached:
 7. **Approval before calls:** Present the research plan, sources, query scope, limits, sanitized parameters, exact public URLs proposed for extraction, and the four web-provider choices. Obtain explicit provider selection and plan approval before any research tool invocation.
 8. **Provider choice in every plan:** A plan-approval response is invalid unless it ends with all four provider choices, the Tavily third-party disclosure, and a question asking the user to select a provider mode and approve the plan. Never substitute a generic plan-approval question.
 9. **MCP boundary:** Use installed MCP capabilities for SAM.gov and USASpending. Do not improvise direct API calls, shell requests, or alternate public endpoints when a required MCP is missing.
-10. **Decision boundary:** Do not decide commerciality, set-aside or socioeconomic program, contract type, competition strategy, consolidation or bundling, source responsibility or capability, price reasonableness, or final acquisition strategy.
-11. **Evidence integrity:** Label sourced fact, inference, user statement, user decision, and unresolved question. Every finding in the research record cites stable evidence IDs.
-12. **Honest completeness:** Without web access and commercial-market evidence, label the result a federal-data desk-research draft. Do not call it complete or contract-file-ready.
-13. **Artifact validation:** A generated `.docx` must pass structural validation, independent numeric recomputation, LibreOffice open/save and PDF conversion, text and citation extraction, and visual inspection of every page.
-14. **Explicit decision approval:** A bare `Approved` does not approve multiple reserved decisions or unresolved items. It counts only when the immediately preceding response presented one complete numbered decision-and-disposition register and asked the user to approve that exact register. Otherwise require an explicit response for each `D###` and `U###`, including an express instruction such as `defer U001 and include it as a limitation` when an item remains unresolved.
+10. **Exact-URL approval:** Plan approval authorizes extraction only from the exact public URLs listed in that approved plan. A URL discovered later through search results, page content, redirects, or tool output is unapproved. Add it to a pending-URL register, show the exact sanitized URL, and stop until the user gives explicit updated approval. Do not fetch or extract the newly discovered URL first. Provider fallback never bypasses this gate.
+11. **Decision boundary:** Do not decide commerciality, set-aside or socioeconomic program, contract type, competition strategy, consolidation or bundling, source responsibility or capability, price reasonableness, or final acquisition strategy.
+12. **Evidence integrity:** Label sourced fact, inference, user statement, user decision, and unresolved question. Every finding in the research record cites stable evidence IDs.
+13. **Honest completeness:** Without web access and commercial-market evidence, label the result a federal-data desk-research draft. Do not call it complete or contract-file-ready.
+14. **Artifact validation:** A generated `.docx` must pass structural validation, independent numeric recomputation, LibreOffice open/save and PDF conversion, text and citation extraction, and visual inspection of every page.
+15. **Explicit decision approval:** A bare `Approved` does not approve multiple reserved decisions or unresolved items. It counts only when the immediately preceding response presented one complete numbered decision-and-disposition register and asked the user to approve that exact register. Otherwise require an explicit response for each `D###` and `U###`, including an express instruction such as `defer U001 and include it as a limitation` when an item remains unresolved.
 
 ## Stage 1: launch menu
 
@@ -145,6 +146,8 @@ Report a missing, unauthenticated, or unavailable required capability precisely.
 ## Stage 7: evidence gathering
 
 Maintain a normalized research record following [evidence-contract.md](references/evidence-contract.md). Record the approved web mode, disclosure acknowledgment, planned and used providers, and fallback events. For every query or retrieval, record the provider, source or semantic operation, sanitized parameters, retrieval time, result count or coverage, and limitations.
+
+Before each public-page fetch or extraction, compare the target against the exact public URLs in the latest approved plan. Put any newly discovered URL in a pending-URL register, present its exact sanitized value for updated approval, and stop. Search-result discovery, redirects, page links, tool output, and provider fallback do not authorize retrieval from a new URL.
 
 Prefer primary and official sources. Separate supplied-document evidence from MCP evidence, official web evidence, other web evidence, user statements, and model inferences.
 
