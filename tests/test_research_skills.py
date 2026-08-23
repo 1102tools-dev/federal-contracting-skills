@@ -83,6 +83,9 @@ class SkillStaticTests(unittest.TestCase):
             self.assertNotIn("Tavily with native fallback (Recommended)", policy)
             self.assertIn("Never request payment, create an account, or switch providers for the user", policy)
             self.assertIn("stop and obtain new approval rather than proceeding", policy)
+            self.assertIn("an ambiguous response such as `native` does not select a mode", policy)
+            self.assertIn("Zero results, thin or inconclusive results", policy)
+            self.assertIn("not local or private browsing", policy)
 
 
 class RecordValidationTests(unittest.TestCase):
@@ -181,6 +184,20 @@ class RecordValidationTests(unittest.TestCase):
                 result = self.validator.validate_record(record)
                 self.assertEqual(result["status"], "pass", result["failures"])
 
+    def test_provider_mode_and_order_are_exact(self):
+        reversed_combined = self.web_fixture(
+            "native_with_tavily_fallback",
+            ["tavily", "native_web"],
+        )
+        reversed_result = self.validator.validate_record(reversed_combined)
+        self.assertEqual(reversed_result["status"], "fail")
+        self.assertTrue(any("provider order" in item for item in reversed_result["failures"]))
+
+        unknown = self.web_fixture("automatic", ["native_web"])
+        unknown_result = self.validator.validate_record(unknown)
+        self.assertEqual(unknown_result["status"], "fail")
+        self.assertTrue(any("mode is not approved" in item for item in unknown_result["failures"]))
+
     def test_combined_mode_records_approved_fallback(self):
         record = self.web_fixture(
             "native_with_tavily_fallback",
@@ -191,7 +208,7 @@ class RecordValidationTests(unittest.TestCase):
             "timestamp": "2026-08-21T19:05:00Z",
             "failed_provider": "native_web",
             "replacement_provider": "tavily",
-            "reason": "Simulated rate limit",
+            "reason": "rate_limited",
         }]
         record["queries"].append({
             "id": "Q002",
@@ -220,6 +237,24 @@ class RecordValidationTests(unittest.TestCase):
         result = self.validator.validate_record(record)
         self.assertEqual(result["status"], "fail")
         self.assertTrue(any("native_web-to-tavily" in item for item in result["failures"]))
+
+    def test_combined_mode_rejects_nonfailure_fallback_reasons(self):
+        for reason in ("zero_results", "thin_results", "user_declined_permission", "content_refusal"):
+            with self.subTest(reason=reason):
+                record = self.web_fixture(
+                    "native_with_tavily_fallback",
+                    ["native_web", "tavily"],
+                    ["native_web", "tavily"],
+                )
+                record["web_research"]["fallback_events"] = [{
+                    "timestamp": "2026-08-21T19:05:00Z",
+                    "failed_provider": "native_web",
+                    "replacement_provider": "tavily",
+                    "reason": reason,
+                }]
+                result = self.validator.validate_record(record)
+                self.assertEqual(result["status"], "fail")
+                self.assertTrue(any("approved native failure class" in item for item in result["failures"]))
 
     def test_legacy_tavily_first_combined_mode_is_readable_but_not_artifact_ready(self):
         record = self.web_fixture(

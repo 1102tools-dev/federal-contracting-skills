@@ -72,6 +72,18 @@ WEB_MODES = {
     "no_public_web": (),
 }
 LEGACY_COMBINED_MODE = "tavily_with_native_fallback"
+ALLOWED_FALLBACK_REASONS = {
+    "capability_absent",
+    "connection_failure",
+    "timeout",
+    "authentication_failure",
+    "rate_limited",
+    "server_error",
+    "malformed_response",
+    "missing_required_operation",
+    "incompatible_operation_schema",
+    "runtime_error",
+}
 QUERY_PROVIDERS = {"federal_mcp", "tavily", "native_web"}
 TAVILY_OPERATIONS = {"tavily_search", "tavily_extract"}
 MARKET_SKILLS = {"market-research-workflow", "market-research-builder"}
@@ -246,6 +258,10 @@ def validate_record(record: Any, *, purpose: str = "artifact") -> dict[str, Any]
                 for field in ("timestamp", "reason"):
                     if not isinstance(event.get(field), str) or not event.get(field, "").strip():
                         failures.append(f"web_research.fallback_events[{index}].{field} must be a non-empty string")
+                if mode == "native_with_tavily_fallback" and event.get("reason") not in ALLOWED_FALLBACK_REASONS:
+                    failures.append(
+                        f"web_research.fallback_events[{index}].reason is not an approved native failure class"
+                    )
 
     serialized = json.dumps(record, ensure_ascii=False)
     for pattern in SECRET_PATTERNS:

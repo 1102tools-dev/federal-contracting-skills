@@ -43,3 +43,4 @@ All federal results in the fixture are synthetic. No live federal API call was m
 - The public-web menu now orders Native web only (Recommended), Native web with Tavily fallback, Tavily only, and No public web.
 - Deterministic validation requires the combined mode to start with `native_web`, permits fallback only from `native_web` to `tavily`, and preserves the retired Tavily-first mode only for read-and-migrate intake.
 - Native-only failure must stop for a new selection. Account creation, payment, and unapproved provider switching are prohibited. Installed-client behavioral replay remains required at the agent-package release layer.
+- Only ten enumerated native failure classes can produce a combined-mode fallback event. Deterministic negatives reject zero or thin results, user-declined permission, content refusal, reversed provider order, and unknown modes.
