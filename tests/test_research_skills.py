@@ -78,6 +78,8 @@ class SkillStaticTests(unittest.TestCase):
             self.assertIn("`OK`, `go ahead`, `native`", skill)
             self.assertIn("preserve approved federal MCP", skill)
             self.assertIn("without asking the user to create an account or pay", skill)
+            self.assertIn("without paraphrasing", skill)
+            self.assertIn("zero, thin, or inconclusive results do not", skill)
         policies = [
             (ROOT / "skills/market-research-workflow/references/web-provider-policy.md").read_text(encoding="utf-8"),
             (ROOT / "skills/govcon-growth-workflow/references/web-provider-policy.md").read_text(encoding="utf-8"),
