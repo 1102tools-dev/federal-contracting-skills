@@ -15,7 +15,7 @@ Tested August 21, 2026 from a clean temporary installation of the complete skill
 - Both `quick_validate.py` and the repository eight-skill validator passed.
 - The shared evidence contract, web-provider policy, and research-record validator copies were byte-identical.
 - Four provider modes validated. Unapproved providers, unapproved plans, missing disclosure acknowledgment, unknown evidence IDs, sensitive query keys, credential-like content, local/private/internal URLs, and signed or credential-bearing URLs failed as expected.
-- An approved Tavily-to-native fallback record passed with provider, timestamp, reason, and sanitized query preserved.
+- An approved native-to-Tavily fallback record passed with provider, timestamp, reason, and sanitized query preserved. Reversed Tavily-to-native fallback and the retired Tavily-first combined mode failed new artifact validation; the retired mode remains readable for refresh migration.
 - The offline evidence-brief fixture passed record validation, required-section validation, evidence-ID coverage, bid-decision boundary checks, and independent recomputation of `6,000,000.00` from three source values.
 - The incomplete company-context fixture correctly produced `Evidence Brief - No Bid Decision` and listed missing vehicle, clearance, teaming, risk, and margin inputs.
 - LibreOffice opened the DOCX and converted it to a three-page PDF.
@@ -36,3 +36,9 @@ All federal results in the fixture are synthetic. No live federal API call was m
 - Source calls now carry stable `Q###` identifiers. Public or federal evidence must cite the source call whose recorded retrieval timestamp it uses.
 - The deterministic validator rejects evidence stamped with report-build time when that timestamp does not match a linked source call.
 - Clean-client artifact replay remains required at the agent-package release layer.
+
+## August 23 native-first provider regression
+
+- The public-web menu now orders Native web only (Recommended), Native web with Tavily fallback, Tavily only, and No public web.
+- Deterministic validation requires the combined mode to start with `native_web`, permits fallback only from `native_web` to `tavily`, and preserves the retired Tavily-first mode only for read-and-migrate intake.
+- Native-only failure must stop for a new selection. Account creation, payment, and unapproved provider switching are prohibited. Installed-client behavioral replay remains required at the agent-package release layer.

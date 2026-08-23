@@ -107,7 +107,7 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 
 ### Optional web providers and privacy
 
-The two research skills are provider-aware but do not install a search service. Each research plan requires the user to choose Tavily with native fallback, native search only, Tavily only, or no public web before any search request. The plan shows the exact sanitized terms and public URLs first. Uploaded document text, proprietary or procurement-sensitive information, PII, CUI, private URLs, and credentials never enter a public search provider.
+The two research skills are provider-aware but do not install a search service. Each research plan requires the user to choose Native web only, Native web with Tavily fallback, Tavily only, or No public web before any search request. Native web only is recommended on the maintained Codex and Claude clients; Tavily remains an explicitly selected portability option. The plan shows the exact sanitized terms and public URLs first. Uploaded document text, proprietary or procurement-sensitive information, PII, CUI, private URLs, and credentials never enter a public search provider.
 
 The GovCon Growth and Market Research agent packages configure Tavily's official keyless remote MCP. Tavily is a third-party service, not an 1102tools service, and its privacy terms apply. Standalone users may rely only on their host's native search or separately configure Tavily. Tavily is optional and is never the sole supported path.
 

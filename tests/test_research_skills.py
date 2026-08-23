@@ -39,10 +39,10 @@ class SkillStaticTests(unittest.TestCase):
         self.assertIn("never disables this skill or permits a generic answer", market)
         self.assertIn("No research, file generation, capability preflight, web-research request, or MCP tool invocation occurs first", growth)
         for text in (market, growth):
-            self.assertIn("Tavily with native fallback", text)
-            self.assertIn("native only", text)
+            self.assertIn("Native web only", text)
+            self.assertIn("Native web with Tavily fallback", text)
             self.assertIn("Tavily only", text)
-            self.assertIn("no public web", text)
+            self.assertIn("No public web", text)
             self.assertGreaterEqual(
                 text.count("Which option would you like? You can reply with the number, label, or your own wording."),
                 2,
@@ -65,6 +65,24 @@ class SkillStaticTests(unittest.TestCase):
         self.assertLess(market.index("**Exact-URL approval:**"), market.index("## Stage 7: evidence gathering"))
         self.assertIn("record a structured conflict and report `documented_conflict`", policy)
         self.assertIn("Ctrl+A (Cmd+A on Mac), then F9 (or Fn+F9)", ot)
+
+    def test_native_web_is_recommended_and_tavily_requires_explicit_selection(self):
+        policies = [
+            (ROOT / "skills/market-research-workflow/references/web-provider-policy.md").read_text(encoding="utf-8"),
+            (ROOT / "skills/govcon-growth-workflow/references/web-provider-policy.md").read_text(encoding="utf-8"),
+        ]
+        for policy in policies:
+            choices = (
+                "1. **Native web only (Recommended):**",
+                "2. **Native web with Tavily fallback:**",
+                "3. **Tavily only:**",
+                "4. **No public web:**",
+            )
+            positions = [policy.index(choice) for choice in choices]
+            self.assertEqual(positions, sorted(positions))
+            self.assertNotIn("Tavily with native fallback (Recommended)", policy)
+            self.assertIn("Never request payment, create an account, or switch providers for the user", policy)
+            self.assertIn("stop and obtain new approval rather than proceeding", policy)
 
 
 class RecordValidationTests(unittest.TestCase):
@@ -152,8 +170,8 @@ class RecordValidationTests(unittest.TestCase):
 
     def test_all_provider_modes_validate(self):
         modes = {
-            "tavily_with_native_fallback": ["tavily", "native_web"],
             "native_only": ["native_web"],
+            "native_with_tavily_fallback": ["native_web", "tavily"],
             "tavily_only": ["tavily"],
             "no_public_web": [],
         }
@@ -165,20 +183,20 @@ class RecordValidationTests(unittest.TestCase):
 
     def test_combined_mode_records_approved_fallback(self):
         record = self.web_fixture(
-            "tavily_with_native_fallback",
-            ["tavily", "native_web"],
-            ["tavily", "native_web"],
+            "native_with_tavily_fallback",
+            ["native_web", "tavily"],
+            ["native_web", "tavily"],
         )
         record["web_research"]["fallback_events"] = [{
             "timestamp": "2026-08-21T19:05:00Z",
-            "failed_provider": "tavily",
-            "replacement_provider": "native_web",
+            "failed_provider": "native_web",
+            "replacement_provider": "tavily",
             "reason": "Simulated rate limit",
         }]
         record["queries"].append({
             "id": "Q002",
-            "provider": "native_web",
-            "operation": "native search",
+            "provider": "tavily",
+            "operation": "tavily_search",
             "parameters": {"query": "official federal market research guidance"},
             "retrieved_at": "2026-08-21T19:06:00Z",
             "count": 3,
@@ -186,6 +204,34 @@ class RecordValidationTests(unittest.TestCase):
         })
         result = self.validator.validate_record(record)
         self.assertEqual(result["status"], "pass", result["failures"])
+
+    def test_combined_mode_rejects_tavily_to_native_fallback_direction(self):
+        record = self.web_fixture(
+            "native_with_tavily_fallback",
+            ["native_web", "tavily"],
+            ["native_web", "tavily"],
+        )
+        record["web_research"]["fallback_events"] = [{
+            "timestamp": "2026-08-21T19:05:00Z",
+            "failed_provider": "tavily",
+            "replacement_provider": "native_web",
+            "reason": "Synthetic reversed fallback",
+        }]
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "fail")
+        self.assertTrue(any("native_web-to-tavily" in item for item in result["failures"]))
+
+    def test_legacy_tavily_first_combined_mode_is_readable_but_not_artifact_ready(self):
+        record = self.web_fixture(
+            "tavily_with_native_fallback",
+            ["tavily", "native_web"],
+            ["tavily"],
+        )
+        read_result = self.validator.validate_record(record, purpose="read")
+        self.assertEqual(read_result["status"], "pass", read_result["failures"])
+        artifact_result = self.validator.validate_record(record)
+        self.assertEqual(artifact_result["status"], "fail")
+        self.assertTrue(any("mode is not approved" in item for item in artifact_result["failures"]))
 
     def test_unapproved_provider_fails(self):
         record = self.web_fixture("native_only", ["native_web"], ["native_web"])

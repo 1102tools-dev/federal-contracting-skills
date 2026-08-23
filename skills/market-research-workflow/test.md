@@ -17,7 +17,7 @@ The canonical name changed from `market-research-builder` to `market-research-wo
 - Both `quick_validate.py` and the repository nine-skill validator passed.
 - The shared evidence contract, web-provider policy, and research-record validator copies were byte-identical.
 - Four provider modes validated. Unapproved providers, unapproved plans, missing disclosure acknowledgment, unknown evidence IDs, sensitive query keys, credential-like content, local/private/internal URLs, and signed or credential-bearing URLs failed as expected.
-- An approved Tavily-to-native fallback record passed with provider, timestamp, reason, and sanitized query preserved.
+- An approved native-to-Tavily fallback record passed with provider, timestamp, reason, and sanitized query preserved. Reversed Tavily-to-native fallback and the retired Tavily-first combined mode failed new artifact validation; the retired mode remains readable for refresh migration.
 - The offline report fixture passed record validation, required-section validation, evidence-ID coverage, prohibited-conclusion checks, and independent recomputation of `6,000,000.00` from three source values.
 - LibreOffice opened the DOCX and converted it to a four-page PDF.
 - Text and evidence citations were extracted, and every rendered page was visually inspected after fixing a split evidence-table row.
@@ -37,3 +37,9 @@ All federal results in the fixture are synthetic. No live federal API call was m
 - The record contract advanced to schema `1.2`. Formal reports now require separately timestamped approval of findings, reserved acquisition decisions, and every unresolved-item disposition.
 - Decision and unresolved entries require stable `D###` and `U###` identifiers. A schema `1.1` record remains readable for refresh intake but fails the artifact-generation gate until migrated.
 - Deterministic tests confirmed that a generic approval record cannot pass when decision or unresolved-disposition approval is absent. Clean Codex and Claude behavioral replay remains required at the agent-package release layer.
+
+## August 23 native-first provider regression
+
+- The public-web menu now orders Native web only (Recommended), Native web with Tavily fallback, Tavily only, and No public web.
+- Deterministic validation requires the combined mode to start with `native_web`, permits fallback only from `native_web` to `tavily`, and preserves the retired Tavily-first mode only for read-and-migrate intake.
+- Native-only failure must stop for a new selection. Account creation, payment, and unapproved provider switching are prohibited. Installed-client behavioral replay remains required at the agent-package release layer.

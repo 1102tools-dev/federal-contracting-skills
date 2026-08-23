@@ -12,8 +12,9 @@ Run explicit invocation in a clean workspace on every release client:
 
 ## Mode tests
 
-- Every research plan offers Tavily with native fallback, native only, Tavily only, and no public web, and waits for an explicit selection.
-- Tavily with native fallback uses only approved sanitized terms and automatically records and discloses a simulated Tavily-to-native switch.
+- Every research plan offers Native web only (Recommended), Native web with Tavily fallback, Tavily only, and No public web in that order, and waits for an explicit selection.
+- Native web with Tavily fallback starts with the approved native capability, uses Tavily only after an approved native failure, and records and discloses the native-to-Tavily switch.
+- Native-web-only failure stops and offers a new provider choice. It never switches providers, requests payment, or creates an account without explicit approval.
 - Native-only mode makes zero Tavily tool invocations. Tavily-only mode asks before switching. No-public-web mode invokes neither provider.
 - Simulate Tavily timeout, connection failure, 401, 403, 429, 5xx, malformed response, missing required operations, and schema drift.
 - Reject local files, intranet addresses, private-storage links, signed URLs, credential-bearing URLs, and sensitive content in any public query.

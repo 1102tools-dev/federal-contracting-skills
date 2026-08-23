@@ -66,11 +66,12 @@ UNSAFE_QUERY_KEYS = {
     "secret",
 }
 WEB_MODES = {
-    "tavily_with_native_fallback": {"tavily", "native_web"},
-    "native_only": {"native_web"},
-    "tavily_only": {"tavily"},
-    "no_public_web": set(),
+    "native_only": ("native_web",),
+    "native_with_tavily_fallback": ("native_web", "tavily"),
+    "tavily_only": ("tavily",),
+    "no_public_web": (),
 }
+LEGACY_COMBINED_MODE = "tavily_with_native_fallback"
 QUERY_PROVIDERS = {"federal_mcp", "tavily", "native_web"}
 TAVILY_OPERATIONS = {"tavily_search", "tavily_extract"}
 MARKET_SKILLS = {"market-research-workflow", "market-research-builder"}
@@ -197,11 +198,14 @@ def validate_record(record: Any, *, purpose: str = "artifact") -> dict[str, Any]
         if unknown_web:
             failures.append("web_research unknown fields: " + ", ".join(unknown_web))
         mode = web.get("mode")
-        if mode not in WEB_MODES:
+        legacy_read = mode == LEGACY_COMBINED_MODE and purpose == "read"
+        if mode not in WEB_MODES and not legacy_read:
             failures.append("web_research.mode is not approved")
-            expected_providers: set[str] = set()
+            expected_sequence: tuple[str, ...] = ()
         else:
-            expected_providers = WEB_MODES[mode]
+            expected_sequence = WEB_MODES.get(mode, ("tavily", "native_web"))
+        expected_providers = set(expected_sequence)
+        if mode in WEB_MODES or legacy_read:
             approved_web_providers = set(expected_providers)
         if web.get("approved") is not True:
             failures.append("web_research.approved must be true before validation")
@@ -212,15 +216,15 @@ def validate_record(record: Any, *, purpose: str = "artifact") -> dict[str, Any]
         planned = web.get("planned_providers")
         used = web.get("providers_used")
         events = web.get("fallback_events")
-        if not isinstance(planned, list) or set(planned) != expected_providers:
-            failures.append("web_research.planned_providers must match the approved mode")
+        if not isinstance(planned, list) or tuple(planned) != expected_sequence:
+            failures.append("web_research.planned_providers must match the approved mode and provider order")
         if not isinstance(used, list) or not set(used).issubset(expected_providers):
             failures.append("web_research.providers_used must be a subset of approved providers")
         if not isinstance(events, list):
             failures.append("web_research.fallback_events must be an array")
         else:
-            if events and mode != "tavily_with_native_fallback":
-                failures.append("web_research.fallback_events are allowed only in tavily_with_native_fallback mode")
+            if events and mode != "native_with_tavily_fallback":
+                failures.append("web_research.fallback_events are allowed only in native_with_tavily_fallback mode")
             for index, event in enumerate(events):
                 if not isinstance(event, dict):
                     failures.append(f"web_research.fallback_events[{index}] must be an object")
@@ -232,6 +236,13 @@ def validate_record(record: Any, *, purpose: str = "artifact") -> dict[str, Any]
                     failures.append(f"web_research.fallback_events[{index}] uses an unapproved provider")
                 if event.get("failed_provider") == event.get("replacement_provider"):
                     failures.append(f"web_research.fallback_events[{index}] must switch providers")
+                if mode == "native_with_tavily_fallback" and (
+                    event.get("failed_provider") != "native_web"
+                    or event.get("replacement_provider") != "tavily"
+                ):
+                    failures.append(
+                        f"web_research.fallback_events[{index}] must record a native_web-to-tavily switch"
+                    )
                 for field in ("timestamp", "reason"):
                     if not isinstance(event.get(field), str) or not event.get(field, "").strip():
                         failures.append(f"web_research.fallback_events[{index}].{field} must be a non-empty string")

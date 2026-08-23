@@ -101,10 +101,10 @@ Read [web-provider-policy.md](references/web-provider-policy.md). Present:
 4. Sanitized parameters and date range.
 5. Evidence limitations and exclusions.
 6. Planned output: chat findings, structured data, or optional brief.
-7. The required provider selection: Tavily with native fallback, native only, Tavily only, or no public web.
+7. The required provider selection: Native web only, Native web with Tavily fallback, Tavily only, or No public web.
 8. The Tavily third-party disclosure, exact sanitized search terms and public identifiers, proposed public extraction URLs, and any risk that the sanitized query could still reveal capture or procurement intent.
 
-Ask the user to select a provider mode and approve or revise the plan. Mark Tavily with native fallback recommended, but do not infer a choice. End at the question and wait.
+Ask the user to select a provider mode and approve or revise the plan. Mark Native web only recommended, but do not infer a choice. End at the question and wait.
 
 The last section must list all four choices by name and state that Tavily is a provider-hosted third party whose keyless service is rate-limited and whose published privacy policy covers query collection, possible response improvement, and limited use of third-party search-index providers. End with one question that asks which provider mode the user selects and whether the plan and disclosure are approved. Do not end with only `Approve this plan?` or another generic approval question.
 

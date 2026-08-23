@@ -4,8 +4,8 @@
 
 Before any public web research, show the provider choices below as part of the research-plan approval. Mark the first choice recommended, but do not infer a choice from silence.
 
-1. **Tavily with native fallback (Recommended):** Use Tavily Search and Extract for discovery. Use the host's native search or fetch capability to verify primary sources and automatically after a Tavily connection failure or timeout, 401 or 403 response, 429 response, 5xx response, malformed response, missing required operation, or incompatible operation schema.
-2. **Native search only:** Use only the host's built-in web search and fetch capabilities. Never invoke a Tavily research operation.
+1. **Native web only (Recommended):** Use only the host's built-in web search and fetch capabilities. Never invoke Tavily. If native web is unavailable or fails, stop and offer a new provider choice.
+2. **Native web with Tavily fallback:** Use the host's built-in web search and fetch capabilities first. Switch to Tavily Search or Extract only after this combined mode was explicitly selected and the native capability is unavailable or returns a connection failure or timeout, 401 or 403 response, 429 response, 5xx response, malformed response, missing required operation, or incompatible operation schema.
 3. **Tavily only:** Use Tavily Search and Extract. Do not switch to native web research without new approval.
 4. **No public web:** Use supplied documents and approved federal MCP evidence only. Apply the reduced-completeness label required by the skill.
 
@@ -33,8 +33,8 @@ Apply these restrictions to Tavily and native public web tools alike:
 
 ## Provider execution and fallback
 
-- **Tavily with native fallback:** Use only the actual semantic operations `tavily_search` and `tavily_extract` when available. Never invoke Tavily Crawl, Map, or Research, even if the provider advertises them. Verify consequential claims against the underlying primary-source page. On any listed connection, authentication, rate-limit, server, response, tool, or schema failure, switch automatically to an already approved native capability, record the exact non-sensitive failure class and switch, and tell the user in the next findings update.
-- **Native search only:** Do not invoke Tavily. If native search is unavailable, offer Tavily or no-public-web mode and wait.
+- **Native web only:** Do not invoke Tavily. If native web is unavailable or fails, explain the limitation, offer Native web with Tavily fallback, Tavily only, or No public web, disclose Tavily's current authentication, availability, rate-limit, and third-party conditions, and wait for explicit approval. Never request payment, create an account, or switch providers for the user.
+- **Native web with Tavily fallback:** Use the host's native web capabilities first. On any listed native connection, authentication, rate-limit, server, response, tool, or schema failure, switch automatically only because the user already approved this combined mode. Use only the actual semantic operations `tavily_search` and `tavily_extract`; never invoke Tavily Crawl, Map, or Research, even if the provider advertises them. Record the exact non-sensitive failure class and switch, and tell the user in the next findings update. Verify consequential claims against the underlying primary-source page. If Tavily requires new authentication, payment, account creation, or materially different terms, stop and obtain new approval rather than proceeding.
 - **Tavily only:** If Tavily fails, offer native or no-public-web mode and wait.
 - **No public web:** Invoke neither Tavily nor native public web tools.
 - If every approved provider fails, use only the narrower product the skill permits. Never improvise a search through shell commands, direct HTTP requests, or an unapproved provider.
@@ -43,14 +43,16 @@ Tavily is a retrieval channel, not an evidence authority. Cite and evaluate the 
 
 ## Research-record fields
 
-Use schema version `1.1`. Record one `web_research` object containing:
+Use the research-record schema version required by the parent skill. Record one `web_research` object containing:
 
-- `mode`: `tavily_with_native_fallback`, `native_only`, `tavily_only`, or `no_public_web`.
+- `mode`: `native_with_tavily_fallback`, `native_only`, `tavily_only`, or `no_public_web`.
 - `approved`: whether the user approved that mode for this run.
 - `approved_at`: approval timestamp, or an empty string only while approval is pending.
 - `disclosure_acknowledged`: whether the third-party and sensitive-query disclosure was acknowledged.
 - `planned_providers`: providers named in the approved plan.
 - `providers_used`: providers actually invoked.
 - `fallback_events`: provider switches, with timestamp, failed provider, replacement provider, and non-sensitive reason.
+
+Archived records using `tavily_with_native_fallback` remain readable for refresh intake, but must be migrated to `native_with_tavily_fallback` before a new formal artifact is generated.
 
 Every query also records its provider, semantic operation, sanitized parameters, retrieval time, coverage, and limitations. Never store credentials or sensitive source text.
