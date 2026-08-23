@@ -59,6 +59,10 @@ Routine CI uses offline provider fixtures. Release-time live testing is limited 
 
 Use offline fixtures for structural validation, independent recomputation, LibreOffice open/save and PDF conversion, text and citation extraction, link inspection, and all-page visual review. CI makes no live federal call.
 
+### 2026-08-23 calculation-citation correction
+
+Stable qualification found that a numeric-check paragraph could use the generic marker `[calculation]` even when the research record contained a stable calculation evidence ID. The builder now requires exactly one linked calculation evidence item and cites that stable ID, and the DOCX validator verifies the ID appears on the same paragraph as the calculated total. Regression coverage removes the citation from the numeric paragraph while leaving the evidence register intact and requires validation to fail.
+
 ## Client matrix
 
 - Codex CLI and Desktop, GPT-5.6 Sol at xhigh.

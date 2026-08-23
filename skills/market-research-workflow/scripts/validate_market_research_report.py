@@ -66,13 +66,38 @@ def validate(document_path: Path, record_path: Path) -> dict:
     complete = bool(record.get("validation", {}).get("commercial_evidence_complete"))
     if not complete and "Federal-Data Desk-Research Draft" not in text:
         failures.append("incomplete commercial evidence is not labeled as a desk-research draft")
-    for check in record.get("validation", {}).get("numeric_checks", []):
+    evidence = [item for item in record.get("evidence", []) if isinstance(item, dict)]
+    for index, check in enumerate(record.get("validation", {}).get("numeric_checks", [])):
         expected = sum(float(value) for value in check.get("components", []))
         reported = float(check.get("reported_total", expected))
+        label = check.get("label", "numeric check")
         if abs(expected - reported) > 0.005:
-            failures.append(f"independent recomputation failed for {check.get('label', 'numeric check')}")
-        if f"{expected:,.2f}" not in text:
+            failures.append(f"independent recomputation failed for {label}")
+        calculated_total = f"{expected:,.2f}"
+        calculation_lines = [
+            paragraph.text
+            for paragraph in document.paragraphs
+            if label in paragraph.text and calculated_total in paragraph.text
+        ]
+        if not calculation_lines:
             failures.append(f"recomputed total is missing from report: {expected:,.2f}")
+            continue
+        locator = f"validation.numeric_checks[{index}]"
+        calculation_ids = [
+            item.get("id")
+            for item in evidence
+            if item.get("source_class") == "calculation" and item.get("locator") == locator
+        ]
+        if len(calculation_ids) != 1:
+            failures.append(
+                f"numeric check {label} does not have exactly one calculation evidence item for {locator}"
+            )
+            continue
+        for evidence_id in calculation_ids:
+            if not any(f"[{evidence_id}]" in line for line in calculation_lines):
+                failures.append(
+                    f"numeric check {label} does not cite its calculation evidence ID: {evidence_id}"
+                )
     return {"status": "pass" if not failures else "fail", "heading_count": len(headings), "failures": failures}
 
 

@@ -10,6 +10,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from docx import Document
+
 
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON = sys.executable
@@ -449,6 +451,53 @@ class ArtifactTests(unittest.TestCase):
             "validate_market_research_report.py",
             "market-research.docx",
         )
+
+    def test_market_report_numeric_check_must_cite_linked_evidence_id(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "market-research.docx"
+            record = ROOT / "tests/fixtures/market-research-record.json"
+            builder = ROOT / "skills/market-research-workflow/scripts/build_market_research_report.py"
+            validator_path = ROOT / "skills/market-research-workflow/scripts/validate_market_research_report.py"
+            build = subprocess.run([PYTHON, str(builder), str(record), str(output)], capture_output=True, text=True)
+            self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+
+            document = Document(output)
+            calculation_lines = [
+                paragraph
+                for paragraph in document.paragraphs
+                if "Complete-year fixture obligations" in paragraph.text
+            ]
+            self.assertEqual(len(calculation_lines), 1)
+            self.assertIn("[E004]", calculation_lines[0].text)
+            for run in calculation_lines[0].runs:
+                if "E004" in run.text:
+                    run.text = run.text.replace("E004", "calculation")
+            document.save(output)
+
+            check = subprocess.run(
+                [PYTHON, str(validator_path), str(output), "--record", str(record)],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(check.returncode, 0)
+            self.assertIn("does not cite its calculation evidence ID: E004", check.stdout + check.stderr)
+
+    def test_market_report_builder_rejects_unlinked_numeric_check(self):
+        with tempfile.TemporaryDirectory() as directory:
+            record = json.loads((ROOT / "tests/fixtures/market-research-record.json").read_text(encoding="utf-8"))
+            record["evidence"][3]["locator"] = "validation.numeric_checks[99]"
+            record_path = Path(directory) / "unlinked-record.json"
+            record_path.write_text(json.dumps(record), encoding="utf-8")
+            output = Path(directory) / "market-research.docx"
+            builder = ROOT / "skills/market-research-workflow/scripts/build_market_research_report.py"
+            build = subprocess.run(
+                [PYTHON, str(builder), str(record_path), str(output)],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(build.returncode, 0)
+            self.assertIn("requires exactly one calculation evidence item", build.stdout + build.stderr)
+            self.assertFalse(output.exists())
 
     def test_growth_brief(self):
         self.build_and_validate(
