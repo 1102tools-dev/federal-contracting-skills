@@ -1,5 +1,18 @@
 # OT Cost Analysis: Testing Record
 
+## August 2026 cached-error validation closure
+
+An RC5 lifecycle artifact exposed a validator-coverage gap: the mapped-value comparison could pass after LibreOffice recalculation while an unmapped cell still contained a cached spreadsheet error. The canonical validator now performs a global cached-error audit across every recalculated worksheet before comparing mapped expected values.
+
+Deterministic regression coverage verifies that an unmapped `#VALUE!` fails the integrated validation path, that sheet and cell coordinates are reported, and that a clean recalculated workbook still passes. The full nine-skill validation suite passed with 38 tests.
+
+The corrected validator was also replayed with required LibreOffice recalculation against both maintained-client OT workbooks:
+
+- Codex workbook SHA-256 `b82477a05a09a579bee54525c0f4aa678b3bee8a2359bcf1fdefa6efcd4b7820`: pass, 375 formulas.
+- Claude workbook SHA-256 `3b2f17a1fb44166635f0acd5b0a98b8aa364a4e201f53b9ed78cc85a82a9df24`: pass, 431 formulas.
+
+This closes the validator defect without changing the OT workflow, workbook schema, or calculation method. Cross-client RC7 lifecycle qualification remains a separate release gate.
+
 ## The bottom line
 
 Four testing waves across twelve cold sub-agent runs in April 2026 took the OT Cost Analysis skill from 520 to 627 lines through 22 universal patches (15 in the first structural wave, 7 in a refinement wave, 1 correctness fix). The skill reliably orchestrates BLS OEWS, GSA CALC+, and GSA Per Diem MCPs for labor benchmarking; handles all three statutory authorities (10 USC 4021 research, 4022 prototype, 4022(f) production follow-on); applies six distinct cost-sharing paths (A-NDC, A-via-sub, B-SB, C-traditional, D-competition, and research-inapplicable); supports mixed fixed-price / cost-type milestone structures with proper ceiling-based government obligation; correctly handles multi-performer and multi-MSA labor pools; and produces 7-sheet formula-driven workbooks where every user-adjustable assumption cascades through the entire build.

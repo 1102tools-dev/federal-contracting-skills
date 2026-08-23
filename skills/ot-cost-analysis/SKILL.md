@@ -212,7 +212,7 @@ Read [validation-gates.md](references/validation-gates.md).
 
 1. Run `scripts/validate_workbook.py <workbook> --expected <inputs.json> --engine none`.
 2. Run `scripts/recompute_expected_values.py <inputs.json>`.
-3. If LibreOffice is available, rerun the validator with `--engine auto` or `--engine libreoffice`.
+3. If LibreOffice is available, rerun the validator with `--engine auto` or `--engine libreoffice`; require the engine layer to reject cached spreadsheet errors anywhere in the recalculated workbook before mapped values are accepted.
 4. Inspect every worksheet for formulas, units, source notes, input formatting, broken references, and leaked internal instructions.
 5. Verify the workbook as a ZIP and, when practical, open or render it in a real spreadsheet application.
 6. Fix failures and repeat all layers.

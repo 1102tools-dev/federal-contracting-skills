@@ -226,6 +226,17 @@ def compare(workbook: Any, expected: dict[str, Any], tolerance: float) -> list[s
     return failures
 
 
+def cached_error_audit(workbook: Any) -> list[str]:
+    failures: list[str] = []
+    for sheet in workbook.worksheets:
+        for row in sheet.iter_rows():
+            for cell in row:
+                value = cell.value
+                if isinstance(value, str) and value.startswith("#"):
+                    failures.append(f"{sheet.title}!{cell.coordinate} has cached error {value}")
+    return failures
+
+
 def run(path: Path, expected_path: Path, engine: str, tolerance: float) -> dict[str, Any]:
     if not zipfile.is_zipfile(path):
         return {"status": "fail", "failures": ["file is not a valid XLSX ZIP"]}
@@ -243,6 +254,7 @@ def run(path: Path, expected_path: Path, engine: str, tolerance: float) -> dict[
             try:
                 temporary, calculated_path = recalculate(path, executable)
                 calculated = load_workbook(calculated_path, data_only=True)
+                failures.extend(cached_error_audit(calculated))
                 failures.extend(compare(calculated, expected, tolerance))
                 engine_used = "libreoffice"
             except InputError as exc:

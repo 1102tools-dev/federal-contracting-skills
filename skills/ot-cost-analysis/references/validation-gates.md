@@ -89,7 +89,7 @@ Run:
 python scripts/validate_workbook.py workbook.xlsx --expected inputs.json --engine auto
 ```
 
-The validator recalculates a temporary copy through LibreOffice when available, reopens cached values, and compares referenced cells with the independent computation. Use `--engine libreoffice` to require this layer.
+The validator recalculates a temporary copy through LibreOffice when available and reopens cached values. It scans every cell on every recalculated worksheet for cached spreadsheet errors before comparing referenced cells with the independent computation. Use `--engine libreoffice` to require this layer.
 
 ## 5. Named regression gates
 
