@@ -2,7 +2,7 @@
 
 ## Design
 
-Use US Letter, 0.75 to 1 inch margins, Aptos or Arial body text, restrained navy and green accents, accessible contrast, page numbers, repeating table headers, and real Word heading styles. Use landscape only for wide evidence tables.
+Use US Letter, 0.75 to 1 inch margins, Aptos or Arial body text, restrained navy and green accents, accessible contrast, page numbers, and real Word heading styles. Repeat table headers where the target renderer preserves the printable margin. Keep the long Evidence Register header on its first page only because LibreOffice can clip a repeated header on a later continuation page. Use landscape only for wide evidence tables.
 
 ## Required sections
 

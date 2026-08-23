@@ -11,6 +11,7 @@ import unittest
 from pathlib import Path
 
 from docx import Document
+from docx.oxml.ns import qn
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -554,6 +555,19 @@ class ArtifactTests(unittest.TestCase):
             self.assertNotEqual(build.returncode, 0)
             self.assertIn("requires exactly one calculation evidence item", build.stdout + build.stderr)
             self.assertFalse(output.exists())
+
+    def test_growth_brief_long_evidence_table_does_not_repeat_header(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "growth-brief.docx"
+            record = ROOT / "tests/fixtures/govcon-growth-record.json"
+            builder = ROOT / "skills/govcon-growth-workflow/scripts/build_growth_brief.py"
+            build = subprocess.run([PYTHON, str(builder), str(record), str(output)], capture_output=True, text=True)
+            self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+
+            document = Document(output)
+            evidence_table = document.tables[-1]
+            header_properties = evidence_table.rows[0]._tr.get_or_add_trPr()
+            self.assertEqual(len(header_properties.findall(qn("w:tblHeader"))), 0)
 
 
 if __name__ == "__main__":

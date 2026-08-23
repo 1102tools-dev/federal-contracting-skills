@@ -41,6 +41,13 @@ Routine CI uses offline provider fixtures. Release-time live testing is limited 
 
 Use offline fixtures for structural validation, independent recomputation, LibreOffice open/save and PDF conversion, text and citation extraction, link inspection, and all-page visual review. CI makes no live federal call.
 
+### 2026-08-23 LibreOffice pagination regression
+
+- A nine-page qualification brief reproduced a clipped repeated Evidence Register header on its final LibreOffice-rendered page.
+- The builder now keeps the Evidence Register header on its first page only; other tables retain repeating headers.
+- Deterministic OOXML coverage rejects reintroducing `w:tblHeader` on the Evidence Register.
+- The preserved long record rebuilt and passed record validation, brief validation, LibreOffice PDF conversion, text/citation checks, and visual review of all nine pages without clipping.
+
 ## Client matrix
 
 - Codex CLI and Desktop, GPT-5.6 Sol at xhigh.

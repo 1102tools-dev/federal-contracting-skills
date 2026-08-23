@@ -79,7 +79,14 @@ def configure(document: Document) -> None:
     footer._p.append(field)
 
 
-def add_table(document: Document, headers: list[str], rows: list[list[object]], widths: list[float]):
+def add_table(
+    document: Document,
+    headers: list[str],
+    rows: list[list[object]],
+    widths: list[float],
+    *,
+    repeat_header: bool = True,
+):
     table = document.add_table(rows=1, cols=len(headers))
     table.style = "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -97,7 +104,8 @@ def add_table(document: Document, headers: list[str], rows: list[list[object]], 
             cells[index].width = Inches(widths[index])
     for row in table.rows:
         row._tr.get_or_add_trPr().append(OxmlElement("w:cantSplit"))
-    table.rows[0]._tr.get_or_add_trPr().append(OxmlElement("w:tblHeader"))
+    if repeat_header:
+        table.rows[0]._tr.get_or_add_trPr().append(OxmlElement("w:tblHeader"))
     return table
 
 
@@ -225,7 +233,23 @@ def build(record: dict, output: Path) -> None:
         document.add_paragraph("No external query was made.")
 
     document.add_heading(headings[8], level=1)
-    add_table(document, ["ID", "Class", "Source", "Fact", "Limitations"], [[e.get("id", ""), e.get("source_class", ""), f"{e.get('title', '')}\n{e.get('locator', '')}", e.get("fact", ""), e.get("limitations", "")] for e in record.get("evidence", [])], [0.55, 0.85, 1.55, 2.5, 1.65])
+    # LibreOffice can position a repeated header above the printable area on a
+    # later page of a long fixed-width table. Keep the header on the first page
+    # only so every continued evidence row remains fully visible after PDF
+    # conversion.
+    add_table(
+        document,
+        ["ID", "Class", "Source", "Fact", "Limitations"],
+        [[
+            e.get("id", ""),
+            e.get("source_class", ""),
+            f"{e.get('title', '')}\n{e.get('locator', '')}",
+            e.get("fact", ""),
+            e.get("limitations", ""),
+        ] for e in record.get("evidence", [])],
+        [0.55, 0.85, 1.55, 2.5, 1.65],
+        repeat_header=False,
+    )
 
     output.parent.mkdir(parents=True, exist_ok=True)
     document.save(output)
