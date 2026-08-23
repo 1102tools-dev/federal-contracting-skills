@@ -508,6 +508,53 @@ class ArtifactTests(unittest.TestCase):
             "growth-brief.docx",
         )
 
+    def test_growth_brief_numeric_check_must_cite_linked_evidence_id(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "growth-brief.docx"
+            record = ROOT / "tests/fixtures/govcon-growth-record.json"
+            builder = ROOT / "skills/govcon-growth-workflow/scripts/build_growth_brief.py"
+            validator_path = ROOT / "skills/govcon-growth-workflow/scripts/validate_growth_brief.py"
+            build = subprocess.run([PYTHON, str(builder), str(record), str(output)], capture_output=True, text=True)
+            self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+
+            document = Document(output)
+            calculation_lines = [
+                paragraph
+                for paragraph in document.paragraphs
+                if "Synthetic pipeline value" in paragraph.text
+            ]
+            self.assertEqual(len(calculation_lines), 1)
+            self.assertIn("[E003]", calculation_lines[0].text)
+            for run in calculation_lines[0].runs:
+                if "E003" in run.text:
+                    run.text = run.text.replace("E003", "calculation")
+            document.save(output)
+
+            check = subprocess.run(
+                [PYTHON, str(validator_path), str(output), "--record", str(record)],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(check.returncode, 0)
+            self.assertIn("does not cite its calculation evidence ID: E003", check.stdout + check.stderr)
+
+    def test_growth_brief_builder_rejects_unlinked_numeric_check(self):
+        with tempfile.TemporaryDirectory() as directory:
+            record = json.loads((ROOT / "tests/fixtures/govcon-growth-record.json").read_text(encoding="utf-8"))
+            record["evidence"][2]["locator"] = "validation.numeric_checks[99]"
+            record_path = Path(directory) / "unlinked-record.json"
+            record_path.write_text(json.dumps(record), encoding="utf-8")
+            output = Path(directory) / "growth-brief.docx"
+            builder = ROOT / "skills/govcon-growth-workflow/scripts/build_growth_brief.py"
+            build = subprocess.run(
+                [PYTHON, str(builder), str(record_path), str(output)],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(build.returncode, 0)
+            self.assertIn("requires exactly one calculation evidence item", build.stdout + build.stderr)
+            self.assertFalse(output.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

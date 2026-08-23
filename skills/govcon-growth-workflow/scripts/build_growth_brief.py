@@ -183,9 +183,22 @@ def build(record: dict, output: Path) -> None:
         cite_ids(p, finding.get("evidence_ids", []))
     if not record.get("findings"):
         document.add_paragraph("No approved finding was recorded.")
-    for check in record.get("validation", {}).get("numeric_checks", []):
+    for index, check in enumerate(record.get("validation", {}).get("numeric_checks", [])):
         total = sum(float(value) for value in check.get("components", []))
-        document.add_paragraph(f"{check.get('label', 'Calculated total')}: {total:,.2f} [calculation]")
+        locator = f"validation.numeric_checks[{index}]"
+        calculation_ids = [
+            item.get("id")
+            for item in record.get("evidence", [])
+            if isinstance(item, dict)
+            and item.get("source_class") == "calculation"
+            and item.get("locator") == locator
+        ]
+        if len(calculation_ids) != 1:
+            raise ValueError(
+                f"numeric check {index} requires exactly one calculation evidence item whose locator is {locator}"
+            )
+        paragraph = document.add_paragraph(f"{check.get('label', 'Calculated total')}: {total:,.2f}")
+        cite_ids(paragraph, calculation_ids)
 
     document.add_heading(headings[4], level=1)
     document.add_paragraph(record.get("validation", {}).get("assessment", "No final assessment was approved."))

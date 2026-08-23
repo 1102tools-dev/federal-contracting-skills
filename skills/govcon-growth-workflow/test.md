@@ -31,6 +31,12 @@ All federal results in the fixture are synthetic. No live federal API call was m
 - Implicit activation remains advisory and is not counted as a deterministic invocation path.
 - Full upload-only-client and real-opportunity artifact scenarios remain open.
 
+## August 23 calculation-citation correction
+
+- Stable qualification found that a numeric-check paragraph could use the generic marker `[calculation]` even when the research record contained a stable calculation evidence ID.
+- The builder now requires exactly one linked calculation evidence item and cites that stable ID. The DOCX validator verifies the ID appears on the same paragraph as the calculated total.
+- Regression coverage removes the citation from the numeric paragraph while leaving the evidence register intact and requires validation to fail.
+
 ## August 22 stabilization regression
 
 - Source calls now carry stable `Q###` identifiers. Public or federal evidence must cite the source call whose recorded retrieval timestamp it uses.
