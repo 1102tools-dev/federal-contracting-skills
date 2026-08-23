@@ -31,6 +31,18 @@ class SkillStaticTests(unittest.TestCase):
     def test_mandatory_launch_sequences_are_front_loaded(self):
         market = (ROOT / "skills/market-research-workflow/SKILL.md").read_text(encoding="utf-8")
         growth = (ROOT / "skills/govcon-growth-workflow/SKILL.md").read_text(encoding="utf-8")
+        canonical_market_menu = """What would you like to do?
+
+1. Conduct quick market research and show the findings in chat
+2. Build a complete FAR Part 10 market research report
+3. Refresh or revise an existing market research report
+4. Analyze one acquisition question or decision area
+5. Prepare market-research findings for the Pre-Award Agent
+6. Help me choose"""
+        self.assertLess(market.index("## Mandatory first response"), market.index("## Purpose"))
+        self.assertGreaterEqual(market.count(canonical_market_menu), 2)
+        self.assertIn("Do not summarize it, rename options, omit an option", market)
+        self.assertIn("summarized, renamed, reordered, condensed, or incomplete menu is invalid", market)
         self.assertLess(market.index("## Stage 1: launch menu"), market.index("## Stage 2: mandatory document intake"))
         self.assertLess(market.index("## Stage 2: mandatory document intake"), market.index("## Stage 6: capability preflight"))
         self.assertIn("No research, file generation, capability preflight, web-research request, or MCP tool invocation occurs first", market)

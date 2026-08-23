@@ -14,6 +14,11 @@ Run explicit invocation in a clean workspace on every release client:
 6. The response after selection asks the complete document-intake question and stops.
 7. No external action occurs before the document answer.
 8. In Claude Code, replay a natural-language market-research request that also says not to call MCP servers, web, or files. Both current Sonnet and Opus must still activate the skill and return the complete menu; a generic qualitative answer is release blocking.
+9. In Codex CLI, run the same explicit invocation at least three times from fresh sessions. Every response must reproduce the canonical six choices and final selection question; a summarized, renamed, reordered, condensed, or incomplete menu is release blocking.
+
+### 2026-08-23 RC qualification correction
+
+The RC11 installed-client qualification reproduced nondeterministic Codex CLI launch drift: two of three fresh explicit launches returned alternate five- or four-choice summaries instead of the canonical six-choice menu. The canonical menu is now repeated at the top of `SKILL.md`, before purpose or supporting material, with an explicit prohibition on summarized or alternate menus. Deterministic tests require the front-loaded block and the Stage 1 block to remain identical. Current-client replay is required before the affected agent can re-enter qualification.
 
 ## Document tests
 
