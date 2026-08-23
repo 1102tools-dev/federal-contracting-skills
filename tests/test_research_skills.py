@@ -34,6 +34,9 @@ class SkillStaticTests(unittest.TestCase):
         self.assertLess(market.index("## Stage 1: launch menu"), market.index("## Stage 2: mandatory document intake"))
         self.assertLess(market.index("## Stage 2: mandatory document intake"), market.index("## Stage 6: capability preflight"))
         self.assertIn("No research, file generation, capability preflight, web-research request, or MCP tool invocation occurs first", market)
+        self.assertIn("those restrictions never suppress activation", market)
+        self.assertIn("Restrictions do not suppress activation", market)
+        self.assertIn("never disables this skill or permits a generic answer", market)
         self.assertIn("No research, file generation, capability preflight, web-research request, or MCP tool invocation occurs first", growth)
         for text in (market, growth):
             self.assertIn("Tavily with native fallback", text)

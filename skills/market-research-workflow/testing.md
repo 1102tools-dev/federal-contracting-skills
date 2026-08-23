@@ -13,6 +13,7 @@ Run explicit invocation in a clean workspace on every release client:
 5. No web-research request, MCP tool invocation, preflight, or file-generation action occurs before selection. Host-managed MCP initialization and tool discovery are recorded separately and do not count as research.
 6. The response after selection asks the complete document-intake question and stops.
 7. No external action occurs before the document answer.
+8. In Claude Code, replay a natural-language market-research request that also says not to call MCP servers, web, or files. Both current Sonnet and Opus must still activate the skill and return the complete menu; a generic qualitative answer is release blocking.
 
 ## Document tests
 
@@ -53,4 +54,4 @@ Use offline fixtures for structural validation, independent recomputation, Libre
 - Codex CLI and Desktop, GPT-5.6 Sol at xhigh.
 - Claude Code CLI, Opus with max effort; record resolved model.
 - Current Sonnet smoke run.
-- Explicit invocation is release blocking; implicit routing is advisory.
+- Explicit invocation and the maintained Claude implicit menu route are release blocking. Other host-variable implicit routes remain advisory unless separately promoted into the release matrix.
