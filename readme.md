@@ -6,7 +6,9 @@ Website: [1102tools.com](https://1102tools.com)
 
 ## Most users should start with an agent
 
-The packaged [1102tools agents](https://github.com/1102tools-dev/federal-contracting-agents) already combine the appropriate workflow and source connections for one job. The beginner-facing [Agent Setup Guide](https://1102tools.com/downloads/1102tools-agent-setup-guide.pdf) covers Codex and Claude Code.
+The packaged [1102tools agents](https://github.com/1102tools-dev/federal-contracting-agents) combine the appropriate workflow and source integrations for one job. Some federal providers still require a free account or API key. The beginner-facing [HTML setup instructions](https://1102tools.com/setup) and [downloadable Agent Setup Guide](https://1102tools.com/downloads/1102tools-agent-setup-guide.pdf) cover Codex and Claude Code.
+
+No 1102tools account is required. Market Research and GovCon Growth require `SAM_API_KEY` for SAM.gov work. Pre-Award and Other Transaction can use bounded BLS and Per Diem fallbacks without their optional keys. Acquisition Policy can use the bounded Regulations.gov `DEMO_KEY` fallback. Every affected workflow checks local credential presence before its menu or routed response, explains missing or limited access, and never asks for a key in chat. See [credential setup](https://1102tools.com/setup#credentials).
 
 Use this repository when you specifically want to inspect, adapt, or install a standalone skill. Follow the selected skill directory's `SKILL.md` and its testing record; the agent setup guide does not cover standalone installation.
 
@@ -77,7 +79,7 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 
 ## The orchestration skills
 
-> **August 2026 modernization and stable-agent release:** OpenAI Codex using GPT-5.6 Sol restructured the original six skills into portable, progressive-disclosure packages and added Market Research Workflow, GovCon Growth Workflow, and Acquisition Policy Workflow. All nine skills carry deterministic validation and their own evidence records. The five packaged agents that combine these skills with pinned source connections are stable at `1.0.0`; standalone skill installation remains the advanced, self-supported path.
+> **August 2026 modernization and stable-agent release:** OpenAI Codex using GPT-5.6 Sol restructured the original six skills into portable, progressive-disclosure packages and added Market Research Workflow, GovCon Growth Workflow, and Acquisition Policy Workflow. All nine skills carry deterministic validation and their own evidence records. The five packaged agents that combine these skills with pinned source integrations are stable at `1.0.1`; standalone skill installation remains the advanced, self-supported path.
 
 ### FAR contracts
 
@@ -103,7 +105,7 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 | [GovCon Growth Workflow](skills/govcon-growth-workflow) | SAM.gov and USASpending; GSA CALC+ only for pricing context; approved web access by mode | Opportunity, bid-screen, competitor, recompete, teaming, agency-market, and pricing-context research for industry. Web research can use optional Tavily, the host's native search, or both. Public evidence alone never produces a bid decision. |
 | [Acquisition Policy Workflow](skills/acquisition-policy-workflow) | eCFR, Federal Register, Regulations.gov, and Acquisition.gov by mode | Routes clear policy questions directly and vague requests through a ten-choice menu. Keeps codified text, RFO model text, agency deviations, rulemaking status, and public comments separately classified, with an optional validated Acquisition Policy Impact Brief. |
 
-"Requires" lists the MCP servers each skill calls at runtime. Install them from the companion repo.
+"Requires" lists the MCP servers each skill calls at runtime. Install them from the companion repo and configure any applicable credential outside chat. SAM.gov is a hard credential requirement for its operations; BLS OEWS, GSA Per Diem, and Regulations.gov expose limited unauthenticated fallbacks.
 
 ### Optional web providers and privacy
 
