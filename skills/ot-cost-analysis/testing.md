@@ -130,4 +130,4 @@ Waves: 4 waves, 16 sub-agent runs total across the full testing program, 22 univ
 
 Date: April 2026.
 
-Skill: ot-cost-analysis. Source: github.com/1102tools/federal-contracting-skills. License: MIT.
+Skill: ot-cost-analysis. Source: github.com/1102tools-dev/federal-contracting-skills. License: MIT.

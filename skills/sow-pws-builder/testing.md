@@ -281,4 +281,4 @@ Cumulative: 14 runs, 168 assertions, 163 passes.
 
 Date: April 2026 (both waves).
 
-Skill: sow-pws-builder. Source: github.com/1102tools/federal-contracting-skills. License: MIT.
+Skill: sow-pws-builder. Source: github.com/1102tools-dev/federal-contracting-skills. License: MIT.

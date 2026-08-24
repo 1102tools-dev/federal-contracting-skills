@@ -115,4 +115,4 @@ Wave: 6 runs, 15 patches shipped, 3 post-patch regression runs with zero new gap
 
 Date: April 2026.
 
-Skill: ot-project-description-builder. Source: github.com/1102tools/federal-contracting-skills. License: MIT.
+Skill: ot-project-description-builder. Source: github.com/1102tools-dev/federal-contracting-skills. License: MIT.

@@ -190,4 +190,4 @@ Across the 4 regression scenarios, the Fee-Bearing vs Non-Fee Cost split prevent
 
 ---
 
-*Testing record prepared April 2026 by James Jenrette / 1102tools. Four waves documented: Wave 1 inherited, Wave 2 six scenarios (lazy plus detailed prompts), Wave 3 universal patches, Wave 4 targeted untested territory with 4 patches including critical fee-on-ODCs correctness fix. MIT licensed. Source: github.com/1102tools/federal-contracting-skills.*
+*Testing record prepared April 2026 by James Jenrette / 1102tools. Four waves documented: Wave 1 inherited, Wave 2 six scenarios (lazy plus detailed prompts), Wave 3 universal patches, Wave 4 targeted untested territory with 4 patches including critical fee-on-ODCs correctness fix. MIT licensed. Source: github.com/1102tools-dev/federal-contracting-skills.*

@@ -362,4 +362,4 @@ SKILL.md: 832 → 859 lines (+27 across all 3 Wave 5 patches: DCAA override +~10
 
 ---
 
-*Testing record prepared April 2026 by James Jenrette / 1102tools. Independent grading methodology. MIT licensed. Source: github.com/1102tools/federal-contracting-skills.*
+*Testing record prepared April 2026 by James Jenrette / 1102tools. Independent grading methodology. MIT licensed. Source: github.com/1102tools-dev/federal-contracting-skills.*

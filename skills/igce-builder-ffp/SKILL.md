@@ -280,4 +280,4 @@ State which validation layers passed and whether a real spreadsheet engine ran. 
 
 ---
 
-*MIT copyright James Jenrette / 1102tools. Source: github.com/1102tools/federal-contracting-skills*
+*MIT copyright James Jenrette / 1102tools. Source: github.com/1102tools-dev/federal-contracting-skills*
