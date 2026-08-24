@@ -113,9 +113,20 @@ The GovCon Growth and Market Research agent packages configure Tavily's official
 
 ## Install
 
+The cross-client [`skills`](https://skills.sh) installer can discover and install all nine complete skill packages directly from either the canonical GitHub repository or the 1102tools domain:
+
+```bash
+npx skills add 1102tools-dev/federal-contracting-skills
+npx skills add https://1102tools.com
+```
+
+The domain source is published at [`/.well-known/agent-skills/index.json`](https://1102tools.com/.well-known/agent-skills/index.json). It identifies 1102tools as the publisher, links back to this repository and pins each downloadable archive with a SHA-256 digest. This is a machine-readable discovery and provenance surface; the GitHub repository remains the canonical source.
+
+For manual installation:
+
 1. Install [Claude Desktop](https://claude.ai/download), or use any supported runtime listed below.
 2. Install the MCPs you need from [federal-contracting-mcps](https://github.com/1102tools-dev/federal-contracting-mcps). Each server's README has a copy-paste config block; add it to your client config and restart.
-3. Add the skill. In Claude Desktop: **Customize > Skills > + > Create skill > Upload a skill**. Elsewhere, drop the unzipped folder into that runtime's skills directory:
+3. Add the complete skill directory. In Claude Desktop: **Customize > Skills > + > Create skill > Upload a skill**. Elsewhere, drop the unzipped folder into that runtime's skills directory:
 
 | Runtime | Skills directory |
 |---|---|
