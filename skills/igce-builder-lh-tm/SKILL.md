@@ -90,13 +90,16 @@ After Option A, run the applicable BLS and CALC+ steps and stop at neutral posit
 
 Run after workflow selection and, for Workflow B, only after the user chooses an option.
 
-1. Inspect available operations and match by server and schema, not generated namespace.
-2. Builds require BLS wage, vintage, SOC, and metro operations plus CALC+ discovery and benchmark operations. Add Per Diem only when travel is in scope.
-3. Workflow B requires only the benchmark operations needed for the selected option.
-4. Before workbook creation, require `.xlsx` authoring, Python 3.10+, openpyxl, and the bundled validators. A real spreadsheet engine is preferred but optional when absence is disclosed.
-5. Test only capabilities the active workflow will use. Confirm BLS vintage for every build. Apply the pacing gate to keyed calls.
-6. If an operation is unavailable, look for an equivalent operation from the declared server. Do not bypass the MCP with a hand-built API call.
-7. If a capability remains missing, stop and report whether it appears uninstalled, unauthenticated, or unavailable in the host.
+1. Call `bls-oews.get_access_status` before any BLS data call. For `limited_fallback`, tell the user `BLS_API_KEY` is not configured and v1 is limited to 25 requests per day and 10 years per query; continue only when the workload fits. A missing status operation means an outdated or incomplete MCP or shared host profile.
+2. When travel is in scope, call `gsa-perdiem.get_access_status` before Per Diem data. For `limited_fallback`, tell the user `PERDIEM_API_KEY` is not configured and `DEMO_KEY` is limited to approximately 10 requests per hour. A missing status operation means an outdated or incomplete MCP or host profile.
+3. Treat `configured_unverified` as presence only. Classify a later 401/403 as rejected credentials and 429 as rate limiting, not an outage. Never retry automatically or ask for a key in chat. Direct setup to `https://1102tools.com/setup#credentials` and require a restart.
+4. Inspect available operations and match by server and schema, not generated namespace.
+5. Builds require BLS wage, vintage, SOC, and metro operations plus CALC+ discovery and benchmark operations. Add Per Diem only when travel is in scope.
+6. Workflow B requires only the benchmark operations needed for the selected option.
+7. Before workbook creation, require `.xlsx` authoring, Python 3.10+, openpyxl, and the bundled validators. A real spreadsheet engine is preferred but optional when absence is disclosed.
+8. Test only capabilities the active workflow will use. Confirm BLS vintage for every build. Apply the pacing gate to keyed calls.
+9. If an operation is unavailable, look for an equivalent operation from the declared server. Do not bypass the MCP with a hand-built API call.
+10. If a capability remains missing, stop and report whether it appears uninstalled, unauthenticated, unavailable, or outdated/incomplete in the host.
 
 ## Information to collect
 

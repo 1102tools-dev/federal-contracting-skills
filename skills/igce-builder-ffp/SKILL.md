@@ -58,15 +58,18 @@ These gates prevent documented silent wrong answers. Keep them active even when 
 
 Select the workflow first, then run this before its first MCP-dependent step. For Workflow B, emit the required boundary and wait for the user's option before making a tool call.
 
-1. Inspect the operations available in the current session. Match by advertised MCP server and operation name or by equivalent operation schema. Do not depend on a host-generated namespace or separator.
-2. Confirm the operation groups required by the active workflow:
+1. Call `bls-oews.get_access_status` before any BLS data operation. If it reports `limited_fallback`, tell the user `BLS_API_KEY` is not configured and that the active v1 fallback is limited to 25 requests per day and 10 years per query. Continue only when the planned workload fits. If the status operation is missing, classify the BLS MCP or shared host profile as outdated or incomplete; do not call BLS unavailable.
+2. When travel is in scope, call `gsa-perdiem.get_access_status` before any Per Diem data operation. If it reports `limited_fallback`, tell the user `PERDIEM_API_KEY` is not configured and the active `DEMO_KEY` fallback is limited to approximately 10 requests per hour. If the status operation is missing, classify the MCP or host profile as outdated or incomplete.
+3. For either status, `configured_unverified` proves presence only. A later 401 or 403 is a configured credential that was rejected; 429 is rate limiting. Never call either condition an outage, never retry automatically, never ask for a key in chat, and direct setup to `https://1102tools.com/setup#credentials` followed by a client restart.
+4. Inspect the operations available in the current session. Match by advertised MCP server and operation name or by equivalent operation schema. Do not depend on a host-generated namespace or separator.
+5. Confirm the operation groups required by the active workflow:
    - Workflows A and A+ require `bls-oews` operations `detect_latest_year`, `get_wage_data`, and the SOC/metro lookups, plus `gsa-calc` operations `suggest_contains`, `exact_search`, `keyword_search`, `igce_benchmark`, and `price_reasonableness_check`.
    - Add `gsa-perdiem` operations `estimate_travel_cost`, `lookup_city_perdiem`, and `get_mie_breakdown` only when travel is in scope.
    - Workflow B requires the listed `bls-oews` and `gsa-calc` operations but not `gsa-perdiem` unless the user also requests travel analysis.
-3. Before a build calls a data source, confirm an `.xlsx` authoring capability plus Python 3.10 or later with openpyxl for the bundled validators. A real spreadsheet engine is preferred but optional when its absence is disclosed exactly as required in Step 8.5.
-4. Test only capabilities the active workflow will use. For a build, call `detect_latest_year`. If travel is in scope, test the Per Diem capability when it is first needed. For Workflow B, test BLS and CALC+ only after the user selects an option. Apply the credentialed API pacing gate to every test call. Do not expose keys or credentials.
-5. If an operation is unavailable, look for a semantically equivalent operation exposed by the same server. Do not replace the MCP with a hand-built public API call.
-6. If a required capability remains missing, stop and list it. State whether it appears uninstalled, unauthenticated, or unavailable in the current host.
+6. Before a build calls a data source, confirm an `.xlsx` authoring capability plus Python 3.10 or later with openpyxl for the bundled validators. A real spreadsheet engine is preferred but optional when its absence is disclosed exactly as required in Step 8.5.
+7. Test only capabilities the active workflow will use. For a build, call `detect_latest_year`. If travel is in scope, test the Per Diem capability when it is first needed. For Workflow B, test BLS and CALC+ only after the user selects an option. Apply the credentialed API pacing gate to every test call. Do not expose keys or credentials.
+8. If an operation is unavailable, look for a semantically equivalent operation exposed by the same server. Do not replace the MCP with a hand-built public API call.
+9. If a required capability remains missing, stop and list it. State whether it appears uninstalled, unauthenticated, unavailable, or outdated/incomplete in the current host.
 
 Use this message when installation is missing:
 

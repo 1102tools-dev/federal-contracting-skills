@@ -53,6 +53,17 @@ class PolicySkillStaticTests(unittest.TestCase):
         self.assertIn("ask for the relevant solicitation, award, modification, option, or performance date", core)
         self.assertIn("Do not ask for an audience lens for a status-only answer", core)
 
+    def test_regulations_readiness_is_first_and_discloses_demo_limit(self):
+        core = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        self.assertLess(core.index("## Startup data-access readiness"), core.index("## Permanent gates"))
+        self.assertIn("regulations-gov", core)
+        self.assertIn("get_access_status", core)
+        self.assertIn("limited_fallback", core)
+        self.assertIn("REGULATIONS_GOV_API_KEY is not configured", core)
+        self.assertIn("approximately 10 requests per hour", core)
+        self.assertIn("https://1102tools.com/setup#credentials", core)
+        self.assertIn("sole pre-approval exception", core)
+
 
 class PolicyRecordTests(unittest.TestCase):
     @classmethod

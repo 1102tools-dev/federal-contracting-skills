@@ -5,8 +5,9 @@ description: >
   competitor or incumbent intelligence; recompete pipelines; teaming partner
   research; agency, customer, or market intelligence; federal labor-rate or
   pricing context; or refreshing prior GovCon research. Always begin with the
-  complete workflow menu and obtain the user's selection before research,
-  preflight, file generation, web search, or MCP calls. Produce sourced chat
+  local SAM.gov access-readiness check, then show the complete workflow menu and
+  obtain the user's selection before research, preflight, file generation, web
+  search, or other MCP calls. Produce sourced chat
   findings or an optional validated GovCon Growth Brief without making a bid
   decision from public data alone.
 ---
@@ -20,6 +21,32 @@ Help federal contractors discover, qualify, understand, and pursue public-sector
 Full workflows use SAM.gov, USASpending, and optional GSA CALC+ MCP servers, approved web access, and Python 3. Web research may use the optional Tavily remote MCP, the host's native search capabilities, or both. Tavily is never the sole supported path. DOCX briefs require `python-docx` and LibreOffice or an equivalent renderer. SAM is required only for SAM-specific modes; CALC+ is required only for pricing context.
 
 This skill informs company decisions. It does not replace company leadership, legal, contracts, pricing, security, or compliance judgment.
+
+## Startup data-access readiness
+
+On every new invocation, first call the `sam-gov` server's
+`get_access_status` operation. This presence-only status call is the only MCP
+call permitted before the menu and must not make an upstream request or reveal a
+credential value.
+
+For `missing_required`, show this block immediately before the menu:
+
+```text
+Data access readiness
+- SAM.gov: SAM_API_KEY is not configured. It is required for live opportunities, entities, registrations, exclusions, certifications, awards, hierarchy, and subaward work. Keyless USASpending and approved web routes remain available.
+- Setup: https://1102tools.com/setup#credentials
+```
+
+If `get_access_status` is absent, show this block instead:
+
+```text
+Data access readiness
+- SAM.gov: Readiness could not be checked because get_access_status is missing. The SAM.gov MCP package or shared 1102tools host profile is outdated or incomplete. Update the installation, restart the client, and try again.
+- Setup: https://1102tools.com/setup#credentials
+```
+
+For `configured_unverified`, do not claim that the key is valid and do not add a
+warning. Never display, request, or transmit the credential value.
 
 Read supporting files only when their mode is reached:
 
@@ -38,10 +65,10 @@ Read supporting files only when their mode is reached:
 
 ## Permanent release gates
 
-1. **Menu first:** The entire first-turn response consists only of the complete nine-choice menu and its selection question. This remains mandatory when the opening request already describes a specific opportunity, bid screen, attached notice, company, or desired analysis; mark the closest choice `Recommended`, but do not ask for opportunity or company details until the user selects a mode. The exact final line is `Which option would you like? You can reply with the number, label, or your own wording.` A menu without that question is invalid. Do not announce the skill, acknowledge the request, summarize the workflow, or add any preface or postscript. No research, file generation, capability preflight, web-research request, or MCP tool invocation occurs first.
+1. **Readiness, then menu:** The first action is the local presence-only SAM.gov `get_access_status` call. When it reports missing access or is unavailable, the exact readiness block above precedes the complete nine-choice menu. Otherwise the first-turn response is the menu alone. This remains mandatory when the opening request already describes a specific opportunity, bid screen, attached notice, company, or desired analysis; mark the closest choice `Recommended`, but do not ask for details until the user selects a mode. The exact final line is `Which option would you like? You can reply with the number, label, or your own wording.` Do not announce the skill, acknowledge the request, or add any other preface or postscript. No upstream research, file generation, capability preflight, web-research request, or other MCP tool invocation occurs first.
 2. **Confirmed mode:** A clear opening request may cause one choice to be marked `Recommended`, but the user still confirms it.
 3. **Relevant intake only:** After selection, ask only for information and optional documents relevant to that mode. If none are available, record that and proceed.
-4. **Approval before calls:** Present a research plan, sources, sanitized parameters, exact public URLs proposed for extraction, limits, expected output, and the four web-provider choices. Obtain explicit provider selection and approval before any research tool invocation.
+4. **Approval before calls:** The startup readiness status call is the sole exception. Present a research plan, sources, sanitized parameters, exact public URLs proposed for extraction, limits, expected output, and the four web-provider choices. Obtain explicit provider selection and approval before any research tool invocation.
 5. **Provider choice in every plan:** A plan-approval response is invalid unless it ends with all four provider choices, the Tavily third-party disclosure, and a question asking the user to select a provider mode and approve the plan. Never substitute a generic plan-approval question.
 6. **MCP boundary:** Use installed MCP operations. Never improvise direct API calls or shell requests around a missing MCP.
 7. **Minimum tool surface:** SAM is required only for live-opportunity, registration, exclusion, certification, or other SAM-specific work. CALC+ is required only for pricing context.
@@ -53,7 +80,8 @@ Read supporting files only when their mode is reached:
 
 ## Stage 1: launch menu
 
-Display this complete menu before doing anything else:
+After the mandatory local readiness check and any required readiness warning,
+display this complete menu before doing anything else:
 
 ```text
 What would you like to do?
@@ -71,7 +99,8 @@ What would you like to do?
 
 Use a structured selection interface only if it can display every choice without omission. Otherwise use the numbered menu in chat. Accept the number, label, or free text. When the opening request clearly maps to one choice, mark that choice `Recommended`, but still require the user to confirm. End with the exact line `Which option would you like? You can reply with the number, label, or your own wording.` and wait.
 
-The menu is the whole response. Do not precede it with a skill-use announcement or any acknowledgment.
+Apart from a required readiness warning, the menu is the whole response. Do not
+precede it with a skill-use announcement or acknowledgment.
 
 An opening request that supplies an opportunity, asks for a bid screen, or includes company context still receives this complete menu first. Do not replace the menu with intake questions, even when the intended mode appears obvious.
 
@@ -123,6 +152,16 @@ After approval, inspect only capabilities required by the plan:
 - Python and DOCX tools only if a brief is requested.
 
 Match tools by server, semantic operation, and input schema, not generated prefixes. Report missing or unauthenticated capabilities precisely. Follow [web-provider-policy.md](references/web-provider-policy.md) for approved fallback behavior. Offer a narrower supported product when possible and obtain approval. Do not bypass MCPs or web providers through direct HTTP, shell calls, or an unapproved provider.
+
+For a SAM-specific plan, apply the startup status before any data call:
+
+- `missing_required`: state that `SAM_API_KEY` is not configured, give the setup
+  link, make no SAM.gov data call, and do not retry. Offer only a narrower
+  keyless product supported by approved sources and obtain approval.
+- `configured_unverified`: continue to the first approved SAM call. A 401 or 403
+  is a configured credential that was rejected or expired, not an outage.
+- missing `get_access_status`: classify the package or shared host profile as
+  outdated or incomplete. Do not classify SAM.gov as unavailable.
 
 ## Stage 5: mode execution
 

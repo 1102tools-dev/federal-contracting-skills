@@ -48,14 +48,20 @@ class SkillStaticTests(unittest.TestCase):
         self.assertIn("summarized, renamed, reordered, condensed, or incomplete menu is invalid", market)
         self.assertLess(market.index("## Stage 1: launch menu"), market.index("## Stage 2: mandatory document intake"))
         self.assertLess(market.index("## Stage 2: mandatory document intake"), market.index("## Stage 6: capability preflight"))
-        self.assertIn("No research, file generation, capability preflight, web-research request, or MCP tool invocation occurs first", market)
+        self.assertIn("local presence-only SAM.gov `get_access_status` call", market)
+        self.assertIn("No upstream research, file generation, capability preflight, web-research request, or other MCP tool invocation occurs first", market)
         self.assertIn("those restrictions never suppress activation", market)
         self.assertIn("Restrictions do not suppress activation", market)
         self.assertIn("never disables this skill or permits a generic answer", market)
-        self.assertIn("No research, file generation, capability preflight, web-research request, or MCP tool invocation occurs first", growth)
+        self.assertIn("local presence-only SAM.gov `get_access_status` call", growth)
+        self.assertIn("No upstream research, file generation, capability preflight, web-research request, or other MCP tool invocation occurs first", growth)
         self.assertIn("specific opportunity, bid screen, attached notice, company, or desired analysis", growth)
         self.assertIn("Do not replace the menu with intake questions", growth)
         for text in (market, growth):
+            self.assertIn("missing_required", text)
+            self.assertIn("SAM_API_KEY is not configured", text)
+            self.assertIn("https://1102tools.com/setup#credentials", text)
+            self.assertIn("do not retry", text.lower())
             self.assertIn("Native web only", text)
             self.assertIn("Native web with Tavily fallback", text)
             self.assertIn("Tavily only", text)
@@ -131,6 +137,26 @@ class SkillStaticTests(unittest.TestCase):
                 self.assertIn("structured JSON", text)
                 self.assertIn("Markdown or CSV", text)
                 self.assertIn("Do not label the fallback as a completed workbook", text)
+
+    def test_pricing_skills_disclose_keyless_limits_before_data_calls(self):
+        paths = [
+            ROOT / "skills/igce-builder-cr/SKILL.md",
+            ROOT / "skills/igce-builder-ffp/SKILL.md",
+            ROOT / "skills/igce-builder-lh-tm/SKILL.md",
+            ROOT / "skills/ot-cost-analysis/SKILL.md",
+        ]
+        for path in paths:
+            text = path.read_text(encoding="utf-8")
+            with self.subTest(path=path.name):
+                self.assertIn("bls-oews.get_access_status", text)
+                self.assertIn("BLS_API_KEY", text)
+                self.assertIn("25 requests per day", text)
+                self.assertIn("10 years per query", text)
+                self.assertIn("gsa-perdiem.get_access_status", text)
+                self.assertIn("PERDIEM_API_KEY", text)
+                self.assertIn("approximately 10 requests per hour", text)
+                self.assertIn("configured_unverified", text)
+                self.assertIn("https://1102tools.com/setup#credentials", text)
 
 
 class RecordValidationTests(unittest.TestCase):
