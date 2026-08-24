@@ -77,7 +77,7 @@ The orchestration skills in this repo stay as skills. Their value is decision tr
 
 ## The orchestration skills
 
-> **August 21, 2026 modernization and expansion:** OpenAI Codex using GPT-5.6 Sol restructured the original six skills into portable, progressive-disclosure packages and added Market Research Workflow, GovCon Growth Workflow, and Acquisition Policy Workflow. The first eight have the recorded client evidence described in their `test.md` files. Acquisition Policy has passed deterministic routing, record, artifact, and live-source gates and remains a release candidate pending its clean-client matrix.
+> **August 2026 modernization and stable-agent release:** OpenAI Codex using GPT-5.6 Sol restructured the original six skills into portable, progressive-disclosure packages and added Market Research Workflow, GovCon Growth Workflow, and Acquisition Policy Workflow. All nine skills carry deterministic validation and their own evidence records. The five packaged agents that combine these skills with pinned source connections are stable at `1.0.0`; standalone skill installation remains the advanced, self-supported path.
 
 ### FAR contracts
 
