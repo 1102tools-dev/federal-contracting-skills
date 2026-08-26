@@ -56,6 +56,8 @@ Load only what the active workflow needs:
 
 When this skill is entered immediately after a numbered Other Transaction Agent project-description selection and the current assistant response has not already shown the orchestrator's outcome preview, emit these exact four lines before authority intake or a capability check:
 
+Begin line 1 with `Recommended outcome:`. Do not precede the block with a heading, acknowledgement, selection recap, routing narration, or code fence.
+
 ```text
 Recommended outcome: Validated OT Project Description `.docx` plus chat-only milestone handoff
 Includes: authority record, objective, milestone structure, deliverables, completion evidence, schedule, and downstream cost handoff

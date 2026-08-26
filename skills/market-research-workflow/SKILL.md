@@ -131,6 +131,8 @@ If the user selects Help me choose, follow the diagnosis-and-recommendation cont
 
 After a productive selection, read [launch-menu-and-question-blocks.md](references/launch-menu-and-question-blocks.md). Begin with the selected route's four-line outcome preview, then ask the complete acquisition-document question. The user may attach files, give accessible local paths, paste text, or state that no documents are available.
 
+**First-visible-text hard gate:** In the post-selection turn, the first non-whitespace characters must be `Recommended outcome:`. Do not add a heading, acknowledgement, selection recap, routing narration, or code fence. Render all four preview lines before any skill or tool invocation, intake, or preflight.
+
 The entire user-visible response at this stage consists only of the four labeled preview lines and the document question. Do not announce the skill or add another preface or postscript. End at the document question. Do not begin research, capability preflight, or file generation.
 
 `No documents available` is valid. Record it in the research record and continue.

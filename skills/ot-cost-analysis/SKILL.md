@@ -63,6 +63,8 @@ Load only the references needed for the active workflow:
 
 When this skill is entered immediately after a numbered Other Transaction Agent cost-analysis selection and the current assistant response has not already shown the orchestrator's outcome preview, emit these exact four lines before milestone intake, the proposed-amount boundary, or a capability check:
 
+Begin line 1 with `Recommended outcome:`. Do not precede the block with a heading, acknowledgement, selection recap, routing narration, or code fence.
+
 ```text
 Recommended outcome: Milestone-based OT Cost Analysis `.xlsx`
 Includes: milestone should-cost, labor and market benchmarks, materials, travel, ODCs, fees, contribution treatment, funding profile, scenarios, and validation

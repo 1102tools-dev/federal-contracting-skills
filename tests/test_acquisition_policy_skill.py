@@ -65,6 +65,7 @@ class PolicySkillStaticTests(unittest.TestCase):
         self.assertIn("sole pre-approval exception", core)
 
     def test_route_products_help_and_preview_contract_are_explicit(self):
+        core = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         launch = (SKILL / "references" / "launch-menu-and-framing.md").read_text(encoding="utf-8")
         products = [
             "Current Rule Explanation in chat",
@@ -86,6 +87,9 @@ class PolicySkillStaticTests(unittest.TestCase):
         self.assertIn("recommend exactly one", launch)
         self.assertIn("Never reprint or paraphrase the full menu", launch)
         self.assertIn("Do you want me to proceed with option N using these defaults?", launch)
+        self.assertIn("first non-whitespace characters must be `Recommended outcome:`", core)
+        self.assertIn("routing narration, or code fence", core)
+        self.assertIn("before any skill or tool invocation", core)
 
 
 class PolicyRecordTests(unittest.TestCase):

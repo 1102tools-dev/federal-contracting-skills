@@ -146,6 +146,29 @@ class SkillStaticTests(unittest.TestCase):
                 fallback = text.index("When this skill is entered immediately after a numbered")
                 self.assertLess(fallback, text.index("begin", fallback))
 
+    def test_post_selection_preview_is_first_visible_text(self):
+        for relative_path in (
+            "market-research-workflow/SKILL.md",
+            "govcon-growth-workflow/SKILL.md",
+        ):
+            text = (ROOT / "skills" / relative_path).read_text(encoding="utf-8")
+            with self.subTest(relative_path=relative_path):
+                self.assertIn("first non-whitespace characters must be `Recommended outcome:`", text)
+                self.assertIn("routing narration, or code fence", text)
+                self.assertIn("before any skill or tool invocation", text)
+        for relative_path in (
+            "sow-pws-builder/SKILL.md",
+            "igce-builder-ffp/SKILL.md",
+            "igce-builder-lh-tm/SKILL.md",
+            "igce-builder-cr/SKILL.md",
+            "ot-project-description-builder/SKILL.md",
+            "ot-cost-analysis/SKILL.md",
+        ):
+            text = (ROOT / "skills" / relative_path).read_text(encoding="utf-8")
+            with self.subTest(relative_path=relative_path):
+                self.assertIn("Begin line 1 with `Recommended outcome:`", text)
+                self.assertIn("routing narration, or code fence", text)
+
     def test_behavioral_regression_gates_are_explicit(self):
         market = (ROOT / "skills/market-research-workflow/SKILL.md").read_text(encoding="utf-8")
         market_web = (ROOT / "skills/market-research-workflow/references/web-research-method.md").read_text(encoding="utf-8")

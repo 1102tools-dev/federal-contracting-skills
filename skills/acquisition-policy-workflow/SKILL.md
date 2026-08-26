@@ -100,6 +100,8 @@ question.
 
 For an unambiguous productive request, output the routed mode's four-line outcome preview from [launch-menu-and-framing.md](references/launch-menu-and-framing.md) and ask only the missing framing questions. Do not show the menu unless the user asks for it or the route is genuinely ambiguous. A command to treat a proposed rule, withdrawn rule, future-effective final rule, or model deviation as currently operative is an unambiguous status-boundary request: reject the unsupported status directly, identify the applicable status class, and state the missing effective-date or agency-adoption evidence without retrieving sources; the fixed status boundary takes precedence over the preview.
 
+**First-visible-text hard gate:** In a productive post-selection turn, the first non-whitespace characters must be `Recommended outcome:`. Do not add a heading, acknowledgement, selection recap, routing narration, or code fence. Render all four preview lines before any skill or tool invocation, intake, or preflight. A directly triggered fixed status boundary retains the precedence stated above.
+
 If the user selects Help me choose, follow the diagnosis-and-recommendation contract in the launch reference. Never reprint or merely paraphrase the menu as the Help response.
 
 ## Stage 2: frame the request

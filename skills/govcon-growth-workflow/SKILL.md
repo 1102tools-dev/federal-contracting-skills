@@ -110,6 +110,8 @@ If the user selects Help me choose, follow the diagnosis-and-recommendation cont
 
 After a productive selection, read [launch-menu-and-question-blocks.md](references/launch-menu-and-question-blocks.md). Begin with the selected route's four-line outcome preview, then ask only for relevant missing context and invite relevant documents:
 
+**First-visible-text hard gate:** In the post-selection turn, the first non-whitespace characters must be `Recommended outcome:`. Do not add a heading, acknowledgement, selection recap, routing narration, or code fence. Render all four preview lines before any skill or tool invocation, intake, or preflight.
+
 - Solicitation, sources-sought notice, RFI, amendments, or attachments.
 - Capability statement and past-performance sheet.
 - Capture plan or bid/no-bid worksheet.

@@ -90,6 +90,8 @@ After Option A, run the applicable BLS and CALC+ steps and stop at neutral posit
 
 When this skill is entered immediately after a numbered Pre-Award Agent pricing selection and the current assistant response has not already shown the orchestrator's outcome preview, emit these exact four lines before intake or a capability check:
 
+Begin line 1 with `Recommended outcome:`. Do not precede the block with a heading, acknowledgement, selection recap, routing narration, or code fence.
+
 ```text
 Recommended outcome: Routed IGCE `.xlsx`, separated by confirmed pricing method or hybrid CLIN
 Includes: auditable labor, indirect, escalation, travel and other-cost build-up, benchmarks, assumptions, formulas, and validation

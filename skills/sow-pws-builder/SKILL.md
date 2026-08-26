@@ -67,6 +67,8 @@ Use an existing SOW/PWS and, when available, IGCE cost drivers to present capabi
 
 When this skill is entered immediately after a numbered Pre-Award Agent selection and the current assistant response has not already shown the orchestrator's outcome preview, emit these exact four lines before any intake or capability check:
 
+Begin line 1 with `Recommended outcome:`. Do not precede the block with a heading, acknowledgement, selection recap, routing narration, or code fence.
+
 ```text
 Recommended outcome: Validated SOW/PWS `.docx` plus two chat-only handoffs
 Includes: an executable work statement, measurable standards, a staffing handoff, and a Section B handoff
