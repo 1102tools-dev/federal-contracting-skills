@@ -40,6 +40,8 @@ Invite relevant documents listed in `SKILL.md`. If none exist, record that fact.
 
 Reuse objective, available materials, and intended-use context already present. If those facts identify one route, recommend it immediately. Otherwise ask no more than these three plain-language questions in one response:
 
+When questions are needed, the entire response is exactly the numbered questions below. Do not preface them with a question, repeat a question, or add any other question.
+
 1. What business decision or growth objective are you trying to support?
 2. Do you already have a specific notice, company, prior brief, or internal company material?
 3. Is the result for immediate screening, pipeline development, market understanding, or pricing context?

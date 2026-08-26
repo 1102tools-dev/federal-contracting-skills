@@ -106,7 +106,7 @@ precede it with a skill-use announcement or acknowledgment.
 
 An opening request that supplies an opportunity, asks for a bid screen, or includes company context still receives this complete menu first. Do not replace the menu with intake questions, even when the intended mode appears obvious.
 
-If the user selects Help me choose, follow the diagnosis-and-recommendation contract in [launch-menu-and-question-blocks.md](references/launch-menu-and-question-blocks.md). Never reprint the menu as the Help response.
+If the user selects Help me choose, follow the diagnosis-and-recommendation contract in [launch-menu-and-question-blocks.md](references/launch-menu-and-question-blocks.md). When diagnosis is needed, output only its exact numbered question block; do not preface or duplicate a question. Never reprint the menu as the Help response.
 
 ## Stage 2: mode-specific intake
 

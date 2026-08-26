@@ -104,7 +104,7 @@ For an unambiguous productive request, output the routed mode's four-line outcom
 
 **First-visible-text hard gate:** In a productive post-selection turn, the first non-whitespace characters must be `Recommended outcome:`. Do not add a heading, acknowledgement, selection recap, routing narration, or code fence. In particular, never say `I'm routing` or `I’m routing` before the preview. Render all four preview lines before any skill or tool invocation, intake, or preflight. A directly triggered fixed status boundary retains the precedence stated above.
 
-If the user selects Help me choose, follow the diagnosis-and-recommendation contract in the launch reference. Never reprint or merely paraphrase the menu as the Help response.
+If the user selects Help me choose, follow the diagnosis-and-recommendation contract in the launch reference. When diagnosis is needed, output only its exact numbered question block; do not preface or duplicate a question. Never reprint or merely paraphrase the menu as the Help response.
 
 ## Stage 2: frame the request
 

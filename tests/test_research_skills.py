@@ -106,6 +106,8 @@ class SkillStaticTests(unittest.TestCase):
             self.assertIn("recommend exactly one", text)
             self.assertIn("Never reprint the full menu", text)
             self.assertIn("Do you want me to proceed with option N using these defaults?", text)
+            self.assertIn("the entire response is exactly the numbered questions below", text)
+            self.assertIn("Do not preface them with a question, repeat a question", text)
 
     def test_artifact_preflight_is_phase_adaptive(self):
         component_paths = [

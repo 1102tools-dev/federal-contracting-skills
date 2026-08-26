@@ -127,7 +127,7 @@ Use a structured selection interface only if it can display every choice without
 Apart from a required readiness warning, the menu is the whole response. Do not
 precede it with a skill-use announcement or acknowledgment.
 
-If the user selects Help me choose, follow the diagnosis-and-recommendation contract in [launch-menu-and-question-blocks.md](references/launch-menu-and-question-blocks.md). Never reprint the menu as the Help response.
+If the user selects Help me choose, follow the diagnosis-and-recommendation contract in [launch-menu-and-question-blocks.md](references/launch-menu-and-question-blocks.md). When diagnosis is needed, output only its exact numbered question block; do not preface or duplicate a question. Never reprint the menu as the Help response.
 
 ## Stage 2: outcome preview and mandatory document intake
 

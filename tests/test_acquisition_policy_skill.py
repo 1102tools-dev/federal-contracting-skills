@@ -87,6 +87,8 @@ class PolicySkillStaticTests(unittest.TestCase):
         self.assertIn("recommend exactly one", launch)
         self.assertIn("Never reprint or paraphrase the full menu", launch)
         self.assertIn("Do you want me to proceed with option N using these defaults?", launch)
+        self.assertIn("the entire response is exactly the numbered questions below", launch)
+        self.assertIn("Do not preface them with a question, repeat a question", launch)
         self.assertIn("first non-whitespace characters must be `Recommended outcome:`", core)
         self.assertIn("routing narration, or code fence", core)
         self.assertIn("before any skill or tool invocation", core)

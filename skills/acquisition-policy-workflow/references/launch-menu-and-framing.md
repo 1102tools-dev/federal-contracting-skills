@@ -60,6 +60,8 @@ For modes 1 through 9, render the selected or directly routed row with the exact
 
 Reuse the policy objective, identifiers, supplied material, and intended use already present. If those facts identify one route, recommend it immediately. Otherwise ask no more than these three plain-language questions in one response:
 
+When questions are needed, the entire response is exactly the numbered questions below. Do not preface them with a question, repeat a question, or add any other question.
+
 1. Are you trying to understand the current rule, an agency's documented status, a policy change or rulemaking, public comments, or operational impact?
 2. What agency, FAR/DFARS citation, case, RIN, docket, or document do you already know?
 3. Do you need a sourced chat answer, a formal Impact Brief, or a refresh of earlier work?
