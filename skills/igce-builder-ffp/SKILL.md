@@ -56,6 +56,17 @@ These gates prevent documented silent wrong answers. Keep them active even when 
 
 ## Pre-flight: capabilities and dependencies
 
+When this skill is entered immediately after a numbered Pre-Award Agent pricing selection and the current assistant response has not already shown the orchestrator's outcome preview, emit these exact four lines before intake or a capability check:
+
+```text
+Recommended outcome: Routed IGCE `.xlsx`, separated by confirmed pricing method or hybrid CLIN
+Includes: auditable labor, indirect, escalation, travel and other-cost build-up, benchmarks, assumptions, formulas, and validation
+Boundary/default: no contract type is inferred; the user or Contracting Officer must confirm FFP, LH, T&M, a CR subtype, or hybrid routing
+Next: collect the approved handoff or requirements and the confirmed pricing method
+```
+
+This is a routing fallback, not a second preview. Do not repeat it when the orchestrator already rendered the four lines in the current assistant response. If FFP has not been supplied or confirmed, stop after the bounded pricing-method question and return routing control to the orchestrator; the presence of this component skill never selects FFP for the user.
+
 Select the workflow and begin useful intake before testing dependencies. Do not make workbook authoring or provider availability the first response after selection. A read-only or artifact-limited session may still reuse supplied facts, identify missing inputs, and complete decomposition or handoff review. Run only the relevant portions of this pre-flight immediately before the first dependent MCP call or before promising or beginning workbook generation. For Workflow B, emit the required boundary and wait for the user's option before any pre-flight or tool call.
 
 1. Call `bls-oews.get_access_status` before any BLS data operation. If it reports `limited_fallback`, tell the user `BLS_API_KEY` is not configured and that the active v1 fallback is limited to 25 requests per day and 10 years per query. Continue only when the planned workload fits. If the status operation is missing, classify the BLS MCP or shared host profile as outdated or incomplete; do not call BLS unavailable.

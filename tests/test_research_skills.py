@@ -126,6 +126,26 @@ class SkillStaticTests(unittest.TestCase):
                 relative_path,
             )
 
+    def test_component_routing_fallback_precedes_intake(self):
+        component_products = {
+            "sow-pws-builder/SKILL.md": "Validated SOW/PWS `.docx` plus two chat-only handoffs",
+            "igce-builder-ffp/SKILL.md": "Routed IGCE `.xlsx`, separated by confirmed pricing method or hybrid CLIN",
+            "igce-builder-lh-tm/SKILL.md": "Routed IGCE `.xlsx`, separated by confirmed pricing method or hybrid CLIN",
+            "igce-builder-cr/SKILL.md": "Routed IGCE `.xlsx`, separated by confirmed pricing method or hybrid CLIN",
+            "ot-project-description-builder/SKILL.md": "Validated OT Project Description `.docx` plus chat-only milestone handoff",
+            "ot-cost-analysis/SKILL.md": "Milestone-based OT Cost Analysis `.xlsx`",
+        }
+        labels = ("Recommended outcome:", "Includes:", "Boundary/default:", "Next:")
+        for relative_path, product in component_products.items():
+            text = (ROOT / "skills" / relative_path).read_text(encoding="utf-8")
+            with self.subTest(relative_path=relative_path):
+                self.assertIn("routing fallback, not a second preview", text)
+                self.assertIn(product, text)
+                positions = [text.index(label) for label in labels]
+                self.assertEqual(positions, sorted(positions))
+                fallback = text.index("When this skill is entered immediately after a numbered")
+                self.assertLess(fallback, text.index("begin", fallback))
+
     def test_behavioral_regression_gates_are_explicit(self):
         market = (ROOT / "skills/market-research-workflow/SKILL.md").read_text(encoding="utf-8")
         market_web = (ROOT / "skills/market-research-workflow/references/web-research-method.md").read_text(encoding="utf-8")

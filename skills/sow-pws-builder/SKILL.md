@@ -65,6 +65,17 @@ Use an existing SOW/PWS and, when available, IGCE cost drivers to present capabi
 
 ## Runtime pre-flight
 
+When this skill is entered immediately after a numbered Pre-Award Agent selection and the current assistant response has not already shown the orchestrator's outcome preview, emit these exact four lines before any intake or capability check:
+
+```text
+Recommended outcome: Validated SOW/PWS `.docx` plus two chat-only handoffs
+Includes: an executable work statement, measurable standards, a staffing handoff, and a Section B handoff
+Boundary/default: recommend PWS for performance-based services when the requirement supports it; the user or Contracting Officer retains contract type, commerciality, and other reserved decisions
+Next: collect the current requirement or source material and missing acquisition-strategy facts
+```
+
+This is a routing fallback, not a second preview. Do not repeat it when the orchestrator already rendered the four lines in the current assistant response, and never replace it with component intake.
+
 After the orchestrator's outcome preview, begin acquisition-strategy intake and reuse every supplied fact. Do not make document-authoring or rendering capability the first question or first action after workflow selection. A read-only or artifact-limited session may still inspect supplied material, identify gaps, and complete useful scope intake.
 
 Before promising or beginning the validated `.docx` build:

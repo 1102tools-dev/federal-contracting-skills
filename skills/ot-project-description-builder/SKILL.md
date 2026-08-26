@@ -54,6 +54,17 @@ Load only what the active workflow needs:
 
 ## Pre-flight: capabilities and inputs
 
+When this skill is entered immediately after a numbered Other Transaction Agent project-description selection and the current assistant response has not already shown the orchestrator's outcome preview, emit these exact four lines before authority intake or a capability check:
+
+```text
+Recommended outcome: Validated OT Project Description `.docx` plus chat-only milestone handoff
+Includes: authority record, objective, milestone structure, deliverables, completion evidence, schedule, and downstream cost handoff
+Boundary/default: milestone payment type remains pending unless supplied; the user or Agreements Officer retains authority, participant, contribution, successful-completion, and follow-on decisions
+Next: collect the concept or source material and missing authority facts
+```
+
+This is a routing fallback, not a second preview. Do not repeat it when the orchestrator already rendered the four lines in the current assistant response, and never replace it with Stage A intake.
+
 After the orchestrator's outcome preview, begin authority and acquisition-frame intake and reuse every supplied fact. Do not make document-authoring or rendering availability the first question or action after workflow selection. A read-only or artifact-limited session may still inspect supplied material, identify contradictions and gaps, and complete useful scope intake.
 
 Before promising or beginning the validated `.docx` build:
