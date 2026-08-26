@@ -90,6 +90,7 @@ class PolicySkillStaticTests(unittest.TestCase):
         self.assertIn("first non-whitespace characters must be `Recommended outcome:`", core)
         self.assertIn("routing narration, or code fence", core)
         self.assertIn("before any skill or tool invocation", core)
+        self.assertIn("never say `I'm routing` or `I’m routing` before the preview", core)
 
 
 class PolicyRecordTests(unittest.TestCase):
