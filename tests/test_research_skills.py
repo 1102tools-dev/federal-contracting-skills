@@ -156,6 +156,8 @@ class SkillStaticTests(unittest.TestCase):
                 self.assertIn("first non-whitespace characters must be `Recommended outcome:`", text)
                 self.assertIn("routing narration, or code fence", text)
                 self.assertIn("before any skill or tool invocation", text)
+                self.assertIn("silently read", text)
+                self.assertIn("reuse the retained launch reference without reading or loading it again", text)
         for relative_path in (
             "sow-pws-builder/SKILL.md",
             "igce-builder-ffp/SKILL.md",

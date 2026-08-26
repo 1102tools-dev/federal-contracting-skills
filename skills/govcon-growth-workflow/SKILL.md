@@ -80,6 +80,8 @@ Read supporting files only when their mode is reached:
 
 ## Stage 1: launch menu
 
+After the readiness check, silently read [launch-menu-and-question-blocks.md](references/launch-menu-and-question-blocks.md) once and retain its route previews and question blocks for the next turn. Do not announce or narrate this reference read.
+
 After the mandatory local readiness check and any required readiness warning,
 display this complete menu before doing anything else:
 
@@ -108,7 +110,7 @@ If the user selects Help me choose, follow the diagnosis-and-recommendation cont
 
 ## Stage 2: mode-specific intake
 
-After a productive selection, read [launch-menu-and-question-blocks.md](references/launch-menu-and-question-blocks.md). Begin with the selected route's four-line outcome preview, then ask only for relevant missing context and invite relevant documents:
+After a productive selection, reuse the retained launch reference without reading or loading it again. Begin with the selected route's four-line outcome preview, then ask only for relevant missing context and invite relevant documents:
 
 **First-visible-text hard gate:** In the post-selection turn, the first non-whitespace characters must be `Recommended outcome:`. Do not add a heading, acknowledgement, selection recap, routing narration, or code fence. Render all four preview lines before any skill or tool invocation, intake, or preflight.
 

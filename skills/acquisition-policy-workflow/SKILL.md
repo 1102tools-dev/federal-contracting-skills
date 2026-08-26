@@ -73,6 +73,8 @@ Read supporting files only when their stage is reached:
 
 ## Stage 1: select or route the mode
 
+After the readiness check, silently read [launch-menu-and-framing.md](references/launch-menu-and-framing.md) once and retain its route previews and framing blocks for the next turn. Do not announce or narrate this reference read.
+
 After the mandatory local readiness check and any required readiness warning,
 for a vague request or an invocation without a defined task, display this
 complete menu and stop at its selection question:
@@ -106,7 +108,7 @@ If the user selects Help me choose, follow the diagnosis-and-recommendation cont
 
 ## Stage 2: frame the request
 
-Read [launch-menu-and-framing.md](references/launch-menu-and-framing.md). If the mode was selected from the menu and its preview has not yet been shown, begin with its four-line outcome preview. Then establish only the fields needed by the selected mode:
+Reuse the retained [launch-menu-and-framing.md](references/launch-menu-and-framing.md) content without reading or loading it again. If the mode was selected from the menu and its preview has not yet been shown, begin with its four-line outcome preview. Then establish only the fields needed by the selected mode:
 
 - Question and intended use.
 - As-of date.

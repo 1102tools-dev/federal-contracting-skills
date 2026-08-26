@@ -91,6 +91,9 @@ class PolicySkillStaticTests(unittest.TestCase):
         self.assertIn("routing narration, or code fence", core)
         self.assertIn("before any skill or tool invocation", core)
         self.assertIn("never say `I'm routing` or `I’m routing` before the preview", core)
+        self.assertIn("silently read", core)
+        self.assertIn("Reuse the retained", core)
+        self.assertIn("without reading or loading it again", core)
 
 
 class PolicyRecordTests(unittest.TestCase):
