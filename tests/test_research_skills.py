@@ -46,8 +46,8 @@ class SkillStaticTests(unittest.TestCase):
         self.assertGreaterEqual(market.count(canonical_market_menu), 2)
         self.assertIn("Do not summarize it, rename options, omit an option", market)
         self.assertIn("summarized, renamed, reordered, condensed, or incomplete menu is invalid", market)
-        self.assertLess(market.index("## Stage 1: launch menu"), market.index("## Stage 2: mandatory document intake"))
-        self.assertLess(market.index("## Stage 2: mandatory document intake"), market.index("## Stage 6: capability preflight"))
+        self.assertLess(market.index("## Stage 1: launch menu"), market.index("## Stage 2: outcome preview and mandatory document intake"))
+        self.assertLess(market.index("## Stage 2: outcome preview and mandatory document intake"), market.index("## Stage 6: capability preflight"))
         self.assertIn("local presence-only SAM.gov `get_access_status` call", market)
         self.assertIn("No upstream research, file generation, capability preflight, web-research request, or other MCP tool invocation occurs first", market)
         self.assertIn("those restrictions never suppress activation", market)
@@ -74,6 +74,57 @@ class SkillStaticTests(unittest.TestCase):
             self.assertRegex(market, rf"(?m)^{number}\. ")
         for number in range(1, 10):
             self.assertRegex(growth, rf"(?m)^{number}\. ")
+
+    def test_route_products_and_post_selection_contract_are_explicit(self):
+        cases = {
+            "market-research-workflow/references/launch-menu-and-question-blocks.md": [
+                "Sourced Market Research Findings in chat",
+                "Validated FAR Part 10 Market Research Report `.docx`",
+                "Refreshed Market Research Package with a change log",
+                "Focused Acquisition Question Analysis in chat",
+                "Structured Pre-Award Market Research Handoff in chat",
+            ],
+            "govcon-growth-workflow/references/launch-menu-and-question-blocks.md": [
+                "Federal Opportunity Shortlist in chat",
+                "Opportunity Evidence Screen in chat",
+                "Competitor/Incumbent Intelligence Profile in chat",
+                "Recompete Pipeline in chat",
+                "Partner Shortlist or Due-Diligence Profile in chat",
+                "Agency/Market Intelligence Snapshot in chat",
+                "Labor-Rate/Pricing Context Table in chat",
+                "Refreshed Prior Research with a change log",
+            ],
+        }
+        labels = ("Recommended outcome:", "Includes:", "Boundary/default:", "Next:")
+        for relative_path, products in cases.items():
+            text = (ROOT / "skills" / relative_path).read_text(encoding="utf-8")
+            for product in products:
+                self.assertIn(product, text)
+            positions = [text.index(label) for label in labels]
+            self.assertEqual(positions, sorted(positions))
+            self.assertIn("no more than these three", text)
+            self.assertIn("recommend exactly one", text)
+            self.assertIn("Never reprint the full menu", text)
+            self.assertIn("Do you want me to proceed with option N using these defaults?", text)
+
+    def test_artifact_preflight_is_phase_adaptive(self):
+        component_paths = [
+            "sow-pws-builder/SKILL.md",
+            "igce-builder-ffp/SKILL.md",
+            "igce-builder-lh-tm/SKILL.md",
+            "igce-builder-cr/SKILL.md",
+            "ot-project-description-builder/SKILL.md",
+            "ot-cost-analysis/SKILL.md",
+        ]
+        for relative_path in component_paths:
+            text = (ROOT / "skills" / relative_path).read_text(encoding="utf-8")
+            self.assertIn("read-only or artifact-limited session may still", text)
+            self.assertIn("Preserve", text)
+            self.assertTrue(
+                "Before promising or beginning" in text or "before the first dependent MCP call" in text
+                or "before its first dependent MCP call" in text,
+                relative_path,
+            )
 
     def test_behavioral_regression_gates_are_explicit(self):
         market = (ROOT / "skills/market-research-workflow/SKILL.md").read_text(encoding="utf-8")

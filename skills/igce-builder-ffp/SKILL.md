@@ -56,7 +56,7 @@ These gates prevent documented silent wrong answers. Keep them active even when 
 
 ## Pre-flight: capabilities and dependencies
 
-Select the workflow first, then run this before its first MCP-dependent step. For Workflow B, emit the required boundary and wait for the user's option before making a tool call.
+Select the workflow and begin useful intake before testing dependencies. Do not make workbook authoring or provider availability the first response after selection. A read-only or artifact-limited session may still reuse supplied facts, identify missing inputs, and complete decomposition or handoff review. Run only the relevant portions of this pre-flight immediately before the first dependent MCP call or before promising or beginning workbook generation. For Workflow B, emit the required boundary and wait for the user's option before any pre-flight or tool call.
 
 1. Call `bls-oews.get_access_status` before any BLS data operation. If it reports `limited_fallback`, tell the user `BLS_API_KEY` is not configured and that the active v1 fallback is limited to 25 requests per day and 10 years per query. Continue only when the planned workload fits. If the status operation is missing, classify the BLS MCP or shared host profile as outdated or incomplete; do not call BLS unavailable.
 2. When travel is in scope, call `gsa-perdiem.get_access_status` before any Per Diem data operation. If it reports `limited_fallback`, tell the user `PERDIEM_API_KEY` is not configured and the active `DEMO_KEY` fallback is limited to approximately 10 requests per hour. If the status operation is missing, classify the MCP or host profile as outdated or incomplete.
@@ -69,7 +69,7 @@ Select the workflow first, then run this before its first MCP-dependent step. Fo
 6. Before a build calls a data source, confirm an `.xlsx` authoring capability plus Python 3.10 or later with openpyxl for the bundled validators. A real spreadsheet engine is preferred but optional when its absence is disclosed exactly as required in Step 8.5.
 7. Test only capabilities the active workflow will use. For a build, call `detect_latest_year`. If travel is in scope, test the Per Diem capability when it is first needed. For Workflow B, test BLS and CALC+ only after the user selects an option. Apply the credentialed API pacing gate to every test call. Do not expose keys or credentials.
 8. If an operation is unavailable, look for a semantically equivalent operation exposed by the same server. Do not replace the MCP with a hand-built public API call.
-9. If a required capability remains missing, stop and list it. State whether it appears uninstalled, unauthenticated, unavailable, or outdated/incomplete in the current host.
+9. If a required capability remains missing, stop at that dependent-work boundary and list it. State whether it appears uninstalled, unauthenticated, unavailable, or outdated/incomplete in the current host. Preserve the completed intake so the user can resume without repeating it.
 
 Use this message when installation is missing:
 

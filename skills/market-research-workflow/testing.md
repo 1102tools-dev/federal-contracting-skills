@@ -9,12 +9,13 @@ Run explicit invocation in a clean workspace on every release client:
 1. A vague request produces the complete six-choice menu and nothing else.
 2. A clear full-report request marks that mode recommended but still waits for confirmation.
 3. Number, label, and free-text selections work.
-4. Help me choose explains neutrally, repeats the complete menu, and waits.
+4. Help me choose reuses supplied context or asks one to three plain-language diagnostic questions. On the next response after sufficient context it recommends exactly one numbered route, names its product and contents, states the default or reserved boundary, offers at most one materially different alternative, and asks for bounded confirmation. It never reprints the full menu.
 5. No web-research request, MCP tool invocation, preflight, or file-generation action occurs before selection. Host-managed MCP initialization and tool discovery are recorded separately and do not count as research.
-6. The response after selection asks the complete document-intake question and stops.
+6. The first response after a productive selection begins with `Recommended outcome:`, `Includes:`, `Boundary/default:`, and `Next:` in that order, then asks the complete document-intake question and stops.
 7. No external action occurs before the document answer.
 8. In Claude Code, replay a natural-language market-research request that also says not to call MCP servers, web, or files. Both current Sonnet and Opus must still activate the skill and return the complete menu; a generic qualitative answer is release blocking.
 9. In Codex CLI, run the same explicit invocation at least three times from fresh sessions. Every response must reproduce the canonical six choices and final selection question; a summarized, renamed, reordered, condensed, or incomplete menu is release blocking.
+10. Read-only or unavailable DOCX tooling does not suppress the outcome preview or useful document and acquisition intake. Artifact preflight occurs only before promising or beginning the validated artifact.
 
 ### 2026-08-23 RC qualification correction
 

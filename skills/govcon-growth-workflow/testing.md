@@ -7,8 +7,9 @@ Run explicit invocation in a clean workspace on every release client:
 1. Every opening request produces the complete nine-choice menu and nothing else.
 2. A clear request may mark a mode recommended but still waits for confirmation.
 3. Number, label, and free-text selections work.
-4. Help me choose explains neutrally, repeats the complete menu, and waits.
+4. Help me choose reuses supplied context or asks one to three plain-language diagnostic questions. On the next response after sufficient context it recommends exactly one numbered route, names its product and contents, states the default or reserved boundary, offers at most one materially different alternative, and asks for bounded confirmation. It never reprints the full menu.
 5. No web-research request, MCP tool invocation, preflight, or file-generation action occurs before selection. Host-managed MCP initialization and tool discovery are recorded separately and do not count as research.
+6. The first response after a productive selection begins with `Recommended outcome:`, `Includes:`, `Boundary/default:`, and `Next:` in that order before route-specific intake or any capability preflight.
 
 ## Mode tests
 

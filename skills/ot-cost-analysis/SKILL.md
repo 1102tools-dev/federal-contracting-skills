@@ -61,7 +61,7 @@ Load only the references needed for the active workflow:
 
 ## Pre-flight: capabilities and dependencies
 
-Select the workflow, then inspect the current session by capability rather than by host-generated tool name.
+Select the workflow and begin useful intake before testing dependencies. Do not make workbook authoring or provider availability the first response after selection. A read-only or artifact-limited session may still reuse supplied facts, identify missing inputs, and develop or review the milestone structure. Inspect only the capabilities the route actually needs immediately before its first dependent MCP call or before promising or beginning workbook generation. Workflow B's fixed boundary takes precedence and must be shown before any pre-flight or tool call.
 
 1. Call `bls-oews.get_access_status` before any BLS data call. For `limited_fallback`, tell the user `BLS_API_KEY` is not configured and v1 is limited to 25 requests per day and 10 years per query; continue only when the workload fits. A missing status operation means an outdated or incomplete MCP or shared host profile.
 2. When travel is in scope, call `gsa-perdiem.get_access_status` before Per Diem data. For `limited_fallback`, tell the user `PERDIEM_API_KEY` is not configured and `DEMO_KEY` is limited to approximately 10 requests per hour. A missing status operation means an outdated or incomplete MCP or host profile.
@@ -71,7 +71,7 @@ Select the workflow, then inspect the current session by capability rather than 
 6. Require an `.xlsx` authoring path and Python 3.10 or later with openpyxl for the bundled validators. Prefer a real spreadsheet engine for formula execution.
 7. For a build, test `detect_latest_year` before wage retrieval. Test Per Diem only when travel first becomes necessary. Apply the three-second keyed-call spacing to tests and production calls.
 8. If an operation is unavailable, inspect the same server for a semantically equivalent operation. Do not silently replace an MCP with an ad hoc public API request.
-9. Stop and report missing, unauthenticated, unavailable, or outdated/incomplete capabilities before beginning dependent work. Do not expose credentials.
+9. Stop and report missing, unauthenticated, unavailable, or outdated/incomplete capabilities before beginning dependent work. Preserve completed intake so it is not requested again after the capability is restored. Do not expose credentials.
 
 ## Select a workflow
 

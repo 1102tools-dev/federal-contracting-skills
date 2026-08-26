@@ -65,13 +65,15 @@ Use an existing SOW/PWS and, when available, IGCE cost drivers to present capabi
 
 ## Runtime pre-flight
 
-After workflow selection:
+After the orchestrator's outcome preview, begin acquisition-strategy intake and reuse every supplied fact. Do not make document-authoring or rendering capability the first question or first action after workflow selection. A read-only or artifact-limited session may still inspect supplied material, identify gaps, and complete useful scope intake.
+
+Before promising or beginning the validated `.docx` build:
 
 1. Confirm the host can read inputs and create `.docx` files.
 2. Confirm a DOCX render path is available, preferably LibreOffice through the host's document workflow.
 3. Confirm Python and `python-docx` or an equivalent OOXML authoring capability for `scripts/validate_docx.py`.
 4. Match capabilities semantically. Do not depend on `/mnt` paths, a named client tool, or a generated namespace.
-5. If document authoring is unavailable, stop and report the missing capability. Do not silently substitute Markdown or HTML for the contract-file deliverable.
+5. If document authoring is unavailable, stop at the artifact boundary and report the missing capability. Preserve the intake already completed and explain what remains needed to resume. Do not silently substitute Markdown or HTML for the contract-file deliverable.
 
 ## Acquisition strategy intake
 

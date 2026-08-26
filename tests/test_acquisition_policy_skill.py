@@ -64,6 +64,29 @@ class PolicySkillStaticTests(unittest.TestCase):
         self.assertIn("https://1102tools.com/setup#credentials", core)
         self.assertIn("sole pre-approval exception", core)
 
+    def test_route_products_help_and_preview_contract_are_explicit(self):
+        launch = (SKILL / "references" / "launch-menu-and-framing.md").read_text(encoding="utf-8")
+        products = [
+            "Current Rule Explanation in chat",
+            "Documented Agency Policy Status Matrix in chat",
+            "Three-Layer Policy Comparison in chat",
+            "Regulatory Change Comparison in chat",
+            "Rulemaking Timeline in chat",
+            "Open Rulemaking Watchlist in chat",
+            "Public Comment Position Analysis in chat",
+            "Validated Acquisition Policy Impact Brief `.docx`",
+            "Refreshed Policy Analysis with a change log",
+        ]
+        for product in products:
+            self.assertIn(product, launch)
+        positions = [launch.index(label) for label in ("Recommended outcome:", "Includes:", "Boundary/default:", "Next:")]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("routes directly to the relevant status boundary", launch)
+        self.assertIn("no more than these three", launch)
+        self.assertIn("recommend exactly one", launch)
+        self.assertIn("Never reprint or paraphrase the full menu", launch)
+        self.assertIn("Do you want me to proceed with option N using these defaults?", launch)
+
 
 class PolicyRecordTests(unittest.TestCase):
     @classmethod

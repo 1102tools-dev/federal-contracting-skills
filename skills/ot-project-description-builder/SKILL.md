@@ -54,11 +54,15 @@ Load only what the active workflow needs:
 
 ## Pre-flight: capabilities and inputs
 
+After the orchestrator's outcome preview, begin authority and acquisition-frame intake and reuse every supplied fact. Do not make document-authoring or rendering availability the first question or action after workflow selection. A read-only or artifact-limited session may still inspect supplied material, identify contradictions and gaps, and complete useful scope intake.
+
+Before promising or beginning the validated `.docx` build:
+
 1. Inspect attached source documents with the host's native document or PDF reader. Preserve explicit decisions and identify contradictions instead of silently resolving them.
 2. Require a `.docx` authoring path, Python 3.10 or later with `python-docx` for the bundled validator, and a rendering path such as LibreOffice when available.
 3. Use an agency or consortium template when supplied. Otherwise use the formal document baseline in the document specification.
 4. Confirm that a source document's prices, rates, CLINs, budgets, and funding values will be excluded. Record only that excluded pricing data exists; the user can provide it separately to OT Cost Analysis with a confirmed amount basis.
-5. If document generation or rendering is unavailable, stop before promising a validated artifact and report the missing capability.
+5. If document generation or rendering is unavailable, stop at the artifact boundary and report the missing capability. Preserve completed intake and explain what remains needed to resume.
 
 ## Select a workflow
 

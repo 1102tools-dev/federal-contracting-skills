@@ -5,6 +5,9 @@
 - A vague policy request produces the complete ten-choice menu and no retrieval.
 - A precise codified-text request routes directly to mode 1.
 - A named-agency RFO applicability request routes directly to mode 2 and asks only for missing dates or citation details.
+- Every productive route begins with `Recommended outcome:`, `Includes:`, `Boundary/default:`, and `Next:` in that order before framing intake or capability preflight.
+- Help me choose reuses supplied context or asks one to three plain-language diagnostic questions. On the next response after sufficient context it recommends exactly one numbered route, names its product and contents, states the default or reserved boundary, offers at most one materially different alternative, and asks for bounded confirmation. It never reprints the full menu.
+- A fixed proposed, future-effective, model-text, or agency-applicability status boundary takes precedence over the outcome preview when directly triggered.
 - Market-research execution, clause selection, opportunity research, pricing, grants, and cooperative agreements do not route to this skill.
 
 ## Status controls
