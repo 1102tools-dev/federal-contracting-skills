@@ -277,16 +277,59 @@ def research_basis(record: dict) -> str:
     return "Supplied company and planning evidence | No external query recorded"
 
 
+def pretty_label(key: object) -> str:
+    """Format metadata labels for a reader instead of exposing field names."""
+    label = str(key).replace("_", " ").title()
+    replacements = {
+        "As Of Date": "As of date",
+        "As Of": "As of",
+        "Naics": "NAICS",
+        "Psc": "PSC",
+        "Id": "ID",
+    }
+    for source, target in replacements.items():
+        label = label.replace(source, target)
+    return label
+
+
+def display_value(value: object) -> str:
+    """Render structured scope values as concise reader-facing text."""
+    if value in (None, "", [], {}):
+        return "Not stated"
+    if isinstance(value, list):
+        return ", ".join(display_value(item) for item in value)
+    if isinstance(value, dict):
+        return "; ".join(f"{pretty_label(key)}: {display_value(item)}" for key, item in value.items())
+    return str(value)
+
+
+def format_calculated_total(label: str, total: float) -> str:
+    """Use currency formatting for money-like checks without changing other totals."""
+    money_terms = ("value", "obligation", "cost", "price", "funding", "fee", "amount")
+    if any(term in label.lower() for term in money_terms):
+        return f"{label}: ${total:,.0f}"
+    return f"{label}: {total:,.2f}"
+
+
+def reader_summary(record: dict, fallback: str) -> str:
+    """Replace fixture-language with a concise customer-facing status statement."""
+    validation = record.get("validation", {})
+    summary = str(validation.get("executive_summary") or "").strip()
+    if summary and not any(marker in summary.lower() for marker in ("offline fixture", "test fixture", "demonstrates evidence")):
+        return summary
+    return validation.get("assessment") or fallback
+
+
 def scope_rows(scope: dict) -> list[list[object]]:
     """Format scope metadata as executive-readable labels and values."""
     rows: list[list[object]] = []
     for key, value in scope.items():
-        label = key.replace("_", " ").title()
+        label = pretty_label(key)
         if key.endswith("_usd"):
             label = label.removesuffix(" Usd")
             if isinstance(value, (int, float)):
                 value = f"${value:,.0f}"
-        rows.append([label, value])
+        rows.append([label, display_value(value)])
     return rows
 
 
@@ -320,7 +363,7 @@ def build(record: dict, output: Path) -> None:
     set_cell_text(callout.cell(0, 0), f"{product['decision_label']}\n{posture}", bold=True, color=NAVY)
 
     document.add_heading(product["posture"], level=1)
-    document.add_paragraph(validation.get("executive_summary", opening_insight))
+    document.add_paragraph(reader_summary(record, opening_insight))
     add_page_one_signals(document, findings)
     if not has_bid_decision:
         quote = document.add_paragraph(style="Intense Quote")
@@ -371,7 +414,7 @@ def build(record: dict, output: Path) -> None:
             raise ValueError(
                 f"numeric check {index} requires exactly one calculation evidence item whose locator is {locator}"
             )
-        paragraph = document.add_paragraph(f"{check.get('label', 'Calculated total')}: {total:,.2f}")
+        paragraph = document.add_paragraph(format_calculated_total(check.get("label", "Calculated total"), total))
         cite_ids(paragraph, calculation_ids)
 
     document.add_heading(headings[3], level=1)

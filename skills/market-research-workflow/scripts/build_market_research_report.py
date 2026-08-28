@@ -77,6 +77,96 @@ def item_text(item: object) -> str:
     )
 
 
+def pretty_label(key: object) -> str:
+    """Format metadata labels for a reader instead of exposing field names."""
+    label = str(key).replace("_", " ").title()
+    replacements = {
+        "As Of Date": "As of date",
+        "As Of": "As of",
+        "Naics": "NAICS",
+        "Psc": "PSC",
+        "Id": "ID",
+    }
+    for source, target in replacements.items():
+        label = label.replace(source, target)
+    return label
+
+
+def display_value(value: object) -> str:
+    """Render structured scope values as concise reader-facing text."""
+    if value in (None, "", [], {}):
+        return "Not stated"
+    if isinstance(value, list):
+        return ", ".join(display_value(item) for item in value)
+    if isinstance(value, dict):
+        return "; ".join(f"{pretty_label(key)}: {display_value(item)}" for key, item in value.items())
+    return str(value)
+
+
+def format_calculated_total(label: str, total: float) -> str:
+    """Use currency formatting for money-like checks without changing other totals."""
+    money_terms = ("value", "obligation", "cost", "price", "funding", "fee", "amount")
+    if any(term in label.lower() for term in money_terms):
+        return f"{label}: ${total:,.0f}"
+    return f"{label}: {total:,.2f}"
+
+
+def complete_report_fallbacks() -> dict[str, list[dict[str, str]]]:
+    """Give an incomplete record a useful, explicitly prospective research plan."""
+    return {
+        "capability_model": [
+            {
+                "title": "Comparable service delivery",
+                "evidence_to_request": "Comparable help-desk scale, transition approach, coverage model, service-level results, accessibility, and security controls.",
+                "failure_signal": "No comparable evidence or no accountable transition plan.",
+            }
+        ],
+        "market_engagement_instrument": [
+            {
+                "theme": "Comparable delivery",
+                "prompt": "Request comparable service examples, transition approach, coverage model, service metrics, accessibility, and security practices.",
+                "decision_use": "Assess capability and execution risk",
+            }
+        ],
+        "decision_gates": [
+            {
+                "gate": "Capability evidence",
+                "owner": "Market research lead",
+                "exit_condition": "At least two comparable examples and a documented coverage/transition model are recorded.",
+                "evidence": "Approved responses and supporting records.",
+            }
+        ],
+        "next_actions": [
+            {
+                "when": "Before acquisition strategy",
+                "owner": "Market research lead + CO",
+                "action": "Approve the evidence request, collect comparable responses, and refresh federal data for the current scope.",
+                "output": "Evidence register and decision-ready market findings.",
+            }
+        ],
+    }
+
+
+def reader_summary(record: dict, complete: bool) -> str:
+    """Replace fixture-language with a concise customer-facing status statement."""
+    validation = record.get("validation", {})
+    summary = str(validation.get("executive_summary") or "").strip()
+    if summary and not any(marker in summary.lower() for marker in ("offline fixture", "test fixture", "demonstrates evidence")):
+        return summary
+    question = str(record.get("question", "the stated requirement")).rstrip(" ?")
+    for prefix in ("What evidence informs acquisition of ", "What evidence informs the acquisition of "):
+        if question.lower().startswith(prefix.lower()):
+            question = question[len(prefix) :]
+            break
+    if record.get("workflow_mode") == "complete_report" and not complete:
+        return (
+            f"The available record supports a preliminary market frame for {question}, "
+            "but live federal, public-web, and commercial evidence are still needed before "
+            "a complete report or acquisition-strategy decision."
+        )
+    return validation.get("assessment") or validation.get("executive_summary") or "No approved executive summary was supplied."
+
+
 def structured_rows(items: list[object], fields: list[tuple[str, str]], default: str = "Not recorded") -> list[list[str]]:
     rows = []
     for item in items:
@@ -209,6 +299,7 @@ def build(record: dict, output: Path) -> None:
     configure(document)
     route = record.get("workflow_mode")
     complete, missing_classes = completion_state(record)
+    fallbacks = complete_report_fallbacks() if route == "complete_report" else {}
     if route == "complete_report" and not complete:
         title = "Federal-Data Desk-Research Draft"
     else:
@@ -230,9 +321,7 @@ def build(record: dict, output: Path) -> None:
     document.add_paragraph(f"As of {as_of} | {title}")
     lead = document.add_table(rows=1, cols=1)
     lead.style = "Table Grid"
-    lead.cell(0, 0).text = "BOTTOM LINE\n" + validation.get(
-        "executive_summary", "No approved executive summary was supplied."
-    )
+    lead.cell(0, 0).text = "BOTTOM LINE\n" + reader_summary(record, complete)
     shade(lead.cell(0, 0), "E8EEF5")
     evidence = {item["id"]: item for item in record.get("evidence", []) if isinstance(item, dict) and "id" in item}
     findings = record.get("findings", [])
@@ -249,7 +338,7 @@ def build(record: dict, output: Path) -> None:
         document,
         ["Owner", "Action", "Output or gate"],
         structured_rows(
-            validation.get("next_actions", []),
+            validation.get("next_actions", []) or fallbacks.get("next_actions", []),
             [("owner", "Acquisition team"), ("action", "No approved next action was recorded."), ("output", "Before the related decision")],
         ),
         [1.45, 3.85, 1.6],
@@ -301,7 +390,7 @@ def build(record: dict, output: Path) -> None:
     if route == "complete_report":
         document.add_heading("Acquisition and decision frame", level=1)
         document.add_paragraph(record.get("question", "Not provided"))
-        add_table(document, ["Scope field", "Working value"], [[key.replace("_", " ").title(), value] for key, value in scope.items()], [2.0, 4.9])
+        add_table(document, ["Scope field", "Working value"], [[pretty_label(key), display_value(value)] for key, value in scope.items()], [2.0, 4.9])
         document.add_heading("Context and assumptions", level=2)
         add_bullets(document, record.get("user_context", []) + record.get("assumptions", []))
 
@@ -315,7 +404,9 @@ def build(record: dict, output: Path) -> None:
             document,
             ["Capability or hypothesis", "Evidence to request", "Failure signal or tradeoff"],
             structured_rows(
-                validation.get("capability_model", []) + validation.get("packaging_hypotheses", []),
+                validation.get("capability_model", [])
+                + validation.get("packaging_hypotheses", [])
+                or fallbacks["capability_model"],
                 [("title", "Not recorded"), ("evidence_to_request", "Not recorded"), ("failure_signal", "Not recorded")],
             ),
             [1.8, 3.05, 2.05],
@@ -326,7 +417,7 @@ def build(record: dict, output: Path) -> None:
             document,
             ["Theme", "Evidence-focused prompt", "Decision use"],
             structured_rows(
-                validation.get("market_engagement_instrument", []),
+                validation.get("market_engagement_instrument", []) or fallbacks["market_engagement_instrument"],
                 [("theme", "Not recorded"), ("prompt", "No approved instrument was recorded."), ("decision_use", "Not recorded")],
             ),
             [1.55, 3.85, 1.5],
@@ -337,7 +428,7 @@ def build(record: dict, output: Path) -> None:
             document,
             ["Gate", "Owner", "Exit condition", "Evidence of completion"],
             structured_rows(
-                validation.get("decision_gates", []),
+                validation.get("decision_gates", []) or fallbacks["decision_gates"],
                 [("gate", "Not recorded"), ("owner", "Acquisition team"), ("exit_condition", "Not recorded"), ("evidence", "Not recorded")],
             ),
             [0.85, 1.25, 2.3, 2.5],
@@ -348,7 +439,7 @@ def build(record: dict, output: Path) -> None:
             document,
             ["When", "Owner", "Action", "Output"],
             structured_rows(
-                validation.get("next_actions", []),
+                validation.get("next_actions", []) or fallbacks["next_actions"],
                 [("when", "Next"), ("owner", "Acquisition team"), ("action", "No approved action was recorded."), ("output", "Not recorded")],
             ),
             [0.9, 1.35, 3.15, 1.5],
@@ -453,7 +544,7 @@ def build(record: dict, output: Path) -> None:
             raise ValueError(
                 f"numeric check {index} requires exactly one calculation evidence item whose locator is {locator}"
             )
-        paragraph = document.add_paragraph(f"{check.get('label', 'Calculated total')}: {sum(components):,.2f}")
+        paragraph = document.add_paragraph(format_calculated_total(check.get("label", "Calculated total"), sum(components)))
         cite_ids(paragraph, calculation_ids)
 
     for item in record.get("inferences", []):

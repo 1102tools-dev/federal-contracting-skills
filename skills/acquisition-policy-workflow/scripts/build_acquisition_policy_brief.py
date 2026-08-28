@@ -333,10 +333,27 @@ def display_value(value: object) -> str:
         value = {key: item for key, item in value.items() if item not in (None, "", [], {})}
         if not value:
             return "Not stated"
-        return json.dumps(value, sort_keys=True)
+        return "; ".join(f"{pretty_label(key)}: {display_value(item)}" for key, item in value.items())
     if isinstance(value, list):
-        return json.dumps(value, sort_keys=True)
+        return ", ".join(display_value(item) for item in value)
     return str(value)
+
+
+def pretty_label(key: object) -> str:
+    """Format metadata labels for a reader instead of exposing field names."""
+    label = str(key).replace("_", " ").title()
+    replacements = {
+        "As Of Date": "As of date",
+        "As Of": "As of",
+        "Naics": "NAICS",
+        "Psc": "PSC",
+        "Far Parts": "FAR parts",
+        "Docket Id": "Docket ID",
+        "Id": "ID",
+    }
+    for source, target in replacements.items():
+        label = label.replace(source, target)
+    return label
 
 
 def policy_rows(record: dict) -> list[list[object]]:
@@ -924,7 +941,7 @@ def build(record: dict, output: Path) -> None:
 
     document.add_heading("Question and Scope", level=1)
     document.add_paragraph(request.get("question", "Not stated"))
-    scope_rows = [[key.replace("_", " ").title(), display_value(value)] for key, value in scope.items()]
+    scope_rows = [[pretty_label(key), display_value(value)] for key, value in scope.items()]
     add_table(document, ["Scope field", "Approved value"], scope_rows, [2700, 6660])
 
     document.add_heading("Documented Current Status", level=1)
