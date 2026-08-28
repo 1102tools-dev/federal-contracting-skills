@@ -185,3 +185,8 @@ Record compact reproducible inputs and outputs from BLS, CALC+, Per Diem, analog
   basis, and Government project share. Render the delivered summary sheet and
   reject blank formula outputs, zeroes that result from missing cached values,
   clipped titles, or a dashboard that requires horizontal scrolling to read.
+- Configure the populated print area on every sheet to fit one page wide with no
+  fixed page-height limit; use landscape orientation for wide tables. The complete
+  `OT Cost Summary` title, decision dashboard, milestone totals, contribution
+  treatment, and next action must remain on one page wide when printed or exported.
+  Never split the dashboard horizontally.

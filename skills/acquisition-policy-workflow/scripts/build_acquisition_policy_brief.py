@@ -50,7 +50,16 @@ PRODUCT_TITLES = {
     "impact_brief": "Acquisition Policy Impact Brief",
 }
 
-FOCUSED_PRODUCTS = {"change_brief", "watchlist", "comments", "refresh"}
+FOCUSED_PRODUCTS = {
+    "current_rule",
+    "agency_status",
+    "three_layer",
+    "change_brief",
+    "rulemaking",
+    "watchlist",
+    "comments",
+    "refresh",
+}
 
 
 def set_run_font(run, *, name: str = "Calibri", size: float | None = None, color: str | None = None,
@@ -417,27 +426,62 @@ def derive_planning_posture(record: dict) -> dict:
             "accent": supplied.get("accent") or GOLD,
         }
 
+    agency = record.get("scope", {}).get("agency") or "the agency in scope"
+    matched_deviation = next(
+        (
+            item
+            for item in record.get("policy_items", [])
+            if item.get("status") == "agency_class_deviation"
+            and agency_item_matches_scope(record, item)
+        ),
+        None,
+    )
+    current_rule_rationale = (
+        f"The codified rule remains the government-wide baseline. This record also identifies a {agency} "
+        "deviation, which applies only within its documented scope, effective date, and transition terms."
+        if matched_deviation
+        else (
+            "The model text and proposed rule do not replace the codified rule, and this record does not "
+            f"establish a {agency} deviation. Confirm agency adoption before departing from the codified baseline."
+        )
+    )
+    agency_status_headline = (
+        f"{agency} adoption is documented; confirm scope and transition timing"
+        if matched_deviation
+        else f"No {agency} adoption is established"
+    )
+    agency_status_rationale = (
+        "The named-agency deviation is adoption evidence for this status question. The contracting team must "
+        "still map the contemplated procurement to its covered scope, effective date, and transition terms."
+        if matched_deviation
+        else (
+            "The approved record includes comparator evidence, not a deviation issued for the agency in scope. "
+            "The policy office should locate and authenticate any agency-specific issuance before the contracting "
+            "team treats the model text as operative."
+        )
+    )
+    three_layer_rationale = (
+        "The codified FAR is the government-wide baseline; the FAR Council text is a non-operative model; and "
+        f"the documented {agency} deviation is the agency-operative layer only within its recorded scope and timing."
+        if matched_deviation
+        else (
+            "The codified FAR is current; the FAR Council text is a non-operative model; and the documented GSA "
+            f"deviation applies only within its own scope. No approved evidence shows adoption by {agency}."
+        )
+    )
     route_postures = {
         "current_rule": {
             "label": "Current rule",
             "headline": "Use the codified FAR Part 10 text as the current baseline",
-            "rationale": (
-                "The model text and proposed rule do not replace the codified rule, and this record does not "
-                "establish a Department of Civic Resilience deviation. Confirm agency adoption before departing "
-                "from the codified baseline."
-            ),
+            "rationale": current_rule_rationale,
             "evidence_ids": ["E001", "E002", "E003", "E004"],
             "fill": PALE_BLUE,
             "accent": BLUE,
         },
         "agency_status": {
             "label": "Agency status",
-            "headline": "No Department of Civic Resilience adoption is established",
-            "rationale": (
-                "The approved record includes a GSA deviation, not a deviation issued for the agency in scope. "
-                "The policy office should locate and authenticate any agency-specific issuance before the "
-                "contracting team treats the model text as operative."
-            ),
+            "headline": agency_status_headline,
+            "rationale": agency_status_rationale,
             "evidence_ids": ["E002", "E003"],
             "fill": PALE_GOLD,
             "accent": GOLD,
@@ -445,11 +489,7 @@ def derive_planning_posture(record: dict) -> dict:
         "three_layer": {
             "label": "Comparison answer",
             "headline": "The three layers do not produce one common operative rule",
-            "rationale": (
-                "The codified FAR is current; the FAR Council text is a non-operative model; and the documented "
-                "GSA deviation applies only within its own scope. No approved evidence shows adoption by the "
-                "Department of Civic Resilience."
-            ),
+            "rationale": three_layer_rationale,
             "evidence_ids": ["E001", "E002", "E003"],
             "fill": PALE_TEAL,
             "accent": TEAL,
@@ -590,16 +630,31 @@ def derive_front_page_interpretation(record: dict) -> str:
     approved = str(record.get("validation", {}).get("reader_bottom_line", "")).strip()
     if approved:
         return approved
+    agency = record.get("scope", {}).get("agency") or "the agency in scope"
+    matched_deviation = any(
+        item.get("status") == "agency_class_deviation" and agency_item_matches_scope(record, item)
+        for item in record.get("policy_items", [])
+    )
     interpretations = {
         "current_rule": (
-            "Bottom line: the codified FAR Part 10 text is the only government-wide current rule established by "
-            "this record. The model text and proposed rule are planning signals, while the GSA deviation does not "
-            "prove adoption by the agency in scope."
+            "Bottom line: codified FAR Part 10 is the government-wide baseline, and the approved record also "
+            f"documents a {agency} deviation for use only within its stated scope and timing. The model text and "
+            "proposed rule remain separate planning layers."
+            if matched_deviation
+            else (
+                "Bottom line: the codified FAR Part 10 text is the only government-wide current rule established "
+                "by this record. The model text and proposed rule are planning signals, while the comparator "
+                "deviation does not prove adoption by the agency in scope."
+            )
         ),
         "agency_status": (
-            "Bottom line: agency adoption remains unverified. The documented GSA deviation demonstrates how "
-            "adoption can occur, but it cannot be used as evidence that the Department of Civic Resilience adopted "
-            "the same text."
+            f"Bottom line: {agency} adoption is documented in the approved record. Confirm that the contemplated "
+            "procurement falls within the deviation's scope, effective date, and transition terms before use."
+            if matched_deviation
+            else (
+                "Bottom line: agency adoption remains unverified. The documented comparator demonstrates how "
+                f"adoption can occur, but it cannot be used as evidence that {agency} adopted the same text."
+            )
         ),
         "three_layer": (
             "Bottom line: the layers have different legal and operational roles. Use the codified rule as the "
@@ -659,6 +714,35 @@ def focused_evidence_ids(record: dict) -> set[str]:
         "comments": ("focused_findings", "focused_impacts", "planning_posture", "decision_gates", "comment_themes"),
         "refresh": ("focused_findings", "focused_impacts", "planning_posture", "decision_gates", "refresh_changes", "carry_forward_decisions"),
     }
+    if mode == "current_rule":
+        return collect_evidence_ids(
+            {
+                "policy_items": [
+                    item
+                    for item in record.get("policy_items", [])
+                    if item.get("status")
+                    in {"codified_current", "model_deviation", "agency_class_deviation"}
+                ],
+                "planning_posture": derive_planning_posture(record),
+                "decision_gates": derive_decision_gates(record),
+            }
+        )
+    if mode in {"agency_status", "three_layer"}:
+        return collect_evidence_ids(
+            {
+                "policy_items": record.get("policy_items", []),
+                "planning_posture": derive_planning_posture(record),
+                "decision_gates": derive_decision_gates(record),
+            }
+        )
+    if mode == "rulemaking":
+        return collect_evidence_ids(
+            {
+                "timeline": record.get("timeline", []),
+                "planning_posture": derive_planning_posture(record),
+                "decision_gates": derive_decision_gates(record),
+            }
+        )
     return collect_evidence_ids({field: validation.get(field) for field in route_fields.get(mode, ())})
 
 
@@ -821,8 +905,34 @@ def value_with_evidence(item: dict, field: str) -> str:
 
 def enforce_route_content(record: dict) -> None:
     mode = record.get("workflow_mode")
-    if mode == "change_brief":
+    statuses = {item.get("status") for item in record.get("policy_items", [])}
+    if mode == "current_rule":
+        if "codified_current" not in statuses:
+            raise ValueError(
+                "current_rule cannot produce a paid-value DOCX without an approved codified-current source; "
+                "return a concise evidence-acquisition note instead"
+            )
+    elif mode == "agency_status":
+        if not record.get("scope", {}).get("agency") or not record.get("policy_items"):
+            raise ValueError(
+                "agency_status cannot produce a paid-value DOCX without a named agency and approved policy layers; "
+                "return a concise evidence-acquisition note instead"
+            )
+    elif mode == "three_layer":
+        required = {"codified_current", "model_deviation", "agency_class_deviation"}
+        if not required.issubset(statuses):
+            raise ValueError(
+                "three_layer cannot produce a paid-value DOCX without codified, model, and agency-deviation layers; "
+                "return a concise evidence-acquisition note instead"
+            )
+    elif mode == "change_brief":
         require_validation_rows(record, "change_map", "matched before-and-after provisions")
+    elif mode == "rulemaking":
+        if not record.get("timeline"):
+            raise ValueError(
+                "rulemaking cannot produce a paid-value DOCX without a dated milestone sequence; "
+                "return a concise evidence-acquisition note instead"
+            )
     elif mode == "watchlist":
         require_validation_rows(record, "rulemaking_watchlist", "live rulemaking matters, timing, and owner actions")
     elif mode == "comments":
@@ -843,10 +953,19 @@ def add_route_native_analysis(document: Document, record: dict) -> None:
 
     if mode == "current_rule":
         document.add_heading("Current Rule Card", level=1)
+        agency_check = (
+            "Named-agency deviation is documented; apply only after confirming the procurement falls within its "
+            "scope, effective date, and transition terms."
+            if agency_item_matches_scope(record, deviation)
+            else (
+                "No agency-issued deviation for the named agency is established by this approved record; the "
+                "recorded deviation is comparator evidence only."
+            )
+        )
         rows = [
             ["Documented baseline", codified.get("citation", "Not recorded"), codified.get("applicability_summary", "Not recorded") + evidence_suffix(codified)],
             ["Published comparison layer", model.get("citation", "Not recorded"), "Model text is informative but not agency-operative by itself." + evidence_suffix(model)],
-            ["Agency check", agency, "No agency-issued deviation for the named agency is established by this approved record; the recorded GSA item is comparator evidence only." + evidence_suffix(deviation)],
+            ["Agency check", agency, agency_check + evidence_suffix(deviation)],
         ]
         add_table(document, ["Rule-card field", "Recorded value", "Planning meaning"], rows, [1800, 2500, 5060])
     elif mode == "agency_status":
@@ -860,10 +979,17 @@ def add_route_native_analysis(document: Document, record: dict) -> None:
         add_table(document, ["Layer", "Issuer/agency", "Status for this question", "Evidence"], rows, [1800, 1900, 4200, 1460])
     elif mode == "three_layer":
         document.add_heading("Three-Layer Comparison and Adoption Test", level=1)
+        deviation_test = (
+            "Named-agency adoption evidence; confirm procurement scope and timing before use"
+            if agency_item_matches_scope(record, deviation)
+            else (
+                "Comparator only unless the issuing agency matches the procurement agency and scope/timing are confirmed"
+            )
+        )
         rows = [
             ["Codified baseline", codified.get("citation", "Not recorded"), "Current baseline reflected in the approved record", "Use as the planning baseline" + evidence_suffix(codified)],
             ["Model text", model.get("citation", "Not recorded"), "Published model; not operative alone", "Use only to identify possible deltas" + evidence_suffix(model)],
-            ["Agency deviation", deviation.get("citation", "Not recorded"), deviation.get("agency", "Not recorded"), "Comparator only unless the issuing agency matches the procurement agency and scope/timing are confirmed" + evidence_suffix(deviation)],
+            ["Agency deviation", deviation.get("citation", "Not recorded"), deviation.get("agency", "Not recorded"), deviation_test + evidence_suffix(deviation)],
         ]
         add_table(document, ["Layer", "Source", "Documented status", "Adoption test"], rows, [1600, 2100, 2500, 3160])
     elif mode == "change_brief":

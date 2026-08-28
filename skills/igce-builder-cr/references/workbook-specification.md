@@ -180,3 +180,9 @@ engine. The delivered file must retain cached values for formula cells on `IGCE
 Summary`, including fee-bearing cost, total cost, fee, and total price. Render
 the summary and correct blank formula outputs, clipped limitations, unreadable
 assumptions, or a summary that requires horizontal scrolling to understand.
+
+Configure the populated print area on every sheet to fit one page wide with no
+fixed page-height limit. Use landscape orientation for wide tables. The complete
+`IGCE Summary` title, decision dashboard, cost and fee totals, assumptions, and
+next action must remain on one page wide when printed or exported; never split
+the dashboard horizontally.

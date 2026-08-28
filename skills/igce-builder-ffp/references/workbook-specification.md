@@ -271,6 +271,12 @@ long limitations must wrap inside a readable field. A workbook that shows blank
 formula results in a PDF or preview is not deliverable, even if its formulas are
 structurally correct.
 
+Configure the populated print area on every sheet to fit one page wide with no
+fixed page-height limit. Use landscape orientation for wide tables. The complete
+`IGCE Summary` title, decision dashboard, assumptions, and totals must remain on
+one page wide when printed or exported; never split the left and right halves of
+the dashboard across separate pages.
+
 ## 9. Validation sidecar
 
 Create a temporary JSON file that follows [validation-gates.md](validation-gates.md). Include:

@@ -164,3 +164,9 @@ engine. The delivered file must retain cached values for formula cells on `IGCE
 Summary`, including labor totals, materials, and the ceiling or scenario totals.
 Render the summary and fix any blank total, clipped limitation, unreadable
 assumption, or summary that requires horizontal scrolling to understand.
+
+Configure the populated print area on every sheet to fit one page wide with no
+fixed page-height limit. Use landscape orientation for wide tables. The complete
+`IGCE Summary` title, decision dashboard, assumptions, labor totals, ceiling
+comparison, travel, and materials treatment must remain on one page wide when
+printed or exported; never split the dashboard horizontally.

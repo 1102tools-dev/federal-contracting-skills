@@ -17,12 +17,18 @@ Use a distinct product name and lead form for each route. The first page states 
 
 The product name is a substantive promise, not merely a heading:
 
+- A Current Rule Explanation requires a concise rule card that separates the codified baseline from non-operative comparison layers and tells the acquisition team which source to use now.
+- An Agency Policy Status Matrix requires a named-agency adoption view, comparator treatment, and a confirmation list; it must not repeat a government-wide rule explanation as its main body.
+- A Three-Layer Policy Comparison requires a side-by-side codified/model/agency-deviation map and an adoption test; it must not reuse the Agency Status or Current Rule body.
 - A Regulatory Change Briefing requires matched before-and-after text, a clause- or section-level delta, operational consequences, and evidence IDs.
+- A Rulemaking Timeline requires a dated milestone sequence, current stage, next status-changing trigger, and monitoring owner; it must not repeat a general current-status report.
 - An Open Rulemaking Watchlist requires live matter or docket identifiers, stage, verified deadline or an explicit no-open-window result, next event, owner, and recommended action.
 - A Public Comment Position Analysis requires an approved sample frame, returned and reviewed counts, stakeholder segments, coded themes, contrary positions, limitations, and acquisition implications.
 - A Policy Analysis Refresh requires a dated prior baseline, current retrievals, changed and unchanged conclusions, consequences, and refresh actions.
 
 If the approved record lacks the evidence that makes the selected product useful, provide a short evidence-acquisition note in chat. Do not turn an evidence gap into a six-page report that resembles a completed analysis.
+
+Each route must stop after its route-native analysis, management actions, focused source notes, and limitations. Do not append the generic Impact Brief body to Current Rule, Agency Status, Three-Layer, Change Comparison, Rulemaking, Comment Period, Public Comment, or Refresh products. The full twelve-section structure is reserved for the Acquisition Policy Impact Brief.
 
 ## Product-first reader contract
 
