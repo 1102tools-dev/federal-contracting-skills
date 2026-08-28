@@ -13,16 +13,17 @@ from pathlib import Path
 from docx import Document
 
 
-ROUTE_HEADINGS = {
-    "opportunity": ("Priority opportunities", "48-hour capture moves"),
-    "bid_screen": ("Pursuit posture", "Conditions before commitment"),
-    "competitor": ("Positioning snapshot", "Where to engage"),
-    "recompete": ("Recompete radar", "Validation calendar"),
-    "teaming": ("Partner thesis", "Next conversation"),
-    "market": ("Market thesis", "90-day account moves"),
-    "pricing": ("Rate signal", "Proposal guardrails"),
-    "refresh": ("What changed", "Updated actions"),
+ROUTE_STRUCTURE = {
+    "opportunity": ("Pipeline decision", "48-hour shortlist moves", "Priority opportunities", "Pipeline prioritization", "Qualification gaps", "Capture action plan", "PORTFOLIO POSTURE"),
+    "bid_screen": ("Pursuit posture", "48-hour decision gates", "Executive scorecard", "Pursuit logic", "Material unknowns", "Conditions before commitment", "MANAGEMENT POSTURE"),
+    "competitor": ("Competitive posture", "Immediate positioning moves", "Positioning snapshot", "Competitive implications", "Claims and assumptions to validate", "Engagement plan", "POSITIONING POSTURE"),
+    "recompete": ("Pipeline timing posture", "Near-term validation moves", "Recompete radar", "Timing and validation thesis", "Dates and triggers to validate", "Validation calendar", "PIPELINE POSTURE"),
+    "teaming": ("Partner posture", "Next partner moves", "Partner-fit scorecard", "Partner-fit decision", "Diligence gaps", "Diligence and engagement plan", "PARTNER POSTURE"),
+    "market": ("Account posture", "Next account moves", "Market thesis", "Account implications", "Account unknowns", "90-day account plan", "ACCOUNT POSTURE"),
+    "pricing": ("Pricing posture", "Immediate pricing moves", "Rate-position dashboard", "Rate-position interpretation", "Pricing unknowns", "Proposal guardrails", "PRICING POSTURE"),
+    "refresh": ("Updated posture", "Immediate update moves", "What changed", "Decision impact of the delta", "Unresolved deltas", "Updated action plan", "DELTA POSTURE"),
 }
+DEFAULT_STRUCTURE = ("Executive posture", "Immediate moves", "Decision-relevant analysis", "Commercial implications", "Operational unknowns", "Action plan", "MANAGEMENT POSTURE")
 FORBIDDEN = [
     re.compile(r"\bguaranteed\s+(?:award|opportunity|recompete|win)\b", re.I),
     re.compile(r"\bmcp__|/mnt/|/Users/|[A-Za-z]:\\", re.I),
@@ -46,12 +47,13 @@ def validate(document_path: Path, record_path: Path) -> dict:
     record = json.loads(record_path.read_text(encoding="utf-8"))
     text = all_text(document)
     headings = [p.text.strip() for p in document.paragraphs if getattr(p.style, "name", "") == "Heading 1"]
-    analysis_heading, action_heading = ROUTE_HEADINGS.get(
-        record.get("workflow_mode", ""), ("Decision-relevant analysis", "Next actions")
+    posture_heading, immediate_heading, analysis_heading, assessment_heading, unknowns_heading, action_heading, decision_label = ROUTE_STRUCTURE.get(
+        record.get("workflow_mode", ""), DEFAULT_STRUCTURE
     )
     required_headings = [
-        "Executive assessment", "Business question and scope", "Company context and missing inputs",
-        analysis_heading, "Assessment", "Risks, contrary evidence, and limitations", action_heading,
+        posture_heading, immediate_heading, analysis_heading, assessment_heading,
+        "Business question and scope", "Company context and assumptions", unknowns_heading,
+        "Risks, contrary evidence, and limitations", action_heading,
         "Research record", "Evidence appendix",
     ]
     for heading in required_headings:
@@ -59,6 +61,21 @@ def validate(document_path: Path, record_path: Path) -> dict:
             failures.append(f"missing Heading 1 section: {heading}")
     if [h for h in headings if h in required_headings] != required_headings:
         failures.append("required Heading 1 sections are out of order")
+    if decision_label not in text:
+        failures.append(f"first-page decision label is missing: {decision_label}")
+    for label in (posture_heading, immediate_heading, analysis_heading):
+        if label not in text:
+            failures.append(f"route-native paid-value content is missing: {label}")
+    if record.get("findings") and "Decision signal" not in text:
+        failures.append("first-page decision dashboard is missing")
+    unknown_items = list(record.get("validation", {}).get("missing_bid_context", [])) + list(record.get("unresolved_questions", []))
+    for item in unknown_items:
+        if isinstance(item, dict):
+            value = item.get("text") or item.get("decision") or item.get("question")
+        else:
+            value = str(item)
+        if value and value not in text:
+            failures.append(f"operational unknown is missing from brief: {value}")
     for pattern in FORBIDDEN:
         if pattern.search(text):
             failures.append(f"forbidden content matched: {pattern.pattern}")

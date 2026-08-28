@@ -28,6 +28,12 @@ Create these seven sheets in this order:
 
 Use these exact names so the validator can apply structural gates.
 
+### First-view decision dashboard
+
+The first visible area of `IGCE Summary` must answer the management question before exposing the calculation grid. Show the acquisition/requirement name, estimate purpose, period and pricing structure, point estimate and useful range, the three largest cost drivers, the assumptions most likely to change the result, the status of live BLS/CALC+/travel evidence, and the next required acquisition-team action. Keep the dashboard readable without horizontal scrolling. It must not make a fair-and-reasonable determination.
+
+Do not deliver a workbook whose sheets merely exist. The summary, buildup, scenarios, source limitations, and next actions must be populated enough that a reviewer can understand and challenge the estimate without reverse-engineering formulas.
+
 ## 2. Summary assumptions and pricing table
 
 Use this fixed assumption block:

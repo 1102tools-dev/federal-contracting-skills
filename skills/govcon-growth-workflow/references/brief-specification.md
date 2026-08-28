@@ -8,6 +8,40 @@ Use US Letter, 0.75 to 1 inch margins, Aptos or Arial body text, restrained colo
 
 Every product includes a decision-first page, tailored analysis appropriate to the selected route, a short action plan, proportional limitations, and a compact evidence appendix containing source/search records and evidence IDs. The body should normally be three to six pages. Do not reuse the same title, cover page, section names, or generic “Evidence Brief” label for every route.
 
+The rendered product is the design authority. Passing a schema or structural validator is only a technical floor. A product fails if a reasonable executive still has to invent the decision, the next move, the owner, the proof needed, or the stop condition after reading it.
+
+## Route-native paid-value contract
+
+Each productive route must answer the route's management question and include the listed operating content. Do not substitute a generic findings-and-appendix brief.
+
+| Route | Page-one decision | Paid-value body | Operational unknowns |
+|---|---|---|---|
+| Opportunity shortlist | Which opportunities deserve scarce capture attention now? | Ranked pipeline signals, timing, fit, confidence, and 48-hour qualification moves | Missing notice details, access, customer fit, and response-window facts |
+| Opportunity screen | What bounded pursuit posture should management take? | Fit/access scorecard, decision gates, workshare thesis, and advance/hold/stop rule | Sponsor, eligibility, attachments, security, delivery, and economics gaps |
+| Competitor landscape | How should the company position or engage? | Positioning implications, evidence-backed strengths/limits, and engagement moves | Entity ambiguity, unsupported claims, customer overlap, and role assumptions |
+| Recompete pipeline | Which timing signals merit validation and when? | Radar, validation calendar, trigger owners, and confidence | End dates, options, modifications, vehicle constraints, and customer intent |
+| Teaming card | What partner posture is justified? | Role-fit scorecard, diligence plan, next conversation, and stop conditions | Commitment, responsibility, financial health, conflicts, workshare, and trust |
+| Agency or market plan | Where should the account team focus and what should it do next? | Market thesis, demand and buying patterns, whitespace, and 90-day account moves | Scope bias, customer access, budget timing, vehicles, and incomplete award data |
+| Pricing context | What rate position and proposal guardrails are supportable? | Comparable rate bands, driver analysis, scenario implications, and guardrails | Paid-rate evidence, labor mapping, geography, escalation, and margin inputs |
+| Delta audit | What changed and does it change the prior action? | Decision-impact ledger, stale assumptions, preserved prior record, and updated actions | Unrefreshed sources, unresolved conflicts, and changes that remain unverified |
+
+Page one must show, without turning the page: the route-specific product title and business question; a plain-language management posture; up to three evidence-backed signals; the immediate moves; and the most consequential operational unknowns. For bid screens with incomplete internal context, the posture remains conditional and cannot become a bid/no-bid verdict.
+
+Use `validation.decision_rule` when the approved record contains a route-specific advance/hold/stop or investment rule. When it is absent, do not invent approval thresholds; state the evidence still needed to make the decision.
+
 Every consequential finding cites an evidence ID. State the as-of date and distinguish public evidence from internal user context. If an opportunity screen lacks complete internal context, frame the result as a conditional pursuit posture rather than a bid/no-bid decision.
 
 Do not include prompts, tool prefixes, local paths, credentials, or proprietary input beyond what the user approves for the deliverable.
+
+## Human render gate
+
+After structural validation and PDF conversion, inspect every rendered page at normal reading scale and at 100 percent. Reject and rebuild the product for any blank or near-empty artifact page, clipped or pinned table text, split decision block, unreadable evidence table, generic repeated section structure, or appendix that visually overwhelms the decision product.
+
+The final review must answer yes to each question:
+
+- Can the intended executive state the posture and next action from page one?
+- Are public evidence, internal context, inference, and unknowns visibly distinguishable?
+- Does the body provide route-native work product rather than repeated findings?
+- Are owners, proof obligations, timing, and stop conditions explicit where the record supports them?
+- Is the evidence appendix compact, honest about source preservation, and subordinate to the business decision?
+- Are all pages clean when rendered, with no blank pages, overflow, clipping, or awkward page breaks?

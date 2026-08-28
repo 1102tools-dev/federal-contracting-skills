@@ -15,18 +15,32 @@ Use a distinct product name and lead form for each route. The first page states 
 | Comments | Public Comment Position Analysis | sample-method panel and theme map |
 | Refresh | Policy Analysis Refresh | change log and carry-forward decisions |
 
+## Product-first reader contract
+
+Every written product must lead with the operational meaning of the approved evidence, not a recap of the request or a research-process summary. Before the detailed source sections, the opening view must provide:
+
+1. **Planning posture:** a plain-English posture such as proceed from the codified baseline, implement within documented agency scope, monitor pending rulemaking, or hold a disputed implementation point for authorized resolution.
+2. **Immediate implications:** what the posture changes for acquisition planning, solicitation timing, file support, industry communication, or monitoring. Use only implications supported by the approved findings.
+3. **Owners and decision gates:** identify who must supply the next decision-ready evidence and when it is needed. Prefer roles such as policy office, contracting officer, counsel, program office, or policy analyst over vague next steps.
+4. **Planning scenarios:** show how the treatment changes if the baseline holds, agency adoption is confirmed, rulemaking changes status, or a material conflict remains unresolved. Include only scenarios relevant to the route and record.
+5. **Proportionate boundary:** reserve legal advice, procurement-specific applicability, deviation approval, and other official determinations in a compact note. Do not let boundary language displace the practical answer.
+
+When the approved record supplies `validation.planning_posture`, `validation.decision_gates`, or `validation.planning_scenarios`, use those approved fields. Otherwise the builder derives conservative route-appropriate content from policy statuses, conflicts, open questions, and evidence IDs. Never invent an agency adoption, effective date, controlling value, owner commitment, or procurement fact to make the product appear decisive.
+
 ## Impact Brief required sections
 
-1. Executive Summary
-2. Question and Scope
-3. Documented Current Status
-4. Source Hierarchy and Authorities
-5. Change Timeline
-6. Government and Industry Impacts
-7. Open Issues and Comment Deadlines
-8. Operational Considerations
-9. Evidence Register
-10. Limitations and Reserved Determinations
+1. Planning Posture and Implications
+2. Owners and Decision Gates
+3. Question and Scope
+4. Documented Current Status
+5. Source Hierarchy and Authorities
+6. Planning Scenarios
+7. Change Timeline
+8. Government and Industry Impacts
+9. Open Issues and Comment Deadlines
+10. Operational Considerations
+11. Evidence Register
+12. Limitations and Reserved Determinations
 
 Use the `standard_business_brief` visual preset with a restrained memo masthead. Use US Letter portrait, one-inch margins, Calibri 11-point body text, blue heading hierarchy, quiet running header/footer, real list styles, and fixed-width tables with repeating header rows.
 
@@ -52,4 +66,6 @@ Impacts are considerations, not directives or legal conclusions.
 
 ## Validation
 
-The builder requires `validation.findings_approved` and `validation.brief_approved` to be true. The validator checks section order, evidence-ID coverage, live hyperlinks, as-of date, decision-boundary language, fixed table geometry, repeating headers, prohibited internal content, and policy-record validity.
+The builder requires `validation.findings_approved` and `validation.brief_approved` to be true. The validator checks that planning posture is the first substantive section, owners/gates and scenarios are present, section order, evidence-ID coverage, live hyperlinks, as-of date, decision-boundary language, fixed table geometry, repeating headers, prohibited internal content, and policy-record validity.
+
+Validation is a floor, not the release decision. After validation, convert the DOCX through LibreOffice, extract text, confirm live links, render every page, and inspect the rendered product as the intended reader. Reject and revise any output whose first page does not answer what the reader should do, whose tables crowd or clip, whose boundaries overwhelm the recommendation, or whose owners and scenarios are too generic to use. Repeat validation and rendering after each material revision.

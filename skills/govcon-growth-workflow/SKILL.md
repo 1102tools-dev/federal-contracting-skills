@@ -233,14 +233,16 @@ For a reader-facing report:
 
 1. Read [brief-specification.md](references/brief-specification.md).
 2. Validate the JSON record with `scripts/validate_research_record.py`.
-3. Run `scripts/build_growth_brief.py <record.json> <output.docx>`. The builder selects the route product and first-page decision frame from `workflow_mode`; do not force every route through one generic brief template.
+3. Run `scripts/build_growth_brief.py <record.json> <output.docx>`. The builder selects the route product, page-one management posture, route-native analysis, immediate moves, and operational-unknown section from `workflow_mode`; do not force every route through one generic brief template.
 4. Run `scripts/validate_growth_brief.py <output.docx> --record <record.json>`.
 5. Independently recompute numeric content.
 6. Open/save through LibreOffice and convert to PDF.
 7. Extract text and citations.
-8. Render and inspect every page; fix all layout or citation defects.
+8. Render and inspect every page; fix all layout or citation defects, including blank artifact pages, crowded tables, weak page-one hierarchy, and appendix-first presentation.
 
-Design for the executive who must act: page one states the specific decision or commercial question, the one or two implications that matter, and the next action. Use a short reader-facing report with a route-appropriate title and structure. Place query details, source register, and methodological limits in a compact evidence appendix. Reuse company context already collected in the run; ask only for information that could change the route decision. Do not expose internal prompt or tool plumbing.
+Design for the executive who must act. Page one must state the specific decision or commercial question, a plain-language management posture, up to three evidence-backed signals, the immediate moves, and the operational unknowns that control commitment. The body must deliver the route-native work product defined in the brief specification, not repeat the same findings under generic headings. State owners, proof obligations, timing, and stop conditions when the approved record supports them. Place query details, source register, and methodological limits in a compact evidence appendix. Reuse company context already collected in the run; ask only for information that could change the route decision. Do not expose internal prompt or tool plumbing.
+
+The rendered report, not validator output, is the final quality authority. Structural and citation checks are necessary but cannot qualify a product that is generic, repetitive, difficult to read, or not operationally useful.
 
 ## Out of scope
 

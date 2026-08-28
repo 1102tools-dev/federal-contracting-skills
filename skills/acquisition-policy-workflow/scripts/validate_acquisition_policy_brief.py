@@ -16,10 +16,12 @@ from docx.oxml.ns import qn
 
 
 REQUIRED_HEADINGS = [
-    "What matters",
+    "Planning Posture and Implications",
+    "Owners and Decision Gates",
     "Question and Scope",
     "Documented Current Status",
     "Source Hierarchy and Authorities",
+    "Planning Scenarios",
     "Change Timeline",
     "Government and Industry Impacts",
     "Open Issues and Comment Deadlines",
@@ -123,6 +125,11 @@ def validate(document_path: Path, record_path: Path) -> dict:
     for phrase in BOUNDARY_PHRASES:
         if phrase not in lowered:
             failures.append(f"required decision-boundary language is missing: {phrase}")
+    for product_element in ("Decision-ready evidence", "Owner", "Timing", "Scenario", "Planning treatment"):
+        if product_element not in text:
+            failures.append(f"required reader-facing product element is missing: {product_element}")
+    if not headings or headings[0] != "Planning Posture and Implications":
+        failures.append("the first Heading 1 must state the planning posture and implications")
     as_of = record.get("scope", {}).get("as_of_date", "")
     if as_of and as_of not in text:
         failures.append("record as-of date is missing from the brief")

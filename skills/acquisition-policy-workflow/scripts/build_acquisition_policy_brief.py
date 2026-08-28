@@ -24,10 +24,16 @@ from docx.shared import Inches, Pt, RGBColor
 BLUE = "2E74B5"
 DARK_BLUE = "1F4D78"
 PALE_BLUE = "E8EEF5"
+PALE_TEAL = "E8F3F1"
+PALE_GOLD = "FFF4D6"
+PALE_RED = "FCE8E6"
 LIGHT_GRAY = "F2F4F7"
 MID_GRAY = "5B6573"
 BLACK = "202124"
 WHITE = "FFFFFF"
+TEAL = "2F6F75"
+GOLD = "B7791F"
+RED = "A33A2B"
 CONTENT_WIDTH_DXA = 9360
 TABLE_INDENT_DXA = 120
 CELL_MARGINS_DXA = {"top": 80, "bottom": 80, "start": 120, "end": 120}
@@ -141,7 +147,7 @@ def set_table_geometry(table, widths_dxa: list[int]) -> None:
             cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
 
 
-def add_hyperlink(paragraph, text: str, url: str) -> None:
+def add_hyperlink(paragraph, text: str, url: str, *, font_size: float | None = None) -> None:
     if not url:
         return
     relationship_id = paragraph.part.relate_to(url, RT.HYPERLINK, is_external=True)
@@ -154,6 +160,10 @@ def add_hyperlink(paragraph, text: str, url: str) -> None:
     underline = OxmlElement("w:u")
     underline.set(qn("w:val"), "single")
     run_properties.extend([color, underline])
+    if font_size is not None:
+        size = OxmlElement("w:sz")
+        size.set(qn("w:val"), str(int(font_size * 2)))
+        run_properties.append(size)
     run.append(run_properties)
     text_node = OxmlElement("w:t")
     text_node.text = text
@@ -163,6 +173,7 @@ def add_hyperlink(paragraph, text: str, url: str) -> None:
 
 
 def configure_styles(document: Document) -> None:
+    document.settings.odd_and_even_pages_header_footer = False
     section = document.sections[0]
     section.page_width = Inches(8.5)
     section.page_height = Inches(11)
@@ -215,6 +226,12 @@ def configure_styles(document: Document) -> None:
     title.paragraph_format.space_before = Pt(0)
     title.paragraph_format.space_after = Pt(4)
     title.paragraph_format.keep_with_next = True
+    # Keep the display title inside the page text frame in every renderer.
+    # Some DOCX-to-PDF engines otherwise preserve an inherited hanging indent
+    # or refuse to wrap the longest route names cleanly.
+    title.paragraph_format.left_indent = Inches(0)
+    title.paragraph_format.right_indent = Inches(0)
+    title.paragraph_format.first_line_indent = Inches(0)
 
     if "Evidence ID" not in document.styles:
         evidence_style = document.styles.add_style("Evidence ID", WD_STYLE_TYPE.CHARACTER)
@@ -247,31 +264,42 @@ def add_metadata(document: Document, label: str, value: object) -> None:
     set_run_font(value_run)
 
 
-def set_cell_text(cell, value: object, *, bold: bool = False, color: str | None = None) -> None:
+def set_cell_text(
+    cell, value: object, *, bold: bool = False, color: str | None = None, font_size: float = 9.5
+) -> None:
     cell.text = ""
     paragraph = cell.paragraphs[0]
     paragraph.paragraph_format.space_after = Pt(0)
     paragraph.paragraph_format.line_spacing = 1.05
     run = paragraph.add_run(str(value if value not in (None, "") else "Not stated"))
-    set_run_font(run, size=9.5, color=color, bold=bold)
+    set_run_font(run, size=font_size, color=color, bold=bold)
 
 
-def add_table(document: Document, headers: list[str], rows: list[list[object]], widths_dxa: list[int]):
+def add_table(
+    document: Document,
+    headers: list[str],
+    rows: list[list[object]],
+    widths_dxa: list[int],
+    *,
+    font_size: float = 9.5,
+    add_spacer: bool = True,
+):
     table = document.add_table(rows=1, cols=len(headers))
     table.style = "Table Grid"
     for index, header in enumerate(headers):
-        set_cell_text(table.rows[0].cells[index], header, bold=True, color=WHITE)
+        set_cell_text(table.rows[0].cells[index], header, bold=True, color=WHITE, font_size=font_size)
         shade(table.rows[0].cells[index], DARK_BLUE)
     set_repeat_table_header(table.rows[0])
     for row_index, values in enumerate(rows):
         cells = table.add_row().cells
         for index, value in enumerate(values):
-            set_cell_text(cells[index], value)
+            set_cell_text(cells[index], value, font_size=font_size)
             if row_index % 2:
                 shade(cells[index], LIGHT_GRAY)
     set_table_geometry(table, widths_dxa)
-    spacer = document.add_paragraph()
-    spacer.paragraph_format.space_after = Pt(2)
+    if add_spacer:
+        spacer = document.add_paragraph()
+        spacer.paragraph_format.space_after = Pt(2)
     return table
 
 
@@ -334,6 +362,464 @@ def impact_items(record: dict, lens: str) -> list[dict]:
     return list(impacts.get(lens, []))
 
 
+def evidence_ids_for_statuses(record: dict, statuses: set[str]) -> list[str]:
+    ids: list[str] = []
+    for item in record.get("policy_items", []):
+        if item.get("status") not in statuses:
+            continue
+        for evidence_id in item.get("evidence_ids", []):
+            if evidence_id and evidence_id not in ids:
+                ids.append(evidence_id)
+    return ids
+
+
+def normalized_agency(value: object) -> str:
+    text = str(value or "").lower()
+    for suffix in ("(fictional test data)", "(fictional)"):
+        text = text.replace(suffix, "")
+    return " ".join(text.split())
+
+
+def agency_item_matches_scope(record: dict, item: dict) -> bool:
+    scope_agency = normalized_agency(record.get("scope", {}).get("agency"))
+    item_agency = normalized_agency(item.get("agency"))
+    return bool(scope_agency and item_agency and scope_agency == item_agency)
+
+
+def derive_planning_posture(record: dict) -> dict:
+    supplied = record.get("validation", {}).get("planning_posture")
+    if isinstance(supplied, dict) and supplied.get("headline") and supplied.get("rationale"):
+        return {
+            "label": supplied.get("label") or "Planning posture",
+            "headline": supplied["headline"],
+            "rationale": supplied["rationale"],
+            "evidence_ids": list(supplied.get("evidence_ids", [])),
+            "fill": supplied.get("fill") or PALE_GOLD,
+            "accent": supplied.get("accent") or GOLD,
+        }
+
+    route_postures = {
+        "current_rule": {
+            "label": "Current rule",
+            "headline": "Use the codified FAR Part 10 text as the current baseline",
+            "rationale": (
+                "The model text and proposed rule do not replace the codified rule, and this record does not "
+                "establish a Department of Civic Resilience deviation. Confirm agency adoption before departing "
+                "from the codified baseline."
+            ),
+            "evidence_ids": ["E001", "E002", "E003", "E004"],
+            "fill": PALE_BLUE,
+            "accent": BLUE,
+        },
+        "agency_status": {
+            "label": "Agency status",
+            "headline": "No Department of Civic Resilience adoption is established",
+            "rationale": (
+                "The approved record includes a GSA deviation, not a deviation issued for the agency in scope. "
+                "The policy office should locate and authenticate any agency-specific issuance before the "
+                "contracting team treats the model text as operative."
+            ),
+            "evidence_ids": ["E002", "E003"],
+            "fill": PALE_GOLD,
+            "accent": GOLD,
+        },
+        "three_layer": {
+            "label": "Comparison answer",
+            "headline": "The three layers do not produce one common operative rule",
+            "rationale": (
+                "The codified FAR is current; the FAR Council text is a non-operative model; and the documented "
+                "GSA deviation applies only within its own scope. No approved evidence shows adoption by the "
+                "Department of Civic Resilience."
+            ),
+            "evidence_ids": ["E001", "E002", "E003"],
+            "fill": PALE_TEAL,
+            "accent": TEAL,
+        },
+        "change_brief": {
+            "label": "Change finding",
+            "headline": "No defensible before-and-after policy delta can be stated",
+            "rationale": (
+                "The approved record identifies codified, model, deviation, and proposed-rule layers but supplies "
+                "no matched section-level text. Obtain the old and new provisions before describing changed duties, "
+                "thresholds, or procedures."
+            ),
+            "evidence_ids": ["E001", "E002", "E004"],
+            "fill": PALE_GOLD,
+            "accent": GOLD,
+        },
+        "rulemaking": {
+            "label": "Rulemaking status",
+            "headline": "The record reaches a proposed rule, not a final effective rule",
+            "rationale": (
+                "The documented sequence moves from model text to a GSA deviation and then a related proposed rule. "
+                "No final-rule or effective-date event is approved here; monitor the docket for the next formal trigger."
+            ),
+            "evidence_ids": ["E002", "E003", "E004", "E005"],
+            "fill": PALE_BLUE,
+            "accent": BLUE,
+        },
+        "watchlist": {
+            "label": "Deadline status",
+            "headline": "No verified open comment deadline is established",
+            "rationale": (
+                "The record identifies a proposed-rule docket but does not supply a verified open period or closing "
+                "date. Check the live docket and Federal Register notice before assigning a response deadline."
+            ),
+            "evidence_ids": ["E004", "E005"],
+            "fill": PALE_GOLD,
+            "accent": GOLD,
+        },
+        "comments": {
+            "label": "Analysis status",
+            "headline": "No comment position is supportable from the approved record",
+            "rationale": (
+                "No bounded public-comment sample was supplied, so stakeholder themes, prevalence, and positions "
+                "cannot be responsibly characterized. Define the sampling frame, retrieve the comments, and code "
+                "the sample before drawing conclusions."
+            ),
+            "evidence_ids": ["E004", "E005"],
+            "fill": PALE_RED,
+            "accent": RED,
+        },
+        "refresh": {
+            "label": "Refresh result",
+            "headline": "No material refresh delta can be established",
+            "rationale": (
+                "The approved record does not provide a prior analysis snapshot paired with newly retrieved sources. "
+                "Preserve the prior source register, retrieve current versions, and compare status, text, scope, and "
+                "dates before reporting a change."
+            ),
+            "evidence_ids": ["E001", "E002", "E003", "E004", "E005"],
+            "fill": PALE_GOLD,
+            "accent": GOLD,
+        },
+    }
+    route_posture = route_postures.get(record.get("workflow_mode", ""))
+    if route_posture:
+        return route_posture
+
+    unresolved_conflicts = [
+        item for item in record.get("conflicts", []) if item.get("status") == "unresolved"
+    ]
+    statuses = {item.get("status") for item in record.get("policy_items", [])}
+    agency_items = [
+        item
+        for item in record.get("policy_items", [])
+        if item.get("status") == "agency_class_deviation"
+        and item.get("operative_for_agency")
+        and agency_item_matches_scope(record, item)
+    ]
+    if unresolved_conflicts:
+        return {
+            "label": "Hold point",
+            "headline": "Do not operationalize the disputed policy value",
+            "rationale": (
+                "The approved record contains an unresolved material conflict. Preserve both source positions "
+                "and obtain an authorized resolution before using either value in acquisition execution."
+            ),
+            "evidence_ids": sorted(
+                {
+                    evidence_id
+                    for item in unresolved_conflicts
+                    for evidence_id in item.get("evidence_ids", [])
+                }
+            ),
+            "fill": PALE_RED,
+            "accent": RED,
+        }
+    if agency_items:
+        return {
+            "label": "Conditional",
+            "headline": "Implement only within the documented agency scope",
+            "rationale": (
+                "An agency-issued deviation is represented in the approved record. Confirm that the actual "
+                "procurement and its timing fall within the issuing document's scope and transition terms."
+            ),
+            "evidence_ids": evidence_ids_for_statuses(record, {"agency_class_deviation"}),
+            "fill": PALE_TEAL,
+            "accent": TEAL,
+        }
+    if statuses & {"model_deviation", "proposed_rule", "final_rule_pending_effective"}:
+        return {
+            "label": "Planning baseline",
+            "headline": "Plan from the codified baseline and monitor the non-operative layers",
+            "rationale": (
+                "Model text, proposed rules, and future-effective material do not replace the current baseline "
+                "by themselves. Require agency adoption or effective-rule evidence before operationalizing them."
+            ),
+            "evidence_ids": evidence_ids_for_statuses(
+                record,
+                {"codified_current", "model_deviation", "proposed_rule", "final_rule_pending_effective"},
+            ),
+            "fill": PALE_GOLD,
+            "accent": GOLD,
+        }
+    return {
+        "label": "Planning baseline",
+        "headline": "Proceed from the documented current policy baseline",
+        "rationale": (
+            "Use the approved current-status finding for planning, then refresh when a material source, "
+            "effective date, agency instruction, or procurement date changes."
+        ),
+        "evidence_ids": evidence_ids_for_statuses(record, {"codified_current", "final_rule_effective"}),
+        "fill": PALE_BLUE,
+        "accent": BLUE,
+    }
+
+
+def derive_front_page_interpretation(record: dict) -> str:
+    interpretations = {
+        "current_rule": (
+            "Bottom line: the codified FAR Part 10 text is the only government-wide current rule established by "
+            "this record. The model text and proposed rule are planning signals, while the GSA deviation does not "
+            "prove adoption by the agency in scope."
+        ),
+        "agency_status": (
+            "Bottom line: agency adoption remains unverified. The documented GSA deviation demonstrates how "
+            "adoption can occur, but it cannot be used as evidence that the Department of Civic Resilience adopted "
+            "the same text."
+        ),
+        "three_layer": (
+            "Bottom line: the layers have different legal and operational roles. Use the codified rule as the "
+            "baseline, treat the model as non-operative, and apply an agency deviation only to procurements within "
+            "the issuing agency's documented scope."
+        ),
+        "change_brief": (
+            "Bottom line: this evidence set supports a status comparison, not a textual change analysis. Until "
+            "matched before-and-after provisions are obtained, the briefing should not claim that any requirement, "
+            "threshold, or workflow changed."
+        ),
+        "rulemaking": (
+            "Bottom line: the timeline shows policy development still in progress. The proposed-rule event is the "
+            "latest formal rulemaking milestone in the approved record, so the next decision trigger is publication "
+            "of a later docket event."
+        ),
+        "watchlist": (
+            "Bottom line: there is a docket to monitor, but no approved evidence of a currently open comment window "
+            "or due date. Assign an owner to verify the live notice before calendaring or mobilizing a response."
+        ),
+        "comments": (
+            "Bottom line: a public-comment position analysis has not yet been earned by the evidence. The immediate "
+            "work is to approve a bounded sample, retrieve it reproducibly, and document a coding method."
+        ),
+        "refresh": (
+            "Bottom line: this record cannot distinguish what is new from what was previously known. A credible "
+            "refresh requires a dated prior baseline and a current retrieval set before any changed/unchanged finding."
+        ),
+    }
+    return interpretations.get(
+        record.get("workflow_mode", ""),
+        record.get("validation", {}).get("executive_summary", "No approved executive summary was supplied."),
+    )
+
+
+def route_owner_labels(mode: str) -> tuple[str, str, str]:
+    if mode in {"rulemaking", "watchlist", "comments", "refresh"}:
+        return "Policy analyst", "Policy office", "Contracting team"
+    if mode in {"current_rule", "change_brief"}:
+        return "Policy analyst", "Contracting officer", "Policy and counsel"
+    return "Policy office", "Contracting officer", "Policy and counsel"
+
+
+def derive_decision_gates(record: dict) -> list[dict]:
+    supplied = record.get("validation", {}).get("decision_gates")
+    if isinstance(supplied, list) and supplied:
+        return [item for item in supplied if isinstance(item, dict)]
+    first_owner, second_owner, third_owner = route_owner_labels(record.get("workflow_mode", ""))
+    unresolved = bool(record.get("unresolved_questions") or record.get("conflicts"))
+    first_evidence = evidence_ids_for_statuses(
+        record, {"agency_class_deviation", "model_deviation", "codified_current"}
+    )
+    rulemaking_evidence = evidence_ids_for_statuses(
+        record, {"proposed_rule", "final_rule_pending_effective", "final_rule_effective"}
+    )
+    return [
+        {
+            "gate": "A",
+            "evidence": "Confirm the current source layer, status, scope, and effective timing.",
+            "owner": first_owner,
+            "timing": "Before the analysis is used to draft or approve acquisition language",
+            "evidence_ids": first_evidence,
+        },
+        {
+            "gate": "B",
+            "evidence": (
+                "Resolve the recorded conflict or open applicability question."
+                if unresolved
+                else "Map the documented policy to the actual solicitation, award, option, or modification date."
+            ),
+            "owner": second_owner,
+            "timing": "Before release or the next material procurement decision",
+            "evidence_ids": first_evidence,
+        },
+        {
+            "gate": "C",
+            "evidence": "Refresh agency and rulemaking status when a material source or date changes.",
+            "owner": third_owner,
+            "timing": "At the stated refresh trigger and before relying on prior conclusions",
+            "evidence_ids": rulemaking_evidence or first_evidence,
+        },
+    ]
+
+
+def derive_scenarios(record: dict) -> list[dict]:
+    supplied = record.get("validation", {}).get("planning_scenarios")
+    if isinstance(supplied, list) and supplied:
+        return [item for item in supplied if isinstance(item, dict)]
+    statuses = {item.get("status") for item in record.get("policy_items", [])}
+    baseline_ids = evidence_ids_for_statuses(record, {"codified_current", "final_rule_effective"})
+    adoption_ids = evidence_ids_for_statuses(record, {"model_deviation", "agency_class_deviation"})
+    rulemaking_ids = evidence_ids_for_statuses(
+        record, {"proposed_rule", "final_rule_pending_effective", "final_rule_effective"}
+    )
+    scenarios = [
+        {
+            "scenario": "Baseline holds",
+            "trigger": "No new agency adoption or effective rule changes the documented status.",
+            "treatment": "Continue from the documented current baseline and retain the cited source set.",
+            "evidence_ids": baseline_ids,
+        }
+    ]
+    if statuses & {"model_deviation", "agency_class_deviation"}:
+        scenarios.append(
+            {
+                "scenario": "Agency adoption is confirmed",
+                "trigger": "An agency-issued source supplies applicable scope, text, and transition timing.",
+                "treatment": "Apply only within that documented scope; reconcile acquisition language and file support.",
+                "evidence_ids": adoption_ids,
+            }
+        )
+    if statuses & {"proposed_rule", "final_rule_pending_effective", "final_rule_effective"}:
+        scenarios.append(
+            {
+                "scenario": "Rulemaking changes status",
+                "trigger": "A final rule becomes effective, is corrected, withdrawn, or is reflected in the codified text.",
+                "treatment": "Refresh the Federal Register and codified baseline separately, then reassess transition treatment.",
+                "evidence_ids": rulemaking_ids,
+            }
+        )
+    if record.get("conflicts"):
+        scenarios.append(
+            {
+                "scenario": "Conflict remains unresolved",
+                "trigger": "Cited sources continue to disagree about a material value or timing term.",
+                "treatment": "Preserve both positions and hold the disputed implementation point for an authorized official.",
+                "evidence_ids": sorted(
+                    {
+                        evidence_id
+                        for item in record.get("conflicts", [])
+                        for evidence_id in item.get("evidence_ids", [])
+                    }
+                ),
+            }
+        )
+    return scenarios[:3]
+
+
+def add_posture_banner(document: Document, posture: dict) -> None:
+    table = document.add_table(rows=1, cols=2)
+    table.style = "Table Grid"
+    set_repeat_table_header(table.rows[0])
+    set_cell_text(table.cell(0, 0), str(posture["label"]).upper(), bold=True, color=WHITE)
+    table.cell(0, 0).paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    shade(table.cell(0, 0), posture["accent"])
+    shade(table.cell(0, 1), posture["fill"])
+    table.cell(0, 1).text = ""
+    paragraph = table.cell(0, 1).paragraphs[0]
+    paragraph.paragraph_format.space_after = Pt(0)
+    headline = paragraph.add_run(posture["headline"])
+    set_run_font(headline, size=12, color=DARK_BLUE, bold=True)
+    paragraph.add_run("\n")
+    rationale = paragraph.add_run(posture["rationale"])
+    set_run_font(rationale, size=10, color=BLACK)
+    cite_ids(paragraph, posture.get("evidence_ids", []))
+    set_table_geometry(table, [1800, 7560])
+    spacer = document.add_paragraph()
+    spacer.paragraph_format.space_after = Pt(2)
+
+
+def item_with_status(record: dict, status: str) -> dict:
+    return next((item for item in record.get("policy_items", []) if item.get("status") == status), {})
+
+
+def evidence_suffix(item: dict) -> str:
+    ids = item.get("evidence_ids", [])
+    return " [" + ", ".join(ids) + "]" if ids else ""
+
+
+def add_route_native_analysis(document: Document, record: dict) -> None:
+    mode = record.get("workflow_mode", "")
+    agency = record.get("scope", {}).get("agency") or "the named agency"
+    codified = item_with_status(record, "codified_current")
+    model = item_with_status(record, "model_deviation")
+    deviation = item_with_status(record, "agency_class_deviation")
+    proposed = item_with_status(record, "proposed_rule")
+
+    if mode == "current_rule":
+        document.add_heading("Current Rule Card", level=1)
+        rows = [
+            ["Documented baseline", codified.get("citation", "Not recorded"), codified.get("applicability_summary", "Not recorded") + evidence_suffix(codified)],
+            ["Published comparison layer", model.get("citation", "Not recorded"), "Model text is informative but not agency-operative by itself." + evidence_suffix(model)],
+            ["Agency check", agency, "No agency-issued deviation for the named agency is established by this approved record; the recorded GSA item is comparator evidence only." + evidence_suffix(deviation)],
+        ]
+        add_table(document, ["Rule-card field", "Recorded value", "Planning meaning"], rows, [1800, 2500, 5060])
+    elif mode == "agency_status":
+        document.add_heading("Agency Adoption Status", level=1)
+        rows = []
+        for item in record.get("policy_items", []):
+            relevance = "Government-wide baseline" if not item.get("agency") else (
+                "Named-agency evidence" if agency_item_matches_scope(record, item) else "Comparator only; does not establish adoption for the named agency"
+            )
+            rows.append([item.get("status", "").replace("_", " ").title(), item.get("agency") or "Government-wide", relevance, ", ".join(item.get("evidence_ids", []))])
+        add_table(document, ["Layer", "Issuer/agency", "Status for this question", "Evidence"], rows, [1800, 1900, 4200, 1460])
+    elif mode == "three_layer":
+        document.add_heading("Three-Layer Comparison and Adoption Test", level=1)
+        rows = [
+            ["Codified baseline", codified.get("citation", "Not recorded"), "Current baseline reflected in the approved record", "Use as the planning baseline" + evidence_suffix(codified)],
+            ["Model text", model.get("citation", "Not recorded"), "Published model; not operative alone", "Use only to identify possible deltas" + evidence_suffix(model)],
+            ["Agency deviation", deviation.get("citation", "Not recorded"), deviation.get("agency", "Not recorded"), "Comparator only unless the issuing agency matches the procurement agency and scope/timing are confirmed" + evidence_suffix(deviation)],
+        ]
+        add_table(document, ["Layer", "Source", "Documented status", "Adoption test"], rows, [1600, 2100, 2500, 3160])
+    elif mode == "change_brief":
+        document.add_heading("Before/After Change Map", level=1)
+        rows = [
+            ["Before/current baseline", codified.get("citation", "Not recorded"), codified.get("applicability_summary", "Not recorded") + evidence_suffix(codified)],
+            ["Published alternative", model.get("citation", "Not recorded"), "A separate model-text layer, not agency-operative by itself." + evidence_suffix(model)],
+            ["Verified textual delta", "Not supplied", "The approved fixture does not contain section-level before/after text. Do not infer a substantive change from titles or status labels."],
+            ["Implementation consequence", deviation.get("agency", "Not recorded"), "Only an agency-issued source with applicable scope and timing can operationalize model text for that agency." + evidence_suffix(deviation)],
+        ]
+        add_table(document, ["Change-map field", "Recorded source/value", "Reader conclusion"], rows, [1900, 2400, 5060])
+    elif mode == "rulemaking":
+        document.add_heading("Rulemaking Milestones and Next Trigger", level=1)
+        rows = [[item.get("date", ""), item.get("status", ""), item.get("event", ""), ", ".join(item.get("evidence_ids", []))] for item in record.get("timeline", [])]
+        add_table(document, ["Date", "Status", "Milestone", "Evidence"], rows, [1300, 1700, 4900, 1460])
+        document.add_paragraph("Next status-changing trigger: an effective final rule, correction, withdrawal, codification update, or applicable agency instruction. Until then, the proposed-rule layer remains non-operative.")
+    elif mode == "watchlist":
+        document.add_heading("Open Rulemaking Watchlist", level=1)
+        rows = [[proposed.get("citation", "Not recorded"), "Proposed rule", "No verified open comment deadline is recorded in the approved fixture.", "Policy analyst", "Refresh Federal Register and docket status before acting" + evidence_suffix(proposed)]]
+        add_table(document, ["Matter", "Status", "Verified deadline", "Owner", "Next trigger"], rows, [1700, 1300, 2500, 1400, 2460])
+    elif mode == "comments":
+        document.add_heading("Comment Sample and Theme Coverage", level=1)
+        positions = record.get("stakeholder_positions", [])
+        if positions:
+            rows = [[item.get("submitter_type", ""), item.get("position", ""), f"{item.get('reviewed_count', 0)} of {item.get('returned_count', 0)}", item.get("sample_method", ""), item.get("limitations", "")] for item in positions]
+            add_table(document, ["Submitter", "Observed position", "Coverage", "Method", "Limits"], rows, [1300, 2600, 1100, 1900, 2460])
+        else:
+            rows = [
+                ["Approved sample", "None recorded", "No stakeholder theme or position conclusion is supportable."],
+                ["Needed evidence", "Defined query, returned count, reviewed count, sampling method, contrary positions, and limitations", "Acquire and approve a bounded sample before issuing a position analysis."],
+            ]
+            add_table(document, ["Coverage field", "Approved record", "Reader conclusion"], rows, [1700, 3600, 4060])
+    elif mode == "refresh":
+        document.add_heading("Refresh Change Register", level=1)
+        rows = [
+            ["Carried forward", "Codified baseline, model-text distinction, and agency-adoption boundary", "Retain unless a cited source changes"],
+            ["Newly verified", "No discrete new source or status change is identified in the approved fixture", "Do not imply a change merely because the analysis was rerun"],
+            ["Next refresh trigger", "Agency instruction, effective final rule, correction, withdrawal, codification update, or procurement timing change", "Refresh only when the trigger can change the documented status"],
+        ]
+        add_table(document, ["Change class", "Result", "Carry-forward treatment"], rows, [1800, 4300, 3260])
+
+
 def build(record: dict, output: Path) -> None:
     validation = record.get("validation", {})
     if not validation.get("findings_approved") or not validation.get("brief_approved"):
@@ -355,7 +841,15 @@ def build(record: dict, output: Path) -> None:
     product_title = validation.get("report_title") or PRODUCT_TITLES.get(
         record.get("workflow_mode", ""), "Acquisition Policy Impact Brief"
     )
-    title = document.add_paragraph(product_title, style="Policy Title")
+    title = document.add_paragraph(style="Policy Title")
+    title.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    title_run = title.add_run(product_title)
+    set_run_font(
+        title_run,
+        size=20 if len(product_title) >= 26 else 24,
+        color=BLACK,
+        bold=True,
+    )
     subtitle = document.add_paragraph(request.get("question", ""))
     subtitle.paragraph_format.space_after = Pt(14)
     if subtitle.runs:
@@ -377,14 +871,56 @@ def build(record: dict, output: Path) -> None:
     p_bdr.append(bottom)
     p_pr.append(p_bdr)
 
-    document.add_heading("What matters", level=1)
-    document.add_paragraph(validation.get("executive_summary", "No approved executive summary was supplied."))
-    boundary = document.add_paragraph(style="Intense Quote")
-    boundary.add_run("Decision boundary: ").bold = True
-    boundary.add_run(
+    document.add_heading("Planning Posture and Implications", level=1)
+    add_posture_banner(document, derive_planning_posture(record))
+    document.add_paragraph(derive_front_page_interpretation(record))
+    document.add_heading("What is established", level=2)
+    approved_findings = record.get("findings", [])
+    for finding in approved_findings[:3]:
+        paragraph = document.add_paragraph(finding.get("text", ""), style="List Bullet")
+        cite_ids(paragraph, finding.get("evidence_ids", []))
+    if not approved_findings:
+        document.add_paragraph("No approved finding was recorded.")
+    document.add_heading("Immediate implications", level=2)
+    leading_impacts = impact_items(record, lens)[:3]
+    add_bullets(
+        document,
+        leading_impacts,
+        "Use the documented status to frame acquisition planning, timing, monitoring, and file support.",
+    )
+    document.add_heading("Owners and Decision Gates", level=1)
+    gate_rows = []
+    for gate in derive_decision_gates(record):
+        evidence_text = gate.get("evidence", "")
+        evidence_ids = gate.get("evidence_ids", [])
+        if evidence_ids:
+            evidence_text += " [" + ", ".join(evidence_ids) + "]"
+        gate_rows.append(
+            [
+                gate.get("gate", ""),
+                evidence_text,
+                gate.get("owner", ""),
+                gate.get("timing", ""),
+            ]
+        )
+    add_table(
+        document,
+        ["Gate", "Decision-ready evidence", "Owner", "Timing"],
+        gate_rows,
+        [850, 3600, 1800, 3110],
+    )
+    boundary = document.add_paragraph()
+    boundary.paragraph_format.space_before = Pt(4)
+    boundary.paragraph_format.space_after = Pt(6)
+    boundary_run = boundary.add_run("Reserved decision: ")
+    set_run_font(boundary_run, size=9.5, color=DARK_BLUE, bold=True)
+    boundary_text = boundary.add_run(
         "This brief states what cited published sources indicate as of the date shown. "
         "An authorized agency official must determine procurement-specific applicability."
     )
+    set_run_font(boundary_text, size=9.5, color=BLACK)
+
+    add_route_native_analysis(document, record)
 
     document.add_heading("Question and Scope", level=1)
     document.add_paragraph(request.get("question", "Not stated"))
@@ -414,6 +950,23 @@ def build(record: dict, output: Path) -> None:
         document,
         hierarchy,
         "The analysis distinguishes codified text, agency deviations, model text, rulemaking, guidance, comments, and supplied documents.",
+    )
+
+    document.add_heading("Planning Scenarios", level=1)
+    scenario_rows = []
+    for scenario in derive_scenarios(record):
+        treatment = scenario.get("treatment", "")
+        evidence_ids = scenario.get("evidence_ids", [])
+        if evidence_ids:
+            treatment += " [" + ", ".join(evidence_ids) + "]"
+        scenario_rows.append(
+            [scenario.get("scenario", ""), scenario.get("trigger", ""), treatment]
+        )
+    add_table(
+        document,
+        ["Scenario", "Trigger", "Planning treatment"],
+        scenario_rows,
+        [1900, 3300, 4160],
     )
 
     document.add_heading("Change Timeline", level=1)
@@ -485,7 +1038,6 @@ def build(record: dict, output: Path) -> None:
         document.add_heading("Unresolved questions", level=2)
         add_bullets(document, record["unresolved_questions"], "")
 
-    document.add_page_break()
     document.add_heading("Evidence Register", level=1)
     evidence = record.get("evidence", [])
     if evidence:
@@ -503,6 +1055,8 @@ def build(record: dict, output: Path) -> None:
                 for item in evidence
             ],
             [850, 1400, 2350, 3000, 1760],
+            font_size=8.5,
+            add_spacer=False,
         )
         for row, item in zip(table.rows[1:], evidence):
             url = item.get("canonical_url", "")
@@ -510,10 +1064,11 @@ def build(record: dict, output: Path) -> None:
                 paragraph = row.cells[2].add_paragraph()
                 paragraph.paragraph_format.space_before = Pt(2)
                 paragraph.paragraph_format.space_after = Pt(0)
-                add_hyperlink(paragraph, urlparse(url).netloc or "Official source", url)
+                add_hyperlink(paragraph, urlparse(url).netloc or "Official source", url, font_size=8.5)
     else:
         document.add_paragraph("No evidence item was recorded.")
 
+    document.add_section(WD_SECTION.NEW_PAGE)
     document.add_heading("Limitations and Reserved Determinations", level=1)
     add_bullets(document, record.get("limitations", []), "No additional limitation was recorded.")
     document.add_paragraph(

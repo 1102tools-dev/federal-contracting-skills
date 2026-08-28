@@ -68,7 +68,7 @@ Read supporting files only when their stage is reached:
 9. **Comment boundary:** Public comments are stakeholder evidence, not authority or a representative survey. Preserve the query, sample method, coverage, exclusions, and limitations.
 10. **Documented status only:** State what cited published sources indicate as of a date. Reserve procurement-specific applicability, legal advice, policy approval, and official determinations to authorized officials.
 11. **Evidence integrity:** Every consequential finding cites stable evidence IDs. Keep source fact, user-supplied fact, inference, and documented-status finding distinct. Put complete evidence registers in an appendix or source note, not in the reader's opening view.
-12. **Artifact gate:** Generate a `.docx` only after the record and findings are approved. Use the selected route's named product and reader-first structure; do not force every route into an Impact Brief. The document must pass record validation, structural validation, link and text extraction, LibreOffice conversion, and visual review of every page.
+12. **Artifact gate:** Generate a `.docx` only after the record and findings are approved. Use the selected route's named product and reader-first structure; do not force every route into an Impact Brief. Every written product leads with the planning posture, immediate acquisition implications, named owners and decision gates, and the relevant planning scenarios. Keep the reserved-determination boundary visible but proportionate to the practical answer. The document must pass record validation, structural validation, link and text extraction, LibreOffice conversion, and visual review of every page. Validation is only the technical floor: revise the product if the rendered first page does not answer what the intended reader should do next.
 13. **Unresolved policy conflicts:** When cited sources disagree about a material threshold, status, scope, date, or applicability term, record a structured conflict and report `documented_conflict`. Do not decide that one value controls, governs, or is operative. Only a resolution supplied by an authorized official may close the conflict.
 
 ## Stage 1: select or route the mode
@@ -184,6 +184,9 @@ For public-comment analysis, define the sample before reading comments and do no
 
 Present:
 
+- The practical planning posture and what would change it.
+- Named owners, decision-ready evidence, and timing gates.
+- Relevant scenarios for baseline continuity, agency adoption, rulemaking change, or unresolved conflict.
 - The as-of date and documented status.
 - The codified baseline, deviation, rulemaking, and guidance layers kept distinct.
 - What changed and when.
@@ -206,7 +209,7 @@ For a formal brief:
 4. Run `scripts/validate_acquisition_policy_brief.py <output.docx> --record <record.json>`.
 5. Open/save or convert through LibreOffice.
 6. Extract text and inspect live hyperlinks.
-7. Render and inspect every page. Correct clipping, overflow, broken tables, blank pages, or citation defects and repeat validation.
+7. Render and inspect every page as the intended government, industry, or neutral reader. Correct clipping, overflow, broken tables, blank pages, citation defects, weak first-page decision utility, process-heavy framing, generic owner assignments, or scenarios that do not materially change the treatment; then repeat validation and rendering.
 
 Deliver only the final `.docx` unless the user asks for the research record or QA outputs.
 

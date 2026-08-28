@@ -259,13 +259,14 @@ For Pre-Award Agent preparation, produce a structured handoff containing scope, 
 After findings, acquisition decisions, and every unresolved-item disposition are explicitly approved:
 
 1. Read [report-specification.md](references/report-specification.md).
-2. Save the normalized schema `1.2` record as JSON and run `scripts/validate_research_record.py`. Archived schema `1.1` records may be read or refreshed, but they must be migrated to `1.2` before formal artifact generation.
-3. Run `scripts/build_market_research_report.py <record.json> <output.docx>`.
-4. Run `scripts/validate_market_research_report.py <output.docx> --record <record.json>`.
-5. Independently recompute numeric tables from the record and compare them with the document.
-6. Open/save through LibreOffice and convert to PDF.
-7. Extract text and citations.
-8. Render and inspect every page; correct all clipping, overflow, blank pages, broken tables, or citation defects.
+2. Populate the route-native human-output fields supported by the approved record: decision implications and owned next actions for every route; capability/packaging hypotheses, a market-engagement instrument, and decision gates for a complete report when approved; change fields for a refresh; bounded-answer fields for one-question analysis; or requirements/pricing-boundary fields for a Pre-Award handoff. Give each unresolved item an owner, decision gate, and evidence/action need without inventing a disposition.
+3. Save the normalized schema `1.2` record as JSON and run `scripts/validate_research_record.py`. Archived schema `1.1` records may be read or refreshed, but they must be migrated to `1.2` before formal artifact generation.
+4. Run `scripts/build_market_research_report.py <record.json> <output.docx>`.
+5. Run `scripts/validate_market_research_report.py <output.docx> --record <record.json>`.
+6. Independently recompute numeric tables from the record and compare them with the document.
+7. Open/save through LibreOffice and convert to PDF.
+8. Extract text and citations.
+9. Render and inspect every page; correct all clipping, overflow, blank pages, broken tables, or citation defects.
 
 Deliver the `.docx` with its as-of date and limitations. Do not put internal prompt, tool, file-path, or chain-of-skill plumbing into the report.
 

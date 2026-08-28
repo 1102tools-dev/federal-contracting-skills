@@ -2,6 +2,10 @@
 
 Use a supplied agency template as the design and section authority. Without one, use US Letter portrait, 1-inch margins, a restrained formal business style, page numbers, and real Word styles.
 
+## First-page acquisition brief
+
+Before the detailed body, make page one useful to a program manager and Contracting Officer. Use a compact, document-native brief that states the acquisition outcome, the performance results that control acceptance, the most consequential Government inputs or unresolved assumptions, the transition posture, and the next review action. This is not a generic executive summary and must not contain staffing, FTE, SOC, CLIN, price, or IGCE content. A reader should be able to understand what the requirement buys and what still blocks release without reconstructing the document from later sections.
+
 ## Front matter
 
 - Plain title paragraph, document type, requirement title, agency or office, solicitation/contract placeholder, version/date, and distribution marking when supplied.
@@ -125,3 +129,4 @@ Never create an appendix for staffing, FTE allocation, IGCE handoff, CLIN struct
 - Use page-number fields in the footer.
 - Set update-fields-on-open for the TOC.
 - Do not place internal instructions, test notes, prompt text, skill names, or file-system paths in the document.
+- Reject a technically valid document when the rendered first page is metadata-heavy, a table looks like an unfilled template, substantive sections merely repeat the brief, or a customer still has to invent acceptance logic, owners, or next actions.

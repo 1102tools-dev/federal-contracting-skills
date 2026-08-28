@@ -32,6 +32,8 @@ Extract all document text and verify:
 - `[DEFAULT]` assumptions identify required owner action.
 - No prompt text, local path, internal citation token, test instruction, or TOC-refresh instruction leaked into the file.
 - No vague standalone `support`, undefined `as needed`, or untestable `best practices` requirement remains.
+- Page one states the acquisition outcome, controlling performance results, consequential unresolved Government inputs, transition posture, and next review action without leaking staffing or pricing.
+- Each material unknown names a Government owner and a closeout action; the body contains executable requirements and acceptance evidence rather than repeating the first-page brief.
 
 ## Render audit
 
@@ -42,6 +44,7 @@ Render the latest DOCX to page PNGs with a real office engine and inspect every 
 - Header, footer, and page numbers are aligned.
 - TOC placement is correct. If the dynamic field is not populated, retain it and disclose the Word refresh step in chat.
 - No large blank gaps or accidental blank pages.
+- The first page reads as an acquisition decision product, not a cover sheet or metadata dump.
 
 ## Target application
 

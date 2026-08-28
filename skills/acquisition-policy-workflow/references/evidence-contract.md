@@ -37,10 +37,26 @@ Use schema version `1.1` and `skill: acquisition-policy-workflow`.
   "validation": {
     "findings_approved": false,
     "brief_approved": false,
-    "executive_summary": ""
+    "executive_summary": "",
+    "planning_posture": {
+      "label": "Planning baseline",
+      "headline": "Proceed from the codified baseline",
+      "rationale": "Published model text is not agency-operative by itself.",
+      "evidence_ids": ["E001", "E002"]
+    },
+    "decision_gates": [],
+    "planning_scenarios": []
   }
 }
 ```
+
+The three reader-product fields under `validation` are optional. Use them when the approved findings support more specific, useful content than the conservative builder defaults:
+
+- `planning_posture` contains `label`, `headline`, `rationale`, and `evidence_ids`.
+- `decision_gates` contains `gate`, `evidence`, `owner`, `timing`, and `evidence_ids`.
+- `planning_scenarios` contains `scenario`, `trigger`, `treatment`, and `evidence_ids`.
+
+These fields may organize approved evidence but may not create a new policy status, source fact, owner commitment, procurement date, or applicability determination.
 
 ## Evidence
 

@@ -68,6 +68,7 @@ The audit checks:
 - No stale `competition commitment` Path D language
 - No automatic 100% Government funding claim for 4021 or 4022(f)
 - No generated price-reasonableness conclusion
+- A readable first-view dashboard states the prototype, analysis purpose, milestone basis, funding planning range, contribution treatment, key drivers, source limitations, and next action without horizontal scrolling
 
 ## 3. Independent recomputation
 
@@ -115,6 +116,7 @@ The validator recalculates a temporary copy through LibreOffice when available a
 - Fee uses an approved base and defaults to zero.
 - Cumulative Government funding is a running formula.
 - Dynamic Milestone Detail blocks do not rely on a fixed row stride.
+- Summary milestone and total references resolve to the actual dynamic block total rows; displayed zeroes caused by off-by-one or missing cached references are a delivery failure.
 
 ### Data sources and pacing
 

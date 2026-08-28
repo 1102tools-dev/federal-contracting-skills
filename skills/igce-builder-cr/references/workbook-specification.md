@@ -12,6 +12,12 @@ Build one `.xlsx` workbook with seven sheets in this order:
 
 Include `Travel Detail` even when travel is zero. Put `Travel Not Applicable` and numeric zero in the total cell so summary formulas retain a valid target.
 
+### First-view decision dashboard
+
+The first visible area of `IGCE Summary` must state the requirement, estimate purpose, period, fee structure, point estimate and useful range, major cost and fee drivers, the assumptions most likely to move the result, live-source status, and the next acquisition-team action. Keep the dashboard readable without horizontal scrolling and clearly distinguish estimated cost, fee, and estimated price. Do not make a price-reasonableness determination.
+
+Do not deliver a workbook whose sheets merely exist. Populate the summary, cost buildup, fee logic, scenarios, source limitations, and next actions so a reviewer can understand and challenge the estimate without reverse-engineering formulas.
+
 ## 1. IGCE Summary
 
 ### Assumption block

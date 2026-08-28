@@ -13,20 +13,44 @@ from pathlib import Path
 from docx import Document
 
 
-REQUIRED_HEADINGS = [
-    "Executive assessment",
-    "Requirement and Decision Context",
-    "Documents Reviewed",
-    "Research Scope and Method",
-    "Federal Market Evidence",
-    "Commercial and Other Market Evidence",
-    "Small-Business and Competition Evidence",
-    "Pricing and Contract-Structure Context",
-    "Findings and Approved Decisions",
-    "Limitations, Conflicts, and Unresolved Questions",
-    "Reproducible Search Log",
-    "Evidence Register",
-]
+ROUTE_HEADINGS = {
+    "complete_report": [
+        "Acquisition and decision frame",
+        "What the evidence establishes",
+        "Market capability and packaging",
+        "Market engagement instrument",
+        "Evidence-to-decision gates",
+        "Research execution plan",
+        "Human-owned decisions and unknowns",
+        "Method, limitations, and evidence",
+    ],
+    "refresh": [
+        "Refresh assessment",
+        "What remains usable",
+        "What changed",
+        "What must be rechecked",
+        "Refresh action plan",
+        "Human-owned decisions and unknowns",
+        "Method, limitations, and evidence",
+    ],
+    "one_question": [
+        "Bounded answer",
+        "Evidence for and against",
+        "Decision implications",
+        "Further research options",
+        "Human-owned decisions and unknowns",
+        "Method, limitations, and evidence",
+    ],
+    "pre_award_handoff": [
+        "Handoff summary",
+        "Approved market observations",
+        "Requirements implications",
+        "Pricing evidence boundaries",
+        "Pre-Award intake and next actions",
+        "Human-owned decisions and unknowns",
+        "Method, limitations, and evidence",
+    ],
+}
 FORBIDDEN = [
     re.compile(r"\b(?:automatically|therefore)\s+(?:recommend|requires?|proves?)\b", re.I),
     re.compile(r"\b(?:set[- ]aside|commerciality|contract type|price reasonableness)\s+is\s+automatically\b", re.I),
@@ -43,6 +67,25 @@ def all_text(document: Document) -> str:
     return "\n".join(parts)
 
 
+def _looks_synthetic(item: dict) -> bool:
+    text = " ".join(
+        str(item.get(field, ""))
+        for field in ("title", "locator", "fact", "limitations")
+    ).lower()
+    return any(marker in text for marker in ("fixture", "synthetic", "no live", "test data only"))
+
+
+def evidence_supports_complete_label(record: dict) -> bool:
+    evidence = [item for item in record.get("evidence", []) if isinstance(item, dict)]
+    live_federal = any(
+        item.get("source_class") == "federal_mcp" and not _looks_synthetic(item)
+        for item in evidence
+    )
+    public_web = any(item.get("source_class") in {"official_web", "other_web"} for item in evidence)
+    commercial_approved = record.get("validation", {}).get("commercial_evidence_complete") is True
+    return live_federal and public_web and commercial_approved
+
+
 def validate(document_path: Path, record_path: Path) -> dict:
     failures: list[str] = []
     if not zipfile.is_zipfile(document_path):
@@ -51,11 +94,18 @@ def validate(document_path: Path, record_path: Path) -> dict:
     record = json.loads(record_path.read_text(encoding="utf-8"))
     text = all_text(document)
     headings = [p.text.strip() for p in document.paragraphs if getattr(p.style, "name", "") == "Heading 1"]
-    for heading in REQUIRED_HEADINGS:
+    route = record.get("workflow_mode")
+    required_headings = ROUTE_HEADINGS.get(route, [])
+    if not required_headings:
+        failures.append(f"unsupported workflow_mode for report validation: {route}")
+    for heading in required_headings:
         if heading not in headings:
             failures.append(f"missing Heading 1 section: {heading}")
-    if [h for h in headings if h in REQUIRED_HEADINGS] != REQUIRED_HEADINGS:
+    if [h for h in headings if h in required_headings] != required_headings:
         failures.append("required Heading 1 sections are out of order")
+    for label in ("BOTTOM LINE", "Decision implications", "Next practical actions"):
+        if label not in text:
+            failures.append(f"first-page decision product element is missing: {label}")
     for pattern in FORBIDDEN:
         if pattern.search(text):
             failures.append(f"forbidden content matched: {pattern.pattern}")
@@ -63,9 +113,11 @@ def validate(document_path: Path, record_path: Path) -> dict:
         for evidence_id in item.get("evidence_ids", []):
             if evidence_id not in text:
                 failures.append(f"finding evidence ID not present in report: {evidence_id}")
-    complete = bool(record.get("validation", {}).get("commercial_evidence_complete"))
-    if not complete and "Federal-Data Desk-Research Draft" not in text:
+    complete = evidence_supports_complete_label(record)
+    if route == "complete_report" and not complete and "Federal-Data Desk-Research Draft" not in text:
         failures.append("incomplete commercial evidence is not labeled as a desk-research draft")
+    if route == "complete_report" and not complete and "FAR Part 10 Market Research Report" in text:
+        failures.append("incomplete evidence is mislabeled as a FAR Part 10 Market Research Report")
     evidence = [item for item in record.get("evidence", []) if isinstance(item, dict)]
     for index, check in enumerate(record.get("validation", {}).get("numeric_checks", [])):
         expected = sum(float(value) for value in check.get("components", []))

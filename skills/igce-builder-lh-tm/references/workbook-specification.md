@@ -12,6 +12,12 @@ Build one `.xlsx` workbook with seven sheets in this order:
 
 Keep `Materials Detail` in an LH workbook and mark it `Not Applicable` with numeric zero. This preserves a stable structure without implying that LH reimburses materials.
 
+### First-view decision dashboard
+
+The first visible area of `IGCE Summary` must state the requirement, estimate purpose, LH or T&M structure, period, point estimate and useful range, ceiling-hour and materials exposure, major rate drivers, live-source status, and the next acquisition-team action. Keep the dashboard readable without horizontal scrolling and distinguish hourly-rate, ceiling-hour, travel, and T&M materials effects. Do not make a price-reasonableness determination.
+
+Do not deliver a workbook whose sheets merely exist. Populate the summary, scenarios, rate validation, travel/materials treatment, source limitations, and next actions so a reviewer can understand and challenge the estimate without reverse-engineering formulas.
+
 ## 1. IGCE Summary
 
 ### Assumption cells

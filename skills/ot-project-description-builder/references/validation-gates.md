@@ -20,6 +20,8 @@
 - The Deliverables table maps each artifact to a due trigger and acceptance criterion.
 - Each `[TBD]` has an owner and closeout trigger in Constraints and Assumptions.
 - Tables have explicit geometry, repeating headers, adequate padding, and no clipped rows.
+- Page one states the prototype objective, decision supported, pivotal milestones, major assumptions, and program-team next action without pricing or reserved determinations.
+- The body provides executable thresholds, completion evidence, go/no-go logic, and owned closeout triggers rather than repeating the first-page brief.
 
 ## Separation and legal accuracy
 
@@ -38,6 +40,7 @@
 3. Inspect every page at readable zoom.
 4. Fix and rerun both checks after any defect.
 5. Verify that the delivered file is the validated file.
+6. Reject a cover-heavy first page, blank-looking contents page, clipped milestone table, or generic route title even when structural validation passes.
 
 ## Chat-only handoff
 

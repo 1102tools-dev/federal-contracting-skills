@@ -23,14 +23,97 @@ GREEN = "167D5A"
 GRAY = "5B6573"
 
 WORKFLOW_PRODUCTS = {
-    "opportunity": ("Federal Opportunity Shortlist", "Priority opportunities", "48-hour capture moves"),
-    "bid_screen": ("Opportunity Evidence Screen", "Pursuit posture", "Conditions before commitment"),
-    "competitor": ("Competitor Landscape", "Positioning snapshot", "Where to engage"),
-    "recompete": ("Recompete and Follow-on Pipeline", "Recompete radar", "Validation calendar"),
-    "teaming": ("Teaming Partner Decision Card", "Partner thesis", "Next conversation"),
-    "market": ("Agency or Market Account Plan", "Market thesis", "90-day account moves"),
-    "pricing": ("Labor-Rate and Pricing Context", "Rate signal", "Proposal guardrails"),
-    "refresh": ("Prior-Research Delta Audit", "What changed", "Updated actions"),
+    "opportunity": {
+        "title": "Federal Opportunity Shortlist",
+        "posture": "Pipeline decision",
+        "decision_label": "PORTFOLIO POSTURE",
+        "analysis": "Priority opportunities",
+        "assessment": "Pipeline prioritization",
+        "immediate": "48-hour shortlist moves",
+        "actions": "Capture action plan",
+        "unknowns": "Qualification gaps",
+    },
+    "bid_screen": {
+        "title": "Opportunity Evidence Screen",
+        "posture": "Pursuit posture",
+        "decision_label": "MANAGEMENT POSTURE",
+        "analysis": "Executive scorecard",
+        "assessment": "Pursuit logic",
+        "immediate": "48-hour decision gates",
+        "actions": "Conditions before commitment",
+        "unknowns": "Material unknowns",
+    },
+    "competitor": {
+        "title": "Competitor Landscape",
+        "posture": "Competitive posture",
+        "decision_label": "POSITIONING POSTURE",
+        "analysis": "Positioning snapshot",
+        "assessment": "Competitive implications",
+        "immediate": "Immediate positioning moves",
+        "actions": "Engagement plan",
+        "unknowns": "Claims and assumptions to validate",
+    },
+    "recompete": {
+        "title": "Recompete and Follow-on Pipeline",
+        "posture": "Pipeline timing posture",
+        "decision_label": "PIPELINE POSTURE",
+        "analysis": "Recompete radar",
+        "assessment": "Timing and validation thesis",
+        "immediate": "Near-term validation moves",
+        "actions": "Validation calendar",
+        "unknowns": "Dates and triggers to validate",
+    },
+    "teaming": {
+        "title": "Teaming Partner Decision Card",
+        "posture": "Partner posture",
+        "decision_label": "PARTNER POSTURE",
+        "analysis": "Partner-fit scorecard",
+        "assessment": "Partner-fit decision",
+        "immediate": "Next partner moves",
+        "actions": "Diligence and engagement plan",
+        "unknowns": "Diligence gaps",
+    },
+    "market": {
+        "title": "Agency or Market Account Plan",
+        "posture": "Account posture",
+        "decision_label": "ACCOUNT POSTURE",
+        "analysis": "Market thesis",
+        "assessment": "Account implications",
+        "immediate": "Next account moves",
+        "actions": "90-day account plan",
+        "unknowns": "Account unknowns",
+    },
+    "pricing": {
+        "title": "Labor-Rate and Pricing Context",
+        "posture": "Pricing posture",
+        "decision_label": "PRICING POSTURE",
+        "analysis": "Rate-position dashboard",
+        "assessment": "Rate-position interpretation",
+        "immediate": "Immediate pricing moves",
+        "actions": "Proposal guardrails",
+        "unknowns": "Pricing unknowns",
+    },
+    "refresh": {
+        "title": "Prior-Research Delta Audit",
+        "posture": "Updated posture",
+        "decision_label": "DELTA POSTURE",
+        "analysis": "What changed",
+        "assessment": "Decision impact of the delta",
+        "immediate": "Immediate update moves",
+        "actions": "Updated action plan",
+        "unknowns": "Unresolved deltas",
+    },
+}
+
+DEFAULT_PRODUCT = {
+    "title": "GovCon Growth Analysis",
+    "posture": "Executive posture",
+    "decision_label": "MANAGEMENT POSTURE",
+    "analysis": "Decision-relevant analysis",
+    "assessment": "Commercial implications",
+    "immediate": "Immediate moves",
+    "actions": "Action plan",
+    "unknowns": "Operational unknowns",
 }
 
 
@@ -136,6 +219,46 @@ def add_bullets(document: Document, items: list[object], empty: str) -> None:
         paragraph.paragraph_format.line_spacing = 1.05
 
 
+def item_text(item: object) -> str:
+    """Return the reader-facing text from a record item."""
+    if isinstance(item, dict):
+        return str(
+            item.get("text")
+            or item.get("decision")
+            or item.get("question")
+            or json.dumps(item, sort_keys=True)
+        )
+    return str(item)
+
+
+def operational_unknowns(record: dict) -> list[object]:
+    """Combine decision-blocking unknowns without converting absence into fact."""
+    items: list[object] = []
+    items.extend(record.get("validation", {}).get("missing_bid_context", []))
+    items.extend(record.get("unresolved_questions", []))
+    seen: set[str] = set()
+    result: list[object] = []
+    for item in items:
+        text = item_text(item).strip()
+        if text and text not in seen:
+            seen.add(text)
+            result.append(item)
+    return result
+
+
+def add_page_one_signals(document: Document, findings: list[dict]) -> None:
+    """Add a compact decision dashboard from approved findings."""
+    rows: list[list[object]] = []
+    for finding in findings[:3]:
+        evidence_ids = finding.get("evidence_ids", [])
+        rows.append([
+            finding.get("text", "No finding text was recorded."),
+            ", ".join(evidence_ids) if evidence_ids else "No linked evidence ID",
+        ])
+    if rows:
+        add_table(document, ["Decision signal", "Evidence"], rows, [5.55, 1.35])
+
+
 def cite_ids(paragraph, ids: list[str]) -> None:
     if ids:
         paragraph.add_run(" [")
@@ -173,10 +296,12 @@ def build(record: dict, output: Path) -> None:
     as_of = record.get("scope", {}).get("as_of_date", "Not stated")
     has_bid_decision = bool(record.get("validation", {}).get("bid_context_complete"))
     workflow_mode = record.get("workflow_mode", "")
-    label, analysis_heading, action_heading = WORKFLOW_PRODUCTS.get(
-        workflow_mode, ("GovCon Growth Analysis", "Decision-relevant analysis", "Next actions")
-    )
-    label = record.get("validation", {}).get("report_title", label)
+    product = WORKFLOW_PRODUCTS.get(workflow_mode, DEFAULT_PRODUCT)
+    label = record.get("validation", {}).get("report_title", product["title"])
+    validation = record.get("validation", {})
+    findings = record.get("findings", [])
+    unknowns = operational_unknowns(record)
+    next_actions = validation.get("next_actions", [])
 
     brand = document.add_paragraph("GOVCON GROWTH | DECISION PRODUCT")
     brand.runs[0].bold = True
@@ -187,50 +312,50 @@ def build(record: dict, output: Path) -> None:
     subtitle.runs[0].font.size = Pt(13)
     subtitle.runs[0].font.color.rgb = RGBColor.from_string(GRAY)
     document.add_paragraph(f"As of {as_of} | {research_basis(record)}")
-    opening_findings = record.get("findings", [])
-    opening_insight = opening_findings[0].get("text", "No approved finding was recorded.") if opening_findings else "No approved finding was recorded."
+    opening_insight = findings[0].get("text", "No approved finding was recorded.") if findings else "No approved finding was recorded."
+    posture = validation.get("assessment") or validation.get("executive_summary") or opening_insight
     callout = document.add_table(rows=1, cols=1)
     callout.style = "Table Grid"
     shade(callout.cell(0, 0), "E8EEF5")
-    set_cell_text(callout.cell(0, 0), f"WHAT MATTERS\n{opening_insight}", bold=True, color=NAVY)
-    document.add_heading("Do next", level=2)
-    add_bullets(document, record.get("validation", {}).get("next_actions", []), "Confirm the next validation action with the capture lead.")
+    set_cell_text(callout.cell(0, 0), f"{product['decision_label']}\n{posture}", bold=True, color=NAVY)
 
-    headings = [
-        "Executive assessment",
-        "Business question and scope",
-        "Company context and missing inputs",
-        analysis_heading,
-        "Assessment",
-        "Risks, contrary evidence, and limitations",
-        action_heading,
-        "Research record",
-        "Evidence appendix",
-    ]
-    document.add_heading(headings[0], level=1)
-    document.add_paragraph(record.get("validation", {}).get("executive_summary", "This brief organizes the approved public and internal evidence."))
+    document.add_heading(product["posture"], level=1)
+    document.add_paragraph(validation.get("executive_summary", opening_insight))
+    add_page_one_signals(document, findings)
     if not has_bid_decision:
         quote = document.add_paragraph(style="Intense Quote")
         quote.add_run("Decision boundary: ").bold = True
         quote.add_run("Internal company context is incomplete. This product is a conditional pursuit posture, not a bid or no-bid recommendation.")
 
-    document.add_heading(headings[1], level=1)
-    document.add_paragraph(record.get("question", "Not provided"))
-    add_table(document, ["Scope field", "Value"], scope_rows(record.get("scope", {})), [2.1, 4.8])
+    document.add_heading(product["immediate"], level=1)
+    add_bullets(document, next_actions[:3], "Confirm the next validation action with the accountable growth lead.")
+    document.add_heading(product["unknowns"], level=2)
+    add_bullets(document, unknowns[:3], "No decision-blocking unknown was recorded.")
+    decision_rule = validation.get("decision_rule")
+    if decision_rule:
+        quote = document.add_paragraph(style="Intense Quote")
+        quote.add_run("Decision rule: ").bold = True
+        quote.add_run(str(decision_rule))
 
-    document.add_heading(headings[2], level=1)
-    add_bullets(document, record.get("user_context", []), "No internal company context was supplied.")
-    document.add_heading("Assumptions", level=2)
-    add_bullets(document, record.get("assumptions", []), "No working assumption was recorded.")
-    missing = record.get("validation", {}).get("missing_bid_context", [])
-    document.add_heading("Missing bid-screen context", level=2)
-    add_bullets(document, missing, "None recorded.")
-
-    document.add_heading(headings[3], level=1)
-    for finding in record.get("findings", []):
+    headings = [
+        product["posture"],
+        product["immediate"],
+        product["analysis"],
+        product["assessment"],
+        "Business question and scope",
+        "Company context and assumptions",
+        product["unknowns"],
+        "Risks, contrary evidence, and limitations",
+        product["actions"],
+        "Research record",
+        "Evidence appendix",
+    ]
+    analysis_heading = document.add_heading(headings[2], level=1)
+    analysis_heading.paragraph_format.page_break_before = True
+    for finding in findings:
         p = document.add_paragraph(finding.get("text", ""), style="List Bullet")
         cite_ids(p, finding.get("evidence_ids", []))
-    if not record.get("findings"):
+    if not findings:
         document.add_paragraph("No approved finding was recorded.")
     for index, check in enumerate(record.get("validation", {}).get("numeric_checks", [])):
         total = sum(float(value) for value in check.get("components", []))
@@ -249,31 +374,42 @@ def build(record: dict, output: Path) -> None:
         paragraph = document.add_paragraph(f"{check.get('label', 'Calculated total')}: {total:,.2f}")
         cite_ids(paragraph, calculation_ids)
 
-    document.add_heading(headings[4], level=1)
-    document.add_paragraph(record.get("validation", {}).get("assessment", "No final assessment was approved."))
-    pipeline = record.get("validation", {}).get("pipeline", [])
+    document.add_heading(headings[3], level=1)
+    document.add_paragraph(validation.get("assessment", "No final assessment was approved."))
+    pipeline = validation.get("pipeline", [])
     if pipeline:
         add_table(document, ["Candidate", "Signal", "Timing", "Confidence", "Next validation"], [[p.get("candidate", ""), p.get("signal", ""), p.get("timing", ""), p.get("confidence", ""), p.get("next_validation", "")] for p in pipeline], [1.5, 1.8, 1.1, 0.8, 1.7])
 
+    document.add_heading(headings[4], level=1)
+    document.add_paragraph(record.get("question", "Not provided"))
+    add_table(document, ["Scope field", "Value"], scope_rows(record.get("scope", {})), [2.1, 4.8])
+
     document.add_heading(headings[5], level=1)
+    add_bullets(document, record.get("user_context", []), "No internal company context was supplied.")
+    document.add_heading("Assumptions", level=2)
+    add_bullets(document, record.get("assumptions", []), "No working assumption was recorded.")
+
+    document.add_heading(headings[6], level=1)
+    add_bullets(document, unknowns, "No operational unknown was recorded.")
+
+    document.add_heading(headings[7], level=1)
     add_bullets(document, record.get("conflicts", []), "No source conflict was recorded.")
-    add_bullets(document, record.get("unresolved_questions", []), "No unresolved question was recorded.")
     for inference in record.get("inferences", []):
         p = document.add_paragraph("Inference: " + inference.get("text", inference.get("reasoning", "")), style="List Bullet")
         cite_ids(p, inference.get("evidence_ids", []))
 
-    document.add_heading(headings[6], level=1)
+    document.add_heading(headings[8], level=1)
     add_bullets(document, record.get("user_decisions", []), "No user decision was recorded.")
-    add_bullets(document, record.get("validation", {}).get("next_actions", []), "No next action was recorded.")
+    add_bullets(document, next_actions, "No next action was recorded.")
 
-    document.add_heading(headings[7], level=1)
+    document.add_heading(headings[9], level=1)
     queries = record.get("queries", [])
     if queries:
         add_table(document, ["Source / operation", "Sanitized parameters", "Retrieved", "Coverage and limits"], [[q.get("operation", q.get("source", "")), json.dumps(q.get("parameters", {}), sort_keys=True), q.get("retrieved_at", ""), f"{q.get('count', 'n/a')}; {q.get('limitations', '')}"] for q in queries], [1.5, 2.35, 1.25, 2.0])
     else:
         document.add_paragraph("No external query was made.")
 
-    document.add_heading(headings[8], level=1)
+    document.add_heading(headings[10], level=1)
     # LibreOffice can position a repeated header above the printable area on a
     # later page of a long fixed-width table. Keep the header on the first page
     # only so every continued evidence row remains fully visible after PDF
