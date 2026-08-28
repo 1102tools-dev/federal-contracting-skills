@@ -662,7 +662,7 @@ class ArtifactTests(unittest.TestCase):
             calculation_lines = [
                 paragraph
                 for paragraph in document.paragraphs
-                if "Synthetic pipeline value" in paragraph.text
+                if "Sample pipeline value" in paragraph.text
             ]
             self.assertEqual(len(calculation_lines), 1)
             self.assertIn("[E003]", calculation_lines[0].text)
@@ -695,6 +695,63 @@ class ArtifactTests(unittest.TestCase):
             self.assertNotEqual(build.returncode, 0)
             self.assertIn("requires exactly one calculation evidence item", build.stdout + build.stderr)
             self.assertFalse(output.exists())
+
+    def growth_paths(self):
+        return (
+            ROOT / "skills/govcon-growth-workflow/scripts/build_growth_brief.py",
+            ROOT / "skills/govcon-growth-workflow/scripts/validate_growth_brief.py",
+        )
+
+    def build_growth_variant(self, directory: str, mutate) -> tuple[Path, Path]:
+        record = json.loads((ROOT / "tests/fixtures/govcon-growth-record.json").read_text(encoding="utf-8"))
+        mutate(record)
+        record_path = Path(directory) / "growth-record.json"
+        record_path.write_text(json.dumps(record), encoding="utf-8")
+        output = Path(directory) / "growth-brief.docx"
+        builder, _ = self.growth_paths()
+        build = subprocess.run([PYTHON, str(builder), str(record_path), str(output)], capture_output=True, text=True)
+        self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+        return record_path, output
+
+    def test_growth_brief_rejects_reader_visible_harness_vocabulary(self):
+        _, validator_path = self.growth_paths()
+        for phrase in ("Fictional internal company context", "Archived bounded-sample record"):
+            with self.subTest(phrase=phrase), tempfile.TemporaryDirectory() as directory:
+                record_path, output = self.build_growth_variant(
+                    directory, lambda record: record["assumptions"].append(phrase)
+                )
+                check = subprocess.run(
+                    [PYTHON, str(validator_path), str(output), "--record", str(record_path)],
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertNotEqual(check.returncode, 0)
+                self.assertIn("reader-visible harness vocabulary is prohibited", check.stdout + check.stderr)
+
+    def test_growth_brief_rejects_federal_evidence_without_locator(self):
+        _, validator_path = self.growth_paths()
+        with tempfile.TemporaryDirectory() as directory:
+            def mutate(record):
+                self.assertEqual(record["evidence"][3]["source_class"], "federal_mcp")
+                record["evidence"][3]["locator"] = " "
+            record_path, output = self.build_growth_variant(directory, mutate)
+            check = subprocess.run(
+                [PYTHON, str(validator_path), str(output), "--record", str(record_path)],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(check.returncode, 0)
+            self.assertIn("federal evidence E004 has no checkable locator", check.stdout + check.stderr)
+
+    def test_growth_brief_later_sections_do_not_restate_page_one_lists(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, output = self.build_growth_variant(directory, lambda record: None)
+            paragraphs = [paragraph.text for paragraph in Document(output).paragraphs]
+            record = json.loads((ROOT / "tests/fixtures/govcon-growth-record.json").read_text(encoding="utf-8"))
+            first_action = record["validation"]["next_actions"][0]
+            first_unknown = record["validation"]["missing_bid_context"][0]
+            self.assertEqual(sum(1 for text in paragraphs if first_action in text), 1)
+            self.assertEqual(sum(1 for text in paragraphs if first_unknown in text), 1)
 
     def test_growth_brief_long_evidence_table_does_not_repeat_header(self):
         with tempfile.TemporaryDirectory() as directory:

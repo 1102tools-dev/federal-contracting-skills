@@ -1,5 +1,15 @@
 # Route-specific GovCon Growth product specification
 
+## Customer identity and reader-visible language
+
+The customer organization name, size posture, and constraints used anywhere in the document must come verbatim from user intake. Never substitute a placeholder company, a different size profile, or invented constraints.
+
+Internal harness vocabulary is prohibited in every reader-visible field, including headers, footers, titles, body text, tables, and the evidence appendix: never write "fictional", "test", "synthetic", "fixture", "bounded sample", or "archived record" where a reader can see it. When the user has not approved live research, honest illustrative labeling uses exactly one standard reader-facing line, placed in the limitations block only: "Illustrative analysis prepared without live-data confirmation". The brief validator rejects documents containing the banned tokens.
+
+## Verifiable locators
+
+Every evidence row sourced from federal data (`federal_mcp`, `official_web`, `other_web`) must carry a checkable locator a reader can independently verify: a SAM.gov notice ID, award PIID, UEI, docket number, or public URL, plus the retrieval date. Never state that locators "were not preserved"; if a locator was not captured, the evidence row is not usable in the deliverable. The brief validator errors on federal evidence rows with an empty locator.
+
 ## Design
 
 Use US Letter, 0.75 to 1 inch margins, Aptos or Arial body text, restrained color, accessible contrast, page numbers, and real Word heading styles. First pages are decision pages, not generic covers: the title, business question, one decisive insight, and next action must be visible without turning a page. Use an appropriate route accent and layout: shortlist (pipeline cards), screen (decision dashboard), competitor (positioning map), recompete (radar table), teaming (decision card), account plan (market thesis), pricing (rate band), and refresh (delta ledger). Repeat table headers where the renderer preserves the printable margin. Use landscape only for wide evidence tables.
@@ -13,6 +23,10 @@ The rendered product is the design authority. Passing a schema or structural val
 ## Route-native paid-value contract
 
 Each productive route must answer the route's management question and include the listed operating content. Do not substitute a generic findings-and-appendix brief.
+
+Each route either answers its management question from the approved evidence or leads with an explicit shortfall statement that names what was not obtainable and the exact follow-up query plan. Padding a route with out-of-scope items is prohibited: a shortlist of one is a shortlist of one plus a shortfall statement, never a list inflated with rejected or off-scope candidates; a delta audit that could not examine the revised solicitation says so on page one; a competitor landscape covering one company is labeled a single-company profile with the queries still needed for a landscape.
+
+Section content must be route-native. Within one engagement, never reuse an identical analysis paragraph, fit narrative, or stop-condition subtext across routes; every analysis statement comes from the approved record for that route, not from template boilerplate. No section may restate a list or table already shown on page one; later sections extend page one with status or remaining items instead of duplicating it.
 
 | Route | Page-one decision | Paid-value body | Operational unknowns |
 |---|---|---|---|

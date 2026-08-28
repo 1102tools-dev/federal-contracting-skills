@@ -14,6 +14,9 @@ The bundled validator checks:
 - Fringe, overhead, G&A, FCCM, fee, and price formulas preserve the required bases.
 - The workbook contains formulas and no formula-error tokens in formula text.
 - Text beginning with formula-trigger characters is escaped.
+- Any summary total labeled as a price equals estimated cost plus fee; a price-labeled total that equals the cost subtotal fails.
+- The current-assumptions Scenario Analysis row reproduces the summary estimated price within one dollar, proving the scenario sheet uses the same fee-base rule.
+- For a multi-period requirement (`assumptions.periods` greater than 1, reconciled with `IGCE Summary!B19`), the summary shows a per-period breakdown of cost, fee, and price for the base and each option period.
 - Optional custom formula assertions in the JSON sidecar pass.
 
 ## Layer 2: independent recomputation
@@ -30,7 +33,8 @@ Create a JSON sidecar from the raw inputs, not from workbook formula results. Mi
     "ga_rate": 0.12,
     "fccm_rate": 0.0,
     "aging_factor": 1.025,
-    "productive_hours": 1880
+    "productive_hours": 1880,
+    "periods": 3
   },
   "labor_lines": [
     {

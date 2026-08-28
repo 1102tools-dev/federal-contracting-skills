@@ -111,6 +111,7 @@ If the user selects Help me choose, follow the diagnosis-and-recommendation cont
 Reuse the retained [launch-menu-and-framing.md](references/launch-menu-and-framing.md) content without reading or loading it again. If the mode was selected from the menu and its preview has not yet been shown, begin with its four-line outcome preview. Then establish only the fields needed by the selected mode:
 
 - Question and intended use.
+- Customer organization and decision date. Carry both from intake into the record's scope block and into every written product's scope header verbatim; never rescope a product to a different or invented organization, and never drop the decision date.
 - As-of date.
 - FAR, DFARS, or agency-supplement citation or part.
 - Agency, when agency status matters.
@@ -204,13 +205,15 @@ For chat, provide the approved findings, citations, reproducible source summary,
 For a formal brief:
 
 1. Read [report-specification.md](references/report-specification.md).
-2. Apply the route-content minimums in the specification. Do not generate a Regulatory Change Briefing without matched text, a Watchlist without live matters and timing, a Public Comment Position Analysis without an approved comment sample and coded themes, or a Refresh without a dated prior/current comparison. Return a short evidence-acquisition note in chat when the product has not been earned by the evidence.
-3. Save the record as JSON and run `scripts/validate_policy_research_record.py`.
-4. Run `scripts/build_acquisition_policy_brief.py <record.json> <output.docx>`.
-5. Run `scripts/validate_acquisition_policy_brief.py <output.docx> --record <record.json>`.
-6. Open/save or convert through LibreOffice.
-7. Extract text and inspect live hyperlinks.
-8. Render and inspect every page as the intended government, industry, or neutral reader. Correct clipping, overflow, broken tables, blank pages, citation defects, weak first-page decision utility, process-heavy framing, generic owner assignments, or scenarios that do not materially change the treatment; then repeat validation and rendering.
+2. Apply the route-content minimums in the specification. Do not generate a Regulatory Change Briefing without matched text, a Watchlist without live matters and timing, a Public Comment Position Analysis without an approved comment sample and coded themes, or a Refresh without a dated prior/current comparison. A Refresh must also identify the prior analysis by title and date in the scope header. Return a short evidence-acquisition note in chat when the product has not been earned by the evidence.
+3. Every product's scope header states the customer organization and decision date from intake verbatim. The route-specific analysis must be the majority of the document body; shared framing is limited to the scope header, evidence register, and limitations, and no table's rows are repeated in a second section.
+4. When the record is illustrative rather than live-sourced, use the standard reader-facing label "Illustrative example (not live data)" in the limitations or evidence-status block only. Never place test-harness vocabulary such as "test record", "test fixture", "synthetic", or "fixture" in reader-visible content or payload tables.
+5. Save the record as JSON and run `scripts/validate_policy_research_record.py`.
+6. Run `scripts/build_acquisition_policy_brief.py <record.json> <output.docx>`.
+7. Run `scripts/validate_acquisition_policy_brief.py <output.docx> --record <record.json>`.
+8. Open/save or convert through LibreOffice.
+9. Extract text and inspect live hyperlinks.
+10. Render and inspect every page as the intended government, industry, or neutral reader. Correct clipping, overflow, broken tables, blank pages, citation defects, weak first-page decision utility, process-heavy framing, generic owner assignments, or scenarios that do not materially change the treatment; then repeat validation and rendering.
 
 Deliver only the final `.docx` unless the user asks for the research record or QA outputs.
 

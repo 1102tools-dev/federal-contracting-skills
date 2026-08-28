@@ -59,6 +59,38 @@ FORBIDDEN = [
     re.compile(r"\bmcp__|/mnt/|/Users/|[A-Za-z]:\\", re.I),
     re.compile(r"\bghp_[A-Za-z0-9]{20,}\b|\b(?:sk|cfat|SAM)-[A-Za-z0-9_-]{16,}\b", re.I),
 ]
+# Internal evidence-class vocabulary must never render into a reader-visible
+# document; the builder maps these tokens to reader labels.
+INTERNAL_CLASS_TOKENS = ("federal_mcp", "official_web", "other_web", "user_statement", "source_class")
+
+
+def collect_evidence_ids(value) -> set[str]:
+    ids: set[str] = set()
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key == "evidence_ids" and isinstance(item, list):
+                ids.update(str(candidate) for candidate in item)
+            else:
+                ids.update(collect_evidence_ids(item))
+    elif isinstance(value, list):
+        for item in value:
+            ids.update(collect_evidence_ids(item))
+    return ids
+
+
+def evidence_id_map(record: dict) -> dict[str, str]:
+    """Mirror the builder's focused-route renumbering of reader-visible evidence IDs."""
+    if record.get("workflow_mode") == "complete_report":
+        return {}
+    cited = collect_evidence_ids(record.get("validation", {}))
+    for item in record.get("findings", []):
+        if isinstance(item, dict):
+            cited.update(str(value) for value in item.get("evidence_ids", []))
+    mapping: dict[str, str] = {}
+    for item in record.get("evidence", []):
+        if isinstance(item, dict) and item.get("id") in cited:
+            mapping[str(item["id"])] = f"E{len(mapping) + 1:03d}"
+    return mapping
 
 
 def all_text(document: Document) -> str:
@@ -123,9 +155,13 @@ def validate(document_path: Path, record_path: Path) -> dict:
     for pattern in FORBIDDEN:
         if pattern.search(text):
             failures.append(f"forbidden content matched: {pattern.pattern}")
+    for token in INTERNAL_CLASS_TOKENS:
+        if token in text:
+            failures.append(f"internal evidence-class token rendered in the document: {token}")
+    id_map = evidence_id_map(record)
     for item in record.get("findings", []):
         for evidence_id in item.get("evidence_ids", []):
-            if evidence_id not in text:
+            if id_map.get(evidence_id, evidence_id) not in text:
                 failures.append(f"finding evidence ID not present in report: {evidence_id}")
     complete = evidence_supports_complete_label(record)
     if route == "complete_report" and not complete and "Federal-Data Desk-Research Draft" not in text:

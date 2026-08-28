@@ -44,6 +44,7 @@ Use these exact cells so the validator can inspect the aging formula:
 | A16 / B16 | Assumed Earned Percentage or Contractor Underrun Share |
 | A17 / B17 | Minimum Fee Rate, blank when not applicable |
 | A18 / B18 | Maximum Fee Rate, blank when not applicable |
+| A19 / B19 | Total Periods (Base plus Options) / whole-number input, 1 for a single-period requirement |
 
 Use these formulas:
 
@@ -70,6 +71,10 @@ Keep separate rows for:
 - Total estimated price
 
 Never apply a fee formula directly to total estimated cost unless that total equals the confirmed fee-bearing base.
+
+Any total whose label contains the word `price` must equal estimated cost plus fee. Never label a cost-only subtotal as a price; a reviewer reading a price-labeled row must see the full Government obligation, not the cost component alone. The validator recomputes and rejects a price-labeled total that equals the cost subtotal instead of cost plus fee.
+
+When the period of performance includes option periods (`Total Periods` greater than 1), the summary must show per-period estimated cost, fee, and estimated price for the base period and each option period, plus the all-periods total. Label the periods explicitly (`Base Year`, `Option Year 1`, and so on). A single compressed multi-year multiplier formula does not satisfy year-by-year Government exposure and the validator rejects it.
 
 ## 2. Cost Buildup
 
@@ -116,6 +121,8 @@ Fee-rate formulas by type:
 ## 3. Scenario Analysis
 
 Show low, mid, and high indirect-rate cases. Include component assumptions at the top, cost, fee-bearing base, non-fee cost, fee, and estimated price.
+
+Every scenario must apply the same fee-base rule as the summary: fee applies only to the fee-bearing base, never to non-fee-bearing travel or pass-through ODCs the summary excludes from fee. The scenario row that represents current assumptions must reproduce the summary estimated price exactly; the validator cross-checks that row against the summary and rejects any mismatch beyond one dollar.
 
 For CPAF, show within every cost scenario:
 

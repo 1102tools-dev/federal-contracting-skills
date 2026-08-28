@@ -39,11 +39,11 @@
     {
       "id": "Q001",
       "provider": "federal_mcp",
-      "operation": "SAM.gov opportunity detail fixture",
+      "operation": "SAM.gov opportunity detail (offline sample)",
       "parameters": {"notice_id": "EXAMPLE-123"},
       "retrieved_at": "2026-08-21T18:15:00Z",
       "count": 1,
-      "limitations": "Synthetic offline fixture; not a live federal result"
+      "limitations": "Offline sample; not a live federal result"
     }
   ],
   "evidence": [
@@ -74,19 +74,19 @@
       "locator": "validation.numeric_checks[0]",
       "retrieved_at": "2026-08-21T18:16:00Z",
       "as_of_date": "2026-08-21",
-      "fact": "Three synthetic candidate values total 6000000.00.",
-      "limitations": "Synthetic values used only for deterministic validation"
+      "fact": "Three candidate pipeline values total 6000000.00.",
+      "limitations": "Deterministic sample values used only for numeric validation"
     },
     {
       "id": "E004",
       "source_class": "federal_mcp",
       "source_call_ids": ["Q001"],
-      "title": "SAM.gov opportunity detail fixture",
+      "title": "SAM.gov opportunity detail (offline sample)",
       "locator": "notice EXAMPLE-123",
       "retrieved_at": "2026-08-21T18:15:00Z",
       "as_of_date": "2026-08-21",
-      "fact": "The fixture represents one public sources-sought notice.",
-      "limitations": "Synthetic offline fixture; not a live federal result"
+      "fact": "One public sources-sought notice was identified.",
+      "limitations": "Offline sample; not a live federal result"
     }
   ],
   "findings": [
@@ -113,12 +113,12 @@
   "outputs": [],
   "validation": {
     "bid_context_complete": false,
-    "executive_summary": "This offline fixture demonstrates an evidence brief that deliberately withholds a bid decision.",
+    "executive_summary": "The public notice supports continued monitoring; internal bid-screen context is incomplete, so no bid decision is made.",
     "missing_bid_context": ["Vehicle access", "Clearance requirements", "Teaming strategy", "Risk tolerance", "Margin tolerance"],
     "assessment": "The notice is a relevant signal for monitoring. No bid or no-bid recommendation is made.",
     "next_actions": ["Monitor for an official solicitation", "Confirm vehicle and clearance constraints", "Complete the internal bid-screen inputs"],
     "numeric_checks": [
-      {"label": "Synthetic pipeline value", "components": [1000000, 2000000, 3000000], "reported_total": 6000000}
+      {"label": "Sample pipeline value", "components": [1000000, 2000000, 3000000], "reported_total": 6000000}
     ],
     "pipeline": [
       {"candidate": "Example opportunity", "signal": "Sources sought", "timing": "Unconfirmed", "confidence": "Low", "next_validation": "Monitor SAM.gov notice and amendments"}

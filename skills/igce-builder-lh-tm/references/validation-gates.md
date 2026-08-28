@@ -12,6 +12,9 @@ The bundled validator checks:
 - Direct hourly is the fifth row of each block and cross-sheet formulas do not reference the aged-wage row.
 - Low, mid, and high burdened rates use only labor and the stated multiplier.
 - Formula text contains no error tokens and annotations are escaped.
+- For a multi-period requirement (`assumptions.periods` greater than 1, reconciled with `IGCE Summary!B14`), the summary shows per-period totals for the base and each option period; a one-year headline total for a multi-period requirement fails.
+- In a multi-period estimate, the Escalation Rate input is referenced by at least one formula; a dead escalation input fails.
+- Every money constant of $1,000 or more on `IGCE Summary` has a matching entry in the `Raw Data` refresh register.
 - Custom formula assertions from the JSON sidecar pass.
 
 ## Independent recomputation
@@ -27,7 +30,8 @@ Create a sidecar from raw inputs. Example:
     "burden_high": 2.2,
     "aging_factor": 1.025,
     "productive_hours": 1880,
-    "ceiling_price": 900000
+    "ceiling_price": 900000,
+    "periods": 3
   },
   "labor_lines": [
     {

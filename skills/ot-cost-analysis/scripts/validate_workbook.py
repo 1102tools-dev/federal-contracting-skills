@@ -79,6 +79,226 @@ def check_formula(
             failures.append(f"{reference} formula contains forbidden text {item}")
 
 
+BENCHMARK_REF = re.compile(r"'?LABOR\s?BENCHMARKING'?!\$?[A-Z]{1,3}\$?([1-9][0-9]*)", re.I)
+NARRATIVE_HEADERS = {"description", "basis", "source note"}
+MIN_NARRATIVE_WIDTH = 28.0
+
+
+def _row_strings(row: Any) -> list[str]:
+    return [
+        cell.value
+        for cell in row
+        if isinstance(cell.value, str) and not cell.value.startswith("=")
+    ]
+
+
+def _row_benchmark_row_number(row: Any) -> int | None:
+    for cell in row:
+        value = cell.value
+        if isinstance(value, str) and value.startswith("="):
+            match = BENCHMARK_REF.search(value)
+            if match:
+                return int(match.group(1))
+    return None
+
+
+def labor_benchmark_audit(workbook: Any) -> list[str]:
+    """Every priced labor line matches its own benchmark row or names a proxy."""
+    failures: list[str] = []
+    if "Milestone Detail" not in workbook.sheetnames or "Labor Benchmarking" not in workbook.sheetnames:
+        return failures
+    benchmarks = workbook["Labor Benchmarking"]
+    for row in workbook["Milestone Detail"].iter_rows():
+        benchmark_row = _row_benchmark_row_number(row)
+        if benchmark_row is None:
+            continue
+        texts = _row_strings(row)
+        if not texts:
+            continue
+        category = texts[0].strip()
+        benchmark_value = benchmarks.cell(row=benchmark_row, column=1).value
+        benchmark_name = benchmark_value.strip() if isinstance(benchmark_value, str) else ""
+        lowered_category = category.lower()
+        lowered_benchmark = benchmark_name.lower()
+        matched = bool(lowered_benchmark) and (
+            lowered_category in lowered_benchmark or lowered_benchmark in lowered_category
+        )
+        has_proxy = any("proxy" in text.lower() for text in texts[1:])
+        if not matched and not has_proxy:
+            failures.append(
+                f"Milestone Detail!{row[0].coordinate} prices '{category}' from the benchmark row for "
+                f"'{benchmark_name or 'unknown'}' without its own benchmark row or a Basis naming the proxy source"
+            )
+    return failures
+
+
+def hours_reconciliation_audit(workbook: Any) -> list[str]:
+    """Identical per-category hours across milestones need an hours-basis note."""
+    failures: list[str] = []
+    if "Milestone Detail" not in workbook.sheetnames:
+        return failures
+    detail = workbook["Milestone Detail"]
+    has_note = any(
+        isinstance(cell.value, str) and "hours basis" in cell.value.lower()
+        for row in detail.iter_rows()
+        for cell in row
+    )
+    if has_note:
+        return failures
+    hours_by_category: dict[str, list[float]] = {}
+    for row in detail.iter_rows():
+        if _row_benchmark_row_number(row) is None:
+            continue
+        texts = _row_strings(row)
+        numbers = [
+            float(cell.value)
+            for cell in row
+            if isinstance(cell.value, (int, float)) and not isinstance(cell.value, bool)
+        ]
+        if not texts or len(numbers) != 1:
+            continue
+        hours_by_category.setdefault(texts[0].strip().lower(), []).append(numbers[0])
+    for category, hours in sorted(hours_by_category.items()):
+        if len(hours) >= 2 and len(set(hours)) == 1:
+            failures.append(
+                f"Milestone Detail repeats identical hours ({hours[0]:g}) for '{category}' across "
+                f"{len(hours)} milestones with no hours-basis note reconciling hours to duration and staffing"
+            )
+    return failures
+
+
+def narrative_format_audit(workbook: Any) -> list[str]:
+    """Narrative columns must wrap text and meet the width floor."""
+    failures: list[str] = []
+    seen: set[tuple[str, str]] = set()
+    for sheet_name in ("OT Cost Summary", "Milestone Detail"):
+        if sheet_name not in workbook.sheetnames:
+            continue
+        sheet = workbook[sheet_name]
+        for row in sheet.iter_rows():
+            for cell in row:
+                if not isinstance(cell.value, str):
+                    continue
+                header = re.sub(r"\s+", " ", cell.value).strip().lower()
+                if header not in NARRATIVE_HEADERS:
+                    continue
+                letter = cell.column_letter
+                if (sheet_name, letter) in seen:
+                    continue
+                seen.add((sheet_name, letter))
+                width = sheet.column_dimensions[letter].width
+                if width is None or width < MIN_NARRATIVE_WIDTH:
+                    failures.append(
+                        f"{sheet_name} narrative column {letter} ('{cell.value.strip()}') width "
+                        f"{width or 0:g} is below the {MIN_NARRATIVE_WIDTH:g} floor"
+                    )
+                for row_number in range(cell.row + 1, sheet.max_row + 1):
+                    below = sheet.cell(row=row_number, column=cell.column)
+                    value = below.value
+                    if (
+                        isinstance(value, str)
+                        and value.strip()
+                        and not value.startswith("=")
+                        and not below.alignment.wrap_text
+                    ):
+                        failures.append(
+                            f"{sheet_name}!{below.coordinate} narrative cell under "
+                            f"'{cell.value.strip()}' does not have wrap text enabled"
+                        )
+                        break
+    return failures
+
+
+def is_recost_workbook(workbook: Any) -> bool:
+    for sheet in workbook.worksheets:
+        for row in sheet.iter_rows(min_row=1, max_row=3):
+            for cell in row:
+                if isinstance(cell.value, str) and "recost" in cell.value.lower():
+                    return True
+    return False
+
+
+def _header_map(row: Any) -> dict[str, int]:
+    return {
+        re.sub(r"\s+", " ", cell.value).strip().lower(): cell.column
+        for cell in row
+        if isinstance(cell.value, str)
+    }
+
+
+def recost_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
+    """Recost-specific gates: no orphan benchmarks, decomposed labor deltas, register coverage."""
+    failures: list[str] = []
+    if "Milestone Detail" not in workbook.sheetnames:
+        return failures
+    detail = workbook["Milestone Detail"]
+    detail_text = "\n".join(
+        cell.value.lower()
+        for row in detail.iter_rows()
+        for cell in row
+        if isinstance(cell.value, str)
+    )
+
+    if "Labor Benchmarking" in workbook.sheetnames:
+        benchmarks = workbook["Labor Benchmarking"]
+        header_columns: dict[str, int] = {}
+        header_row_number = 0
+        for row in benchmarks.iter_rows():
+            columns = _header_map(row)
+            if "role" in columns or "labor category" in columns:
+                header_columns = columns
+                header_row_number = row[0].row
+                break
+        role_column = header_columns.get("role") or header_columns.get("labor category")
+        if role_column:
+            for row_number in range(header_row_number + 1, benchmarks.max_row + 1):
+                value = benchmarks.cell(row=row_number, column=role_column).value
+                if not isinstance(value, str) or not value.strip():
+                    continue
+                role = value.strip()
+                if role.lower() not in detail_text:
+                    failures.append(
+                        f"Labor Benchmarking row {row_number} lists role '{role}' that appears in no "
+                        "Milestone Detail row; recost benchmarks must cover only roles priced in the package"
+                    )
+
+    element_columns: dict[str, int] = {}
+    element_header_row = 0
+    for row in detail.iter_rows():
+        columns = _header_map(row)
+        if "cost element" in columns:
+            element_columns = columns
+            element_header_row = row[0].row
+            break
+    if element_columns:
+        has_hours = "hours" in element_columns
+        has_rate = "rate" in element_columns
+        for row_number in range(element_header_row + 1, detail.max_row + 1):
+            element = detail.cell(row=row_number, column=element_columns["cost element"]).value
+            if not isinstance(element, str) or "labor" not in element.lower():
+                continue
+            hours_value = detail.cell(row=row_number, column=element_columns["hours"]).value if has_hours else None
+            rate_value = detail.cell(row=row_number, column=element_columns["rate"]).value if has_rate else None
+            if hours_value is None or rate_value is None:
+                failures.append(
+                    f"Milestone Detail row {row_number} carries labor delta '{element.strip()}' as a lump sum; "
+                    "every recost labor delta must decompose as hours x rate per affected category"
+                )
+
+    register_elements = payload.get("recost_register_elements", [])
+    if not isinstance(register_elements, list) or not all(
+        isinstance(item, str) for item in register_elements
+    ):
+        raise InputError("recost_register_elements must be an array of strings")
+    for element in register_elements:
+        if element.strip().lower() not in detail_text:
+            failures.append(
+                f"change register names cost element '{element.strip()}' but the recost carries no "
+                "matching delta row; carry a $0 delta with a one-line justification instead of omitting it"
+            )
+    return failures
+
+
 def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
     failures: list[str] = []
     for sheet_name in payload.get("required_sheets", REQUIRED_SHEETS):
@@ -128,6 +348,12 @@ def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
         failures.append("workbook automatically states 4021 is fully Government funded")
     if re.search(r"4022\s*\(f\).{0,100}(?:100%|fully)\s+Government funded", joined, re.I | re.S):
         failures.append("workbook automatically states 4022(f) is fully Government funded")
+
+    failures.extend(labor_benchmark_audit(workbook))
+    failures.extend(hours_reconciliation_audit(workbook))
+    failures.extend(narrative_format_audit(workbook))
+    if is_recost_workbook(workbook):
+        failures.extend(recost_audit(workbook, payload))
 
     assertions = payload.get("formula_assertions", [])
     if not isinstance(assertions, list):

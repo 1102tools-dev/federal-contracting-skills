@@ -68,6 +68,10 @@ The audit checks:
 - No stale `competition commitment` Path D language
 - No automatic 100% Government funding claim for 4021 or 4022(f)
 - No generated price-reasonableness conclusion
+- Every Milestone Detail labor line priced from `Labor Benchmarking` matches its own benchmark row or carries a Basis naming the proxy source
+- No category repeats identical hours across milestones without an `Hours basis:` reconciliation note
+- Narrative columns (Description, Basis, Source note) wrap text and meet the 28-character width floor
+- For recost workbooks: no benchmark rows for roles absent from Milestone Detail, no lump-sum labor deltas without Hours and Rate cells, and a delta row for every element listed in the optional `recost_register_elements` payload array (list every cost element the change register names; a $0 delta needs a one-line justification)
 - A readable first-view dashboard states the prototype, analysis purpose, milestone basis, funding planning range, contribution treatment, key drivers, source limitations, and next action without horizontal scrolling
 
 ## 3. Independent recomputation

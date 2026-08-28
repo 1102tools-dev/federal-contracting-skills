@@ -37,6 +37,7 @@ Do not deliver a workbook whose sheets merely exist. Populate the summary, scena
 | A11 / B11 | Aging Factor / formula below |
 | A12 / B12 | Contract Type / `LH` or `T&M` |
 | A13 / B13 | Total Ceiling Price / user input or blank |
+| A14 / B14 | Total Periods (Base plus Options) / whole-number input, 1 for a single-period requirement |
 
 Use:
 
@@ -65,6 +66,12 @@ Start below row 15. Include:
 - Difference between the mid IGCE and ceiling input
 
 Ceiling hours and total ceiling price are inputs or procurement decisions. Do not overwrite them with calculated estimates.
+
+The headline total must cover every period of the stated period of performance. When `Total Periods` is greater than 1, show per-period totals for the base period and each option period (labeled `Base Year`, `Option Year 1`, and so on) plus the all-periods total; the validator rejects a multi-period requirement whose summary carries no per-period breakdown. Only when the user explicitly scoped the estimate to a single period may the workbook show one period, and then the label adjacent to the headline total must state the coverage (for example `TOTAL PLANNING ESTIMATE (BASE YEAR ONLY)`). Never present a one-year total as the planning estimate for a multi-period requirement.
+
+Every highlighted input must feed calculations. In a multi-period estimate the Escalation Rate input must be referenced by the period pricing formulas (directly or through the aging factor); never hardcode escalation factors while the input cell sits dead. The validator rejects an escalation input referenced by zero formulas when the stated period of performance has more than one period.
+
+Every money line on `IGCE Summary` must trace to a detail sheet or an assumptions input, and its source must appear in the `Raw Data` refresh register. Do not hardcode a money amount of $1,000 or more directly on the summary with no backing detail and no register entry; the validator rejects such constants.
 
 ## 2. Scenario Analysis
 
@@ -147,6 +154,8 @@ Do not state that the workbook itself establishes the D&F, fair and reasonable p
 ## 7. Raw Data
 
 Record compact, reproducible parameters and result summaries, not full JSON. Include BLS series inputs and percentiles, CALC+ pool terms and statistics, Per Diem locality and rates, multiplier source, material-cost sources, and every fallback.
+
+The refresh register must carry an entry (with the current value) for every money line on `IGCE Summary`, including ODCs, materials pools, and travel, so a reviewer can refresh each amount from its source.
 
 ## Formatting and safety
 

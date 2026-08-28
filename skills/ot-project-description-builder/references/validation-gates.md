@@ -15,6 +15,8 @@
 
 - Required sections appear in the specified relative order.
 - Real heading styles and a dynamic TOC are used when required.
+- The cover eyebrow, title, and running header all name the same product.
+- No instructional or template residue (for example a note that the table of contents updates automatically) appears as visible text; a Contents section carries a real TOC field or is omitted.
 - The Milestone Schedule contains every approved milestone ID.
 - Every phase-exit criterion appears in the related milestone completion criteria.
 - The Deliverables table maps each artifact to a due trigger and acceptance criterion.

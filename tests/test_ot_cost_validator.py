@@ -95,5 +95,211 @@ class OtCachedErrorAuditTests(unittest.TestCase):
                 return self.validator.run(workbook_path, expected_path, "auto", 0.01)
 
 
+from openpyxl.styles import Alignment
+
+
+def _workbook_with_detail():
+    workbook = Workbook()
+    workbook.active.title = "OT Cost Summary"
+    detail = workbook.create_sheet("Milestone Detail")
+    benchmarks = workbook.create_sheet("Labor Benchmarking")
+    benchmarks["A3"] = "Systems engineer"
+    benchmarks["A4"] = "Cybersecurity specialist"
+    return workbook, detail, benchmarks
+
+
+class OtLaborBenchmarkAuditTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.validator = load_validator()
+
+    def test_silent_rate_reuse_without_proxy_fails(self):
+        workbook, detail, _ = _workbook_with_detail()
+        detail["A5"] = "Cybersecurity specialist"
+        detail["C5"] = "='Labor Benchmarking'!H3"
+        detail["D5"] = "Prior bounded source benchmark"
+
+        failures = self.validator.labor_benchmark_audit(workbook)
+
+        self.assertEqual(len(failures), 1)
+        self.assertIn("Cybersecurity specialist", failures[0])
+        self.assertIn("Systems engineer", failures[0])
+
+    def test_matching_benchmark_row_passes(self):
+        workbook, detail, _ = _workbook_with_detail()
+        detail["A5"] = "Systems engineer"
+        detail["C5"] = "='Labor Benchmarking'!H3"
+        detail["D5"] = "Prior bounded source benchmark"
+
+        self.assertEqual(self.validator.labor_benchmark_audit(workbook), [])
+
+    def test_named_proxy_basis_passes(self):
+        workbook, detail, _ = _workbook_with_detail()
+        detail["A5"] = "Test and evaluation lead"
+        detail["C5"] = "='Labor Benchmarking'!H3"
+        detail["D5"] = "Systems engineer benchmark used as proxy; no separate SOC pool"
+
+        self.assertEqual(self.validator.labor_benchmark_audit(workbook), [])
+
+
+class OtHoursReconciliationAuditTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.validator = load_validator()
+
+    def _detail_with_repeated_hours(self):
+        workbook, detail, _ = _workbook_with_detail()
+        for row in (5, 16):
+            detail.cell(row=row, column=1, value="Systems engineer")
+            detail.cell(row=row, column=2, value=900)
+            detail.cell(row=row, column=3, value="='Labor Benchmarking'!H3")
+        return workbook, detail
+
+    def test_identical_hours_without_note_fails(self):
+        workbook, _ = self._detail_with_repeated_hours()
+
+        failures = self.validator.hours_reconciliation_audit(workbook)
+
+        self.assertEqual(len(failures), 1)
+        self.assertIn("identical hours (900)", failures[0])
+        self.assertIn("systems engineer", failures[0])
+
+    def test_hours_basis_note_passes(self):
+        workbook, detail = self._detail_with_repeated_hours()
+        detail["D5"] = "Hours basis: 1.5 FTE x 6 weeks"
+
+        self.assertEqual(self.validator.hours_reconciliation_audit(workbook), [])
+
+    def test_varying_hours_pass(self):
+        workbook, detail = self._detail_with_repeated_hours()
+        detail["B16"] = 1200
+
+        self.assertEqual(self.validator.hours_reconciliation_audit(workbook), [])
+
+
+class OtNarrativeFormatAuditTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.validator = load_validator()
+
+    def _summary_with_description(self, *, width, wrap):
+        workbook = Workbook()
+        summary = workbook.active
+        summary.title = "OT Cost Summary"
+        summary["B18"] = "Description"
+        summary["B19"] = "Edge sensing prototype and cyber readiness"
+        summary.column_dimensions["B"].width = width
+        if wrap:
+            summary["B19"].alignment = Alignment(wrap_text=True)
+        return workbook
+
+    def test_missing_wrap_fails(self):
+        workbook = self._summary_with_description(width=32, wrap=False)
+
+        failures = self.validator.narrative_format_audit(workbook)
+
+        self.assertEqual(len(failures), 1)
+        self.assertIn("does not have wrap text enabled", failures[0])
+
+    def test_narrow_column_fails(self):
+        workbook = self._summary_with_description(width=12, wrap=True)
+
+        failures = self.validator.narrative_format_audit(workbook)
+
+        self.assertEqual(len(failures), 1)
+        self.assertIn("below the 28 floor", failures[0])
+
+    def test_wrapped_wide_column_passes(self):
+        workbook = self._summary_with_description(width=32, wrap=True)
+
+        self.assertEqual(self.validator.narrative_format_audit(workbook), [])
+
+
+class OtRecostAuditTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.validator = load_validator()
+
+    def _recost_workbook(self, *, decomposed):
+        workbook = Workbook()
+        summary = workbook.active
+        summary.title = "OT Cost Summary"
+        summary["A1"] = "Recosting Decision Book"
+        detail = workbook.create_sheet("Milestone Detail")
+        headers = ["Change", "Milestone", "Cost element", "Basis", "Delta"]
+        if decomposed:
+            headers += ["Hours", "Rate"]
+        for column, header in enumerate(headers, start=1):
+            detail.cell(row=4, column=column, value=header)
+        detail["A5"] = "C-01"
+        detail["B5"] = "M2"
+        detail["C5"] = "Cyber/readiness labor"
+        detail["D5"] = "Additional integration and scans"
+        if decomposed:
+            detail["F5"] = 320
+            detail["G5"] = 200.0
+            detail["E5"] = "=F5*G5"
+        else:
+            detail["E5"] = 64000
+        benchmarks = workbook.create_sheet("Labor Benchmarking")
+        benchmarks["A4"] = "Role"
+        benchmarks["A5"] = "Cyber/readiness labor"
+        return workbook, detail, benchmarks
+
+    def test_is_recost_workbook_detection(self):
+        recost, _, _ = self._recost_workbook(decomposed=True)
+        plain = Workbook()
+        plain.active["A1"] = "Independent Prototype Cost Model"
+
+        self.assertTrue(self.validator.is_recost_workbook(recost))
+        self.assertFalse(self.validator.is_recost_workbook(plain))
+
+    def test_orphan_benchmark_role_fails(self):
+        workbook, _, benchmarks = self._recost_workbook(decomposed=True)
+        benchmarks["A6"] = "UX/Accessibility Specialist"
+
+        failures = self.validator.recost_audit(workbook, {})
+
+        self.assertEqual(len(failures), 1)
+        self.assertIn("UX/Accessibility Specialist", failures[0])
+        self.assertIn("appears in no Milestone Detail row", failures[0])
+
+    def test_lump_sum_labor_delta_fails(self):
+        workbook, _, _ = self._recost_workbook(decomposed=False)
+
+        failures = self.validator.recost_audit(workbook, {})
+
+        self.assertEqual(len(failures), 1)
+        self.assertIn("lump sum", failures[0])
+        self.assertIn("hours x rate", failures[0])
+
+    def test_missing_register_element_fails(self):
+        workbook, _, _ = self._recost_workbook(decomposed=True)
+        payload = {"recost_register_elements": ["labor", "travel"]}
+
+        failures = self.validator.recost_audit(workbook, payload)
+
+        self.assertEqual(len(failures), 1)
+        self.assertIn("'travel'", failures[0])
+        self.assertIn("$0 delta", failures[0])
+
+    def test_conforming_recost_passes(self):
+        workbook, detail, _ = self._recost_workbook(decomposed=True)
+        detail["A6"] = "C-02"
+        detail["B6"] = "M2"
+        detail["C6"] = "Travel"
+        detail["D6"] = "Register directed repricing; no trip changes, so zero delta"
+        detail["E6"] = 0
+        payload = {"recost_register_elements": ["labor", "travel"]}
+
+        self.assertEqual(self.validator.recost_audit(workbook, payload), [])
+
+    def test_invalid_register_elements_payload_raises(self):
+        workbook, _, _ = self._recost_workbook(decomposed=True)
+
+        with self.assertRaises(self.validator.InputError):
+            self.validator.recost_audit(workbook, {"recost_register_elements": "travel"})
+
+
 if __name__ == "__main__":
     unittest.main()

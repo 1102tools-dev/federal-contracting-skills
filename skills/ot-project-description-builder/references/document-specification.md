@@ -12,6 +12,12 @@ title such as "Prototype Delivery Plan" or "Milestone Change Register," not a
 generic report name. The brief must not include pricing or make a reserved
 determination.
 
+The cover eyebrow or kicker, the cover title block, and the running header MUST
+all name the same product. A Project Description must never carry another
+route's label (for example "Prototype Delivery Plan") on its cover while its
+running header says "Project Description". Verify the three labels agree before
+delivery.
+
 ## Front matter
 
 - Project title
@@ -113,6 +119,12 @@ Every `[TBD]` elsewhere in the document must have a matching row that names the 
 - Use real Heading 1, 2, and 3 styles, real lists, explicit table widths and cell margins, repeating table headers, and no fixed row heights.
 - Keep headings with following content and prevent rows from splitting when practical.
 - Use a page-number field and set Word to update fields on open.
+- A Contents section must contain a real, well-formed TOC field (each `fldChar`
+  and `instrText` in its own run) or be omitted entirely. Never ship
+  instructional or template residue such as "Table of Contents updates
+  automatically in Word." as visible document text; if the cached field result
+  cannot show real TOC entries, leave the field result empty for Word to
+  populate on open.
 - Do not place prompts, tests, skill names, file paths, internal workpapers, or tool instructions in the document.
 - Use a restrained color accent, a short executive table, and a visual rhythm
   appropriate to the route. A revision foregrounds before/after effects; a

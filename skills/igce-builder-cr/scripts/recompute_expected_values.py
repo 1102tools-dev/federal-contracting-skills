@@ -38,6 +38,14 @@ def _setting(
     return _number(value, f"{line.get('name', '<unnamed>')}.{key}", minimum=minimum)
 
 
+def _period_count(assumptions: dict[str, Any]) -> int:
+    """Validate assumptions.periods, the total period count (base plus options)."""
+    periods = assumptions.get("periods", 1)
+    if isinstance(periods, bool) or not isinstance(periods, int) or periods < 1:
+        raise InputError("assumptions.periods must be a whole number of at least 1")
+    return periods
+
+
 def _fee_rate(assumptions: dict[str, Any]) -> tuple[str, float]:
     raw_type = assumptions.get("fee_type")
     if not isinstance(raw_type, str):
@@ -75,6 +83,7 @@ def calculate(payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(non_labor_lines, list):
         raise InputError("non_labor_lines must be an array")
 
+    periods = _period_count(assumptions)
     fee_type, effective_fee_rate = _fee_rate(assumptions)
     calculated_labor: list[dict[str, Any]] = []
     fee_bearing_cost = 0.0
@@ -170,6 +179,7 @@ def calculate(payload: dict[str, Any]) -> dict[str, Any]:
     total_fee = fee_bearing_cost * effective_fee_rate
     total_price = total_cost + total_fee
     output: dict[str, Any] = {
+        "periods": periods,
         "fee_type": fee_type,
         "effective_fee_rate": effective_fee_rate,
         "labor_lines": calculated_labor,

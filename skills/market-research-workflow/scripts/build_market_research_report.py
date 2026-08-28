@@ -32,6 +32,23 @@ ROUTE_TITLES = {
     "pre_award_handoff": "Pre-Award Market Research Handoff",
 }
 
+# Reader-facing labels for internal evidence-class tokens. The record and the
+# validators keep the internal contract vocabulary; only the rendered DOCX uses
+# these labels.
+SOURCE_CLASS_LABELS = {
+    "document": "Supplied document",
+    "federal_mcp": "Federal data service",
+    "official_web": "Official website",
+    "other_web": "Public web source",
+    "user_statement": "Customer statement",
+    "calculation": "Recorded calculation",
+}
+
+
+def source_class_label(value: object) -> str:
+    token = str(value or "")
+    return SOURCE_CLASS_LABELS.get(token, pretty_label(token)) if token else ""
+
 
 def _looks_synthetic(item: dict) -> bool:
     text = " ".join(
@@ -192,12 +209,35 @@ def require_route_value(record: dict, field: str, purpose: str) -> list[dict]:
     return rows
 
 
-def with_evidence(item: dict, field: str) -> str:
+def with_evidence(item: dict, field: str, id_map: dict[str, str] | None = None) -> str:
     text = str(item.get(field, ""))
-    ids = item.get("evidence_ids", [])
+    ids = [map_evidence_id(value, id_map) for value in item.get("evidence_ids", [])]
     if ids:
-        text += " [" + ", ".join(str(value) for value in ids) + "]"
+        text += " [" + ", ".join(ids) + "]"
     return text
+
+
+def map_evidence_id(value: object, id_map: dict[str, str] | None) -> str:
+    token = str(value)
+    return (id_map or {}).get(token, token)
+
+
+def evidence_id_map(record: dict) -> dict[str, str]:
+    """Renumber the evidence rows a focused route will render so reader-visible
+    IDs are sequential (E001, E002, ...) even when the record cites a
+    non-contiguous subset. The complete report renders the full register and
+    keeps the record's own IDs."""
+    if record.get("workflow_mode") == "complete_report":
+        return {}
+    cited = collect_evidence_ids(record.get("validation", {}))
+    for item in record.get("findings", []):
+        if isinstance(item, dict):
+            cited.update(str(value) for value in item.get("evidence_ids", []))
+    mapping: dict[str, str] = {}
+    for item in record.get("evidence", []):
+        if isinstance(item, dict) and item.get("id") in cited:
+            mapping[str(item["id"])] = f"E{len(mapping) + 1:03d}"
+    return mapping
 
 
 def enforce_route_content(record: dict) -> None:
@@ -251,7 +291,34 @@ def set_cell_text(cell, value: object, bold: bool = False, color: str | None = N
     cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
 
 
+def register_font_fallbacks(document: Document) -> None:
+    """Declare sans-serif fallbacks so every route keeps the same modern look.
+
+    Renderers without Aptos (for example LibreOffice) otherwise substitute a
+    default serif face for the body while headings resolve to a sans face,
+    which splits the product family into two visual designs."""
+    for part in document.part.package.iter_parts():
+        if str(part.partname) != "/word/fontTable.xml":
+            continue
+        blob = part.blob
+        additions = b""
+        for name in (b"Aptos", b"Aptos Display"):
+            if b'w:name="' + name + b'"' in blob:
+                continue
+            additions += (
+                b'<w:font w:name="' + name + b'">'
+                b'<w:altName w:val="Calibri"/>'
+                b'<w:family w:val="swiss"/>'
+                b'<w:pitch w:val="variable"/>'
+                b"</w:font>"
+            )
+        if additions:
+            part._blob = blob.replace(b"</w:fonts>", additions + b"</w:fonts>")
+        break
+
+
 def configure(document: Document) -> None:
+    register_font_fallbacks(document)
     section = document.sections[0]
     section.top_margin = Inches(0.75)
     section.bottom_margin = Inches(0.7)
@@ -336,11 +403,11 @@ def add_bullets(document: Document, items: list[object], empty: str = "None reco
         paragraph.paragraph_format.line_spacing = 1.05
 
 
-def cite_ids(paragraph, ids: list[str]) -> None:
+def cite_ids(paragraph, ids: list[str], id_map: dict[str, str] | None = None) -> None:
     if not ids:
         return
     paragraph.add_run(" [")
-    run = paragraph.add_run(", ".join(ids), style="Evidence ID")
+    run = paragraph.add_run(", ".join(map_evidence_id(value, id_map) for value in ids), style="Evidence ID")
     run.bold = True
     paragraph.add_run("]")
 
@@ -382,39 +449,53 @@ def build(record: dict, output: Path) -> None:
     lead.cell(0, 0).text = "BOTTOM LINE\n" + reader_summary(record, complete)
     shade(lead.cell(0, 0), "E8EEF5")
     evidence = {item["id"]: item for item in record.get("evidence", []) if isinstance(item, dict) and "id" in item}
+    id_map = evidence_id_map(record)
     findings = record.get("findings", [])
     first_page_findings = validation.get("decision_implications") or findings[:3]
     document.add_heading("Decision implications", level=2)
     for finding in first_page_findings:
         if isinstance(finding, dict) and finding.get("evidence_ids"):
             p = document.add_paragraph(item_text(finding), style="List Bullet")
-            cite_ids(p, finding.get("evidence_ids", []))
+            cite_ids(p, finding.get("evidence_ids", []), id_map)
         else:
             document.add_paragraph(item_text(finding), style="List Bullet")
     document.add_heading("Next practical actions", level=2)
-    add_table(
-        document,
-        ["Owner", "Action", "Output or gate"],
-        structured_rows(
-            validation.get("next_actions", []) or fallbacks.get("next_actions", []),
-            [("owner", "Acquisition team"), ("action", "No approved next action was recorded."), ("output", "Before the related decision")],
-        ),
-        [1.45, 3.85, 1.6],
+    lead_action_rows = structured_rows(
+        validation.get("next_actions", []) or fallbacks.get("next_actions", []),
+        [("owner", "Acquisition team"), ("action", "No approved next action was recorded."), ("output", "Before the related decision")],
     )
+    add_table(document, ["Owner", "Action", "Output or gate"], lead_action_rows, [1.45, 3.85, 1.6])
+
+    def add_closing_actions(heading: str, owner_default: str) -> None:
+        """Cross-reference the lead table instead of repeating it verbatim."""
+        document.add_heading(heading, level=1)
+        rows = structured_rows(
+            validation.get("next_actions", []),
+            [("owner", owner_default), ("action", "Not recorded"), ("output", "Not recorded")],
+        )
+        if rows == lead_action_rows:
+            document.add_paragraph(
+                "The owned actions for this product are consolidated in the "
+                "Next practical actions table at the start of this document."
+            )
+        else:
+            add_table(document, ["Owner", "Action", "Output or gate"], rows, [1.45, 3.85, 1.6])
+
     if route == "complete_report" and not complete:
         note = document.add_paragraph()
         note.style = document.styles["Intense Quote"]
         note.add_run("Completion boundary: ").bold = True
         note.add_run("Missing " + ", ".join(missing_classes) + ". This product must remain a desk-research draft.")
 
-    document.add_page_break()
+    if route == "complete_report":
+        document.add_page_break()
 
     def add_findings_block(empty: str = "No approved finding was recorded.") -> None:
         if not findings:
             document.add_paragraph(empty)
         for finding in findings:
             p = document.add_paragraph(finding.get("text", ""))
-            cite_ids(p, finding.get("evidence_ids", []))
+            cite_ids(p, finding.get("evidence_ids", []), id_map)
 
     def add_unknowns() -> None:
         rows = []
@@ -515,7 +596,7 @@ def build(record: dict, output: Path) -> None:
         add_table(
             document,
             ["Decision area", "Prior baseline", "Current evidence", "Material delta", "Acquisition consequence"],
-            [[item.get("decision_area", ""), item.get("prior_baseline", ""), with_evidence(item, "current_evidence"), item.get("delta", ""), item.get("decision_impact", "")] for item in refresh_rows],
+            [[item.get("decision_area", ""), item.get("prior_baseline", ""), with_evidence(item, "current_evidence", id_map), item.get("delta", ""), item.get("decision_impact", "")] for item in refresh_rows],
             [1.15, 1.35, 1.75, 1.25, 1.4],
         )
         document.add_heading("Vendor and market-structure changes", level=1)
@@ -530,8 +611,7 @@ def build(record: dict, output: Path) -> None:
             or [["No prior conclusion was approved for carry-forward.", "Rebuild the baseline before relying on the refresh."]],
             [3.45, 3.45],
         )
-        document.add_heading("Refresh action plan", level=1)
-        add_table(document, ["Owner", "Action", "Output or gate"], structured_rows(validation.get("next_actions", []), [("owner", "Acquisition team"), ("action", "Not recorded"), ("output", "Not recorded")]), [1.45, 3.85, 1.6])
+        add_closing_actions("Refresh action plan", "Acquisition team")
         document.add_heading("Human-owned decisions and unknowns", level=1)
         add_unknowns()
 
@@ -544,7 +624,7 @@ def build(record: dict, output: Path) -> None:
             add_table(
                 document,
                 ["Concern", "Status / vehicles", "Relevant capability", "Recent federal evidence", "Gap to close"],
-                [[item.get("name", ""), item.get("status_and_vehicles", ""), item.get("capability", ""), with_evidence(item, "recent_award_evidence"), item.get("gap", "")] for item in candidates],
+                [[item.get("name", ""), item.get("status_and_vehicles", ""), item.get("capability", ""), with_evidence(item, "recent_award_evidence", id_map), item.get("gap", "")] for item in candidates],
                 [1.3, 1.35, 1.65, 1.6, 1.0],
             )
             document.add_heading("Rule of Two evidence assessment", level=1)
@@ -571,7 +651,12 @@ def build(record: dict, output: Path) -> None:
         document.add_heading("Decision implications", level=1)
         add_bullets(document, validation.get("decision_implications", []))
         document.add_heading("Further research options", level=1)
-        add_bullets(document, validation.get("next_actions", []))
+        if validation.get("next_actions"):
+            document.add_paragraph(
+                "Further research actions are consolidated in the Next practical actions table at the start of this document."
+            )
+        else:
+            add_bullets(document, [])
         document.add_heading("Human-owned decisions and unknowns", level=1)
         add_unknowns()
 
@@ -585,7 +670,7 @@ def build(record: dict, output: Path) -> None:
             document,
             ["Pre-Award area", "Approved implication", "Source boundary", "Owner / decision gate"],
             [
-                [label, item.get("implication", ""), with_evidence(item, "source_boundary"), item.get("owner_gate", "")]
+                [label, item.get("implication", ""), with_evidence(item, "source_boundary", id_map), item.get("owner_gate", "")]
                 for label, field in (
                     ("Scope", "scope_implications"),
                     ("Packaging", "packaging_implications"),
@@ -600,18 +685,17 @@ def build(record: dict, output: Path) -> None:
         add_table(
             document,
             ["Input", "Usable evidence", "Do not infer", "Next owner"],
-            [[item.get("input", ""), with_evidence(item, "usable_evidence"), item.get("boundary", ""), item.get("owner", "")] for item in require_route_value(record, "pricing_inputs", "pricing inputs and boundaries")],
+            [[item.get("input", ""), with_evidence(item, "usable_evidence", id_map), item.get("boundary", ""), item.get("owner", "")] for item in require_route_value(record, "pricing_inputs", "pricing inputs and boundaries")],
             [1.2, 2.4, 2.2, 1.1],
         )
         document.add_heading("Pre-Award risk register", level=1)
         add_table(
             document,
             ["Risk", "Why it matters", "Mitigation / evidence gate", "Owner"],
-            [[item.get("risk", ""), item.get("why", ""), with_evidence(item, "mitigation"), item.get("owner", "")] for item in require_route_value(record, "handoff_risks", "a risk register")],
+            [[item.get("risk", ""), item.get("why", ""), with_evidence(item, "mitigation", id_map), item.get("owner", "")] for item in require_route_value(record, "handoff_risks", "a risk register")],
             [1.3, 2.0, 2.6, 1.0],
         )
-        document.add_heading("Pre-Award intake and next actions", level=1)
-        add_table(document, ["Owner", "Action", "Output or gate"], structured_rows(validation.get("next_actions", []), [("owner", "Pre-Award lead"), ("action", "Not recorded"), ("output", "Not recorded")]), [1.45, 3.85, 1.6])
+        add_closing_actions("Pre-Award intake and next actions", "Pre-Award lead")
         document.add_heading("Human-owned decisions and unknowns", level=1)
         add_unknowns()
 
@@ -649,12 +733,11 @@ def build(record: dict, output: Path) -> None:
     document.add_heading("Evidence register", level=2)
     report_evidence = record.get("evidence", [])
     if route != "complete_report":
-        cited_ids = collect_evidence_ids(validation)
-        report_evidence = [item for item in report_evidence if item.get("id") in cited_ids]
+        report_evidence = [item for item in report_evidence if item.get("id") in id_map]
     evidence_table = add_table(
         document,
-        ["ID / class", "Source", "Decision-useful fact", "Limit"],
-        [[f"{e.get('id', '')}\n{e.get('source_class', '')}", f"{e.get('title', '')}\n{e.get('locator', '')}", e.get("fact", ""), e.get("limitations", "")] for e in report_evidence],
+        ["ID / source type", "Source", "Decision-useful fact", "Limit"],
+        [[f"{map_evidence_id(e.get('id', ''), id_map)}\n{source_class_label(e.get('source_class'))}", f"{e.get('title', '')}\n{e.get('locator', '')}", e.get("fact", ""), e.get("limitations", "")] for e in report_evidence],
         [0.75, 1.85, 2.75, 1.55],
     )
     for row in evidence_table.rows:
@@ -686,7 +769,7 @@ def build(record: dict, output: Path) -> None:
     report_inferences = record.get("inferences", []) if route == "complete_report" else validation.get("inferences", [])
     for item in report_inferences:
         p = document.add_paragraph("Inference: " + item.get("text", item.get("reasoning", "")), style="List Bullet")
-        cite_ids(p, item.get("evidence_ids", []))
+        cite_ids(p, item.get("evidence_ids", []), id_map)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     document.save(output)

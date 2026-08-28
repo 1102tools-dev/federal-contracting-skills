@@ -44,6 +44,22 @@ BOUNDARY_PHRASES = (
     "authorized agency official must determine procurement-specific applicability",
     "does not provide legal advice",
 )
+# Documented-status vocabulary for status cells; see references/report-specification.md.
+CODIFIED_BASELINE_LABELS = {"Government-wide baseline", "Codified current baseline"}
+STATUS_CELL_VOCABULARY = CODIFIED_BASELINE_LABELS | {
+    "Published model text; not agency-operative",
+    "Published model text; not operative alone",
+    "Pending rulemaking; not current policy",
+    "Final rule pending effective date; not current policy",
+    "Withdrawn; not current policy",
+    "Superseded; not current policy",
+    "Guidance; not regulation",
+    "Named-agency evidence",
+    "Comparator only; does not establish adoption for the named agency",
+    "Agency class deviation",
+}
+STATUS_COLUMN_HEADERS = {"Status for this question", "Documented status"}
+NONBASELINE_LAYER = re.compile(r"\b(?:proposed|deviation|model)\b", re.I)
 
 
 def load_record_validator(path: Path):
@@ -95,6 +111,31 @@ def focused_evidence_ids(record: dict) -> set[str]:
         "refresh": ("focused_findings", "focused_impacts", "planning_posture", "decision_gates", "refresh_changes", "carry_forward_decisions"),
     }
     return collect_evidence_ids({field: validation.get(field) for field in route_fields.get(mode, ())})
+
+
+def status_vocabulary_failures(document: Document) -> list[str]:
+    failures: list[str] = []
+    for table_index, table in enumerate(document.tables):
+        if not table.rows:
+            continue
+        headers = [cell.text.strip() for cell in table.rows[0].cells]
+        for column_index, header in enumerate(headers):
+            if header not in STATUS_COLUMN_HEADERS:
+                continue
+            for row_index, row in enumerate(table.rows[1:], start=2):
+                value = row.cells[column_index].text.strip()
+                if value not in STATUS_CELL_VOCABULARY:
+                    failures.append(
+                        f"table {table_index + 1} row {row_index} status cell is outside the "
+                        f"documented-status vocabulary: {value!r}"
+                    )
+                layer = row.cells[0].text.strip()
+                if value in CODIFIED_BASELINE_LABELS and NONBASELINE_LAYER.search(layer):
+                    failures.append(
+                        f"table {table_index + 1} row {row_index} labels a non-baseline layer "
+                        f"({layer!r}) with the codified-baseline status"
+                    )
+    return failures
 
 
 def table_geometry_failures(document: Document) -> list[str]:
@@ -180,6 +221,17 @@ def validate(document_path: Path, record_path: Path) -> dict:
     as_of = record.get("scope", {}).get("as_of_date", "")
     if as_of and as_of not in text:
         failures.append("record as-of date is missing from the brief")
+    scope = record.get("scope", {})
+    for field, label in (("customer_organization", "customer organization"), ("decision_date", "decision date")):
+        value = scope.get(field, "")
+        if value and str(value) not in text:
+            failures.append(f"record {label} is missing from the brief scope header")
+    if mode == "refresh":
+        prior = scope.get("prior_analysis") or {}
+        for field, label in (("title", "prior-analysis title"), ("date", "prior-analysis date")):
+            value = prior.get(field, "")
+            if not value or str(value) not in text:
+                failures.append(f"refresh product must identify the {label} in the scope header")
 
     validation = record.get("validation", {})
     focused = mode in FOCUSED_HEADINGS
@@ -210,6 +262,7 @@ def validate(document_path: Path, record_path: Path) -> dict:
         if url and url not in urls:
             failures.append(f"evidence URL is not a live DOCX hyperlink: {url}")
 
+    failures.extend(status_vocabulary_failures(document))
     failures.extend(table_geometry_failures(document))
     if len(document.tables) < 3:
         failures.append("brief must contain at least three structured evidence tables")

@@ -63,6 +63,24 @@ def fixture_workbook(handling_value=0) -> Workbook:
     return workbook
 
 
+def multi_period_workbook(handling_value=0) -> Workbook:
+    workbook = fixture_workbook(handling_value)
+    summary = workbook["IGCE Summary"]
+    summary["A5"] = "Escalation Rate"
+    summary["A14"] = "Total Periods (Base plus Options)"
+    summary["B14"] = 3
+    summary["A20"] = "Base Year total"
+    summary["A21"] = "Option Year 1 total"
+    summary["A22"] = "Option Year 2 total"
+    return workbook
+
+
+def multi_period_payload() -> dict:
+    payload = fixture_payload()
+    payload["assumptions"]["periods"] = 3
+    return payload
+
+
 def fixture_payload() -> dict:
     return {
         "assumptions": {
@@ -112,6 +130,72 @@ class LhTmMaterialHandlingValidatorTests(unittest.TestCase):
             }
         ]
         result = self._run(fixture_workbook("=D2*E2*0.07"), payload)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)["status"], "pass")
+
+    def test_multi_period_fixture_passes(self):
+        result = self._run(multi_period_workbook(), multi_period_payload())
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)["status"], "pass")
+
+    def test_multi_period_without_per_period_totals_fails(self):
+        workbook = multi_period_workbook()
+        summary = workbook["IGCE Summary"]
+        for coordinate in ("A20", "A21", "A22"):
+            summary[coordinate] = None
+
+        result = self._run(workbook, multi_period_payload())
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        failures = json.loads(result.stdout)["failures"]
+        self.assertTrue(
+            any("no per-period totals" in failure for failure in failures),
+            failures,
+        )
+
+    def test_dead_escalation_input_fails(self):
+        workbook = multi_period_workbook()
+        summary = workbook["IGCE Summary"]
+        summary["A5"] = None
+        summary["A6"] = "Escalation Rate"
+        summary["C6"] = 0.03
+
+        result = self._run(workbook, multi_period_payload())
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        failures = json.loads(result.stdout)["failures"]
+        self.assertTrue(
+            any("referenced by zero formulas" in failure for failure in failures),
+            failures,
+        )
+
+    def test_undisclosed_summary_money_constant_fails(self):
+        workbook = multi_period_workbook()
+        summary = workbook["IGCE Summary"]
+        summary["A25"] = "Other direct costs"
+        summary["B25"] = 75000
+
+        result = self._run(workbook, multi_period_payload())
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        failures = json.loads(result.stdout)["failures"]
+        self.assertTrue(
+            any("Raw Data refresh register" in failure for failure in failures),
+            failures,
+        )
+
+    def test_registered_summary_money_constant_passes(self):
+        workbook = multi_period_workbook()
+        summary = workbook["IGCE Summary"]
+        summary["A25"] = "Other direct costs"
+        summary["B25"] = 75000
+        register = workbook["Raw Data"]
+        register["A1"] = "ODCs"
+        register["B1"] = "$75,000 vendor quote"
+
+        result = self._run(workbook, multi_period_payload())
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(json.loads(result.stdout)["status"], "pass")

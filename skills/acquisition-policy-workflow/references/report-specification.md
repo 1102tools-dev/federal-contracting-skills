@@ -1,5 +1,19 @@
 # Acquisition Policy written-product specification
 
+## Scope header
+
+The scope header (title-block metadata) of every product must carry, verbatim from intake:
+
+- **Prepared for:** the customer organization that requested the analysis. Never substitute the analyzed agency, another agency, or an invented organization.
+- **Decision date:** the customer's decision date. The analyzed agency and as-of date are separate fields and do not satisfy this requirement.
+- **Prior analysis** (refresh route only): the title and date of the prior analysis being refreshed.
+
+The record validator errors when the record's scope block lacks `customer_organization` or `decision_date`, and, for the refresh route, when `scope.prior_analysis` lacks a title and date. The DOCX validator confirms these values appear in the rendered product.
+
+## Illustrative data labeling
+
+When a product is built from illustrative rather than live-sourced data, use the standard reader-facing label **"Illustrative example (not live data)"** and place it only in the limitations or evidence-status block. Never place that label, or any test-harness vocabulary ("test record", "test fixture", "synthetic", "fixture"), inside payload tables, findings, timelines, or other reader-visible content. The record validator rejects reader-visible fields containing test-harness vocabulary.
+
 ## Route-specific written products
 
 Use a distinct product name and lead form for each route. The first page states the policy question, as-of date, governing source layers, documented status, practical acquisition impact, key uncertainty, and next responsible action. Keep evidence in an appendix or source note, not in the opening view.
@@ -29,6 +43,23 @@ The product name is a substantive promise, not merely a heading:
 If the approved record lacks the evidence that makes the selected product useful, provide a short evidence-acquisition note in chat. Do not turn an evidence gap into a six-page report that resembles a completed analysis.
 
 Each route must stop after its route-native analysis, management actions, focused source notes, and limitations. Do not append the generic Impact Brief body to Current Rule, Agency Status, Three-Layer, Change Comparison, Rulemaking, Comment Period, Public Comment, or Refresh products. The full twelve-section structure is reserved for the Acquisition Policy Impact Brief.
+
+### Per-route required payload and the shared-framing cap
+
+Each route's required payload sections are:
+
+| Route | Required payload sections |
+|---|---|
+| Current Rule Explanation | Current Rule Card |
+| Agency Policy Status Matrix | Agency Adoption Status table |
+| Three-Layer Policy Comparison | Three-Layer Comparison and Adoption Test table |
+| Regulatory Change Briefing | Before/After Change Map; Implementation decisions |
+| Rulemaking Timeline | Rulemaking Milestones and Next Trigger table |
+| Open Rulemaking Watchlist | Watchlist table; Response priorities |
+| Public Comment Position Analysis | Comment Sample and Theme Coverage; Coded themes table |
+| Policy Analysis Refresh | Refresh Change Register; Carry-forward decisions |
+
+The route-specific analysis, findings, and implications must be the majority of the document body. Shared framing common to all routes is limited to the scope header, the evidence register or source notes, and the limitations block. Do not repeat a table's rows in a second section; when a second section would emit identical rows, replace it with a one-line cross-reference. Two products from different routes on the same record must differ in the majority of their body content, not by one table alone; where the builder would otherwise inject fixed framing regardless of route, that framing must be record-driven or route-conditional.
 
 ## Product-first reader contract
 
@@ -60,6 +91,25 @@ When the approved record supplies `validation.planning_posture`, `validation.dec
 Use the `standard_business_brief` visual preset with a restrained memo masthead. Use US Letter portrait, one-inch margins, Calibri 11-point body text, blue heading hierarchy, quiet running header/footer, real list styles, and fixed-width tables with repeating header rows.
 
 The title block states the agency or scope, as-of date, audience lens, and preparation status. Do not call the brief a legal opinion, authoritative policy determination, or contract-file approval.
+
+## Documented-status vocabulary
+
+Status cells in the Agency Policy Status Matrix ("Status for this question" column) and the Three-Layer Comparison ("Documented status" column) must use only the allowed value for the row's layer type. An agency name is never a documented status.
+
+| Layer type | Allowed status value |
+|---|---|
+| Codified current text; effective final rule | Government-wide baseline (matrix) or Codified current baseline (three-layer) |
+| FAR Council model deviation text | Published model text; not agency-operative (matrix) or Published model text; not operative alone (three-layer) |
+| Proposed rule | Pending rulemaking; not current policy |
+| Final rule pending effective date | Final rule pending effective date; not current policy |
+| Withdrawn rule | Withdrawn; not current policy |
+| Superseded issuance | Superseded; not current policy |
+| Nonregulatory guidance | Guidance; not regulation |
+| Agency class deviation (three-layer) | Agency class deviation |
+| Agency class deviation issued by the named agency (matrix) | Named-agency evidence |
+| Agency class deviation issued by another agency (matrix) | Comparator only; does not establish adoption for the named agency |
+
+A proposed-rule or deviation row must never carry the codified-baseline status. The DOCX validator errors on any status cell outside this vocabulary and on any non-baseline layer labeled with the codified-baseline status.
 
 ## Evidence presentation
 

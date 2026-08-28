@@ -36,6 +36,24 @@ SCENARIO_B_REF = re.compile(
     r"(?:'Scenario Analysis'|Scenario Analysis)!\$?B\$?([1-9][0-9]*)",
     re.IGNORECASE,
 )
+BASE_PERIOD_LABEL = re.compile(r"\bBASE[\s-]*(?:YEAR|PERIOD)\b")
+OPTION_PERIOD_LABEL = re.compile(
+    r"\bOPTION\s*(?:YEAR|PERIOD)?\s*0*([1-9][0-9]*)\b|\bO[YP]\s*0*([1-9][0-9]*)\b"
+)
+TOTAL_PERIODS_CELL = "B14"
+SUMMARY_CONSTANT_THRESHOLD = 1000.0
+MONEY_KEYWORDS = (
+    "TOTAL",
+    "COST",
+    "PRICE",
+    "AMOUNT",
+    "ODC",
+    "OTHER DIRECT",
+    "TRAVEL",
+    "MATERIALS",
+    "ESTIMATE",
+)
+NON_MONEY_KEYWORDS = ("HOUR", "FTE", "MONTH", "SOC", "PERIODS")
 
 
 def normalize_formula(value: Any) -> str:
@@ -80,6 +98,183 @@ def check_formula(
     for item in not_contains or []:
         if normalize_formula(item) in normalized:
             failures.append(f"{sheet.title}!{coordinate} formula contains forbidden text {item}")
+
+
+def _is_number(value: Any) -> bool:
+    return not isinstance(value, bool) and isinstance(value, (int, float))
+
+
+def _nearest_header(sheet: Any, row: int, column: int, limit: int = 40) -> str:
+    """Return the closest non-formula text above a cell in the same column."""
+    for row_index in range(row - 1, max(0, row - limit), -1):
+        value = sheet.cell(row_index, column).value
+        if isinstance(value, str) and value.strip() and not value.startswith("="):
+            return value.upper()
+    return ""
+
+
+def effective_periods(workbook: Any, payload_periods: int, failures: list[str]) -> int:
+    """Reconcile the Total Periods assumption cell with the validation input."""
+    if "IGCE Summary" not in workbook.sheetnames:
+        return payload_periods
+    value = workbook["IGCE Summary"][TOTAL_PERIODS_CELL].value
+    if value is None:
+        if payload_periods > 1:
+            failures.append(
+                f"IGCE Summary!{TOTAL_PERIODS_CELL} must record Total Periods (Base plus "
+                f"Options) for a {payload_periods}-period requirement"
+            )
+        return payload_periods
+    if not _is_number(value) or float(value) != int(value) or int(value) < 1:
+        failures.append(
+            f"IGCE Summary!{TOTAL_PERIODS_CELL} Total Periods (Base plus Options) must be "
+            "a whole number of at least 1"
+        )
+        return payload_periods
+    declared = int(value)
+    if payload_periods > 1 and declared != payload_periods:
+        failures.append(
+            f"IGCE Summary!{TOTAL_PERIODS_CELL} Total Periods is {declared} but the "
+            f"validation input states {payload_periods} periods"
+        )
+    return max(declared, payload_periods)
+
+
+def period_coverage_audit(workbook: Any, periods: int) -> list[str]:
+    """Require per-period totals on IGCE Summary for a multi-period requirement."""
+    failures: list[str] = []
+    if periods <= 1 or "IGCE Summary" not in workbook.sheetnames:
+        return failures
+    base_found = False
+    option_numbers: set[int] = set()
+    for row in workbook["IGCE Summary"].iter_rows():
+        for cell in row:
+            value = cell.value
+            if not isinstance(value, str):
+                continue
+            upper = value.upper()
+            if BASE_PERIOD_LABEL.search(upper):
+                base_found = True
+            for match in OPTION_PERIOD_LABEL.finditer(upper):
+                option_numbers.add(int(match.group(1) or match.group(2)))
+    if not base_found or len(option_numbers) < periods - 1:
+        found = ", ".join(f"Option {n}" for n in sorted(option_numbers)) or "none"
+        failures.append(
+            f"the stated period of performance has {periods} periods (base plus "
+            f"{periods - 1} options) but IGCE Summary shows no per-period totals (base "
+            f"label found: {'yes' if base_found else 'no'}; option-period labels found: "
+            f"{found}); a headline planning estimate must cover every period or carry an "
+            "explicit single-period coverage annotation for a single-period scope"
+        )
+    return failures
+
+
+def escalation_input_audit(workbook: Any, periods: int) -> list[str]:
+    """Reject a dead escalation input when multi-period pricing exists."""
+    failures: list[str] = []
+    if periods <= 1 or "IGCE Summary" not in workbook.sheetnames:
+        return failures
+    summary = workbook["IGCE Summary"]
+    target = None
+    for row in summary.iter_rows():
+        for cell in row:
+            value = cell.value
+            if (
+                isinstance(value, str)
+                and "ESCALATION" in value.upper()
+                and len(value.strip()) <= 30
+            ):
+                for column in range(cell.column + 1, min(cell.column + 6, summary.max_column) + 1):
+                    candidate = summary.cell(cell.row, column)
+                    if _is_number(candidate.value):
+                        target = candidate
+                        break
+                if target is None and _is_number(summary.cell(cell.row + 1, cell.column).value):
+                    target = summary.cell(cell.row + 1, cell.column)
+            if target is not None:
+                break
+        if target is not None:
+            break
+    if target is None:
+        failures.append(
+            "IGCE Summary has no numeric Escalation Rate input; a multi-period estimate "
+            "must carry a live escalation input"
+        )
+        return failures
+    column_letter = target.column_letter
+    row_number = target.row
+    bare_reference = re.compile(
+        rf"(?<![A-Z0-9_$])\$?{column_letter}\$?{row_number}(?![0-9])"
+    )
+    sheet_reference = re.compile(
+        rf"(?:'IGCE SUMMARY'|IGCE SUMMARY)!\$?{column_letter}\$?{row_number}(?![0-9])"
+    )
+    referenced = False
+    for sheet in workbook.worksheets:
+        for row in sheet.iter_rows():
+            for cell in row:
+                value = cell.value
+                if not isinstance(value, str) or not value.startswith("="):
+                    continue
+                normalized = normalize_formula(value)
+                if sheet.title == "IGCE Summary":
+                    if bare_reference.search(normalized):
+                        referenced = True
+                elif sheet_reference.search(normalized):
+                    referenced = True
+            if referenced:
+                break
+        if referenced:
+            break
+    if not referenced:
+        failures.append(
+            f"IGCE Summary!{target.coordinate} escalation input "
+            f"({target.value}) is referenced by zero formulas; multi-period pricing must "
+            "apply the escalation input rather than displaying a dead cell"
+        )
+    return failures
+
+
+def summary_constant_audit(workbook: Any) -> list[str]:
+    """Reject hardcoded summary money amounts absent from the refresh register."""
+    failures: list[str] = []
+    if "IGCE Summary" not in workbook.sheetnames or "Raw Data" not in workbook.sheetnames:
+        return failures
+    register_numbers: list[float] = []
+    for row in workbook["Raw Data"].iter_rows():
+        for cell in row:
+            value = cell.value
+            if _is_number(value):
+                register_numbers.append(float(value))
+            elif isinstance(value, str):
+                for token in re.findall(r"\d[\d,]*(?:\.\d+)?", value):
+                    register_numbers.append(float(token.replace(",", "")))
+    summary = workbook["IGCE Summary"]
+    for row in summary.iter_rows():
+        label = next(
+            (c.value for c in row if isinstance(c.value, str) and c.value.strip()), ""
+        )
+        label_upper = str(label).upper()
+        for cell in row:
+            value = cell.value
+            if not _is_number(value) or abs(float(value)) < SUMMARY_CONSTANT_THRESHOLD:
+                continue
+            header = _nearest_header(summary, cell.row, cell.column)
+            if any(keyword in header for keyword in NON_MONEY_KEYWORDS):
+                continue
+            if not any(
+                keyword in header or keyword in label_upper for keyword in MONEY_KEYWORDS
+            ):
+                continue
+            if any(abs(float(value) - entry) <= 1.0 for entry in register_numbers):
+                continue
+            failures.append(
+                f"IGCE Summary!{cell.coordinate} hardcodes {float(value):,.2f} "
+                f"({str(label).strip() or 'unlabeled line'}) with no matching entry in "
+                "the Raw Data refresh register; every summary money line must trace to a "
+                "detail sheet or assumptions input and appear in the register"
+            )
+    return failures
 
 
 def material_handling_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
@@ -481,6 +676,10 @@ def main() -> int:
         expected = calculate(payload)
         formula_workbook = load_workbook(args.workbook, data_only=False)
         structural_failures = structural_audit(formula_workbook, payload)
+        periods = effective_periods(formula_workbook, expected["periods"], structural_failures)
+        structural_failures.extend(period_coverage_audit(formula_workbook, periods))
+        structural_failures.extend(escalation_input_audit(formula_workbook, periods))
+        structural_failures.extend(summary_constant_audit(formula_workbook))
         failures = list(structural_failures)
     except (InputError, OSError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

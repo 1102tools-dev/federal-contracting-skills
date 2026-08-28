@@ -89,6 +89,15 @@ TAVILY_OPERATIONS = {"tavily_search", "tavily_extract"}
 MARKET_SKILLS = {"market-research-workflow", "market-research-builder"}
 DECISION_ID = re.compile(r"^D\d{3,}\s*[:\-]")
 UNRESOLVED_ID = re.compile(r"^U\d{3,}\s*[:\-]")
+# Session, tool, and fixture vocabulary that must never reach a reader-visible
+# field of a focused-route record. Reader-visible text is written as an
+# acquisition-record statement, never as chat narration.
+NARRATION_PATTERN = re.compile(r"\b(?:the user|this session|this chat|mcp|fixtures?|synthetic)\b", re.I)
+NARRATION_HINT = (
+    "rewrite it as an acquisition-record statement; for honest illustrative data use "
+    "'Illustrative example data (not live research)'"
+)
+NAMED_FIRM_PATTERN = re.compile(r"\bnamed\s+(?:firms?|vendors?|concerns?)\b", re.I)
 SENSITIVE_URL_KEYS = {
     "access_token",
     "api_key",
@@ -139,6 +148,36 @@ def walk(value: Any):
     elif isinstance(value, list):
         for child in value:
             yield from walk(child)
+
+
+def walk_strings(value: Any, path: str):
+    if isinstance(value, dict):
+        for key, item in value.items():
+            yield from walk_strings(item, f"{path}.{key}")
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            yield from walk_strings(item, f"{path}[{index}]")
+    elif isinstance(value, str):
+        yield path, value
+
+
+def reader_visible_strings(record: dict):
+    """Fields a focused-route report renders directly to the paying reader."""
+    for index, item in enumerate(record.get("findings", []) or []):
+        if isinstance(item, dict) and isinstance(item.get("text"), str):
+            yield f"findings[{index}].text", item["text"]
+    for collection in ("unresolved_questions", "conflicts"):
+        for index, item in enumerate(record.get(collection, []) or []):
+            if isinstance(item, str):
+                yield f"{collection}[{index}]", item
+            else:
+                yield from walk_strings(item, f"{collection}[{index}]")
+    for index, item in enumerate(record.get("evidence", []) or []):
+        if isinstance(item, dict):
+            for field in ("title", "locator", "fact", "limitations"):
+                if isinstance(item.get(field), str):
+                    yield f"evidence[{index}].{field}", item[field]
+    yield from walk_strings(record.get("validation", {}), "validation")
 
 
 def valid_utc_timestamp(value: object) -> bool:
@@ -365,6 +404,40 @@ def validate_record(record: Any, *, purpose: str = "artifact") -> dict[str, Any]
                     problem = public_url_failure(url)
                     if problem:
                         failures.append(f"queries[{index}].parameters.{key} {problem}")
+
+    if skill in MARKET_SKILLS and purpose == "artifact":
+        evidence_numbers: list[int] = []
+        parsable = True
+        for item in record.get("evidence", []):
+            if isinstance(item, dict) and isinstance(item.get("id"), str) and ID_PATTERNS["evidence"].fullmatch(item["id"]):
+                evidence_numbers.append(int(item["id"][1:]))
+            else:
+                parsable = False
+        if parsable and evidence_numbers and sorted(evidence_numbers) != list(range(1, len(evidence_numbers) + 1)):
+            failures.append(
+                "evidence IDs must be contiguous starting at E001 with no gaps; renumber the evidence register and update every citation"
+            )
+        if record.get("workflow_mode") != "complete_report":
+            for path, value in reader_visible_strings(record):
+                match = NARRATION_PATTERN.search(value)
+                if match:
+                    failures.append(
+                        f"{path} contains session or tool narration ('{match.group(0)}'); {NARRATION_HINT}"
+                    )
+        validation_block = record.get("validation", {})
+        if isinstance(validation_block, dict):
+            candidates = validation_block.get("small_business_candidates", [])
+            has_named_vendors = isinstance(candidates, list) and any(
+                isinstance(candidate, dict) and str(candidate.get("name", "")).strip()
+                for candidate in candidates
+            )
+            if not has_named_vendors:
+                for path, value in walk_strings(validation_block, "validation"):
+                    if NAMED_FIRM_PATTERN.search(value):
+                        failures.append(
+                            f"{path} references named firms or vendors, but the record names none; "
+                            "add the named concerns to validation.small_business_candidates or rewrite the text without the reference"
+                        )
 
     if skill in MARKET_SKILLS and record.get("workflow_mode") == "complete_report" and purpose == "artifact":
         validation = record.get("validation", {})

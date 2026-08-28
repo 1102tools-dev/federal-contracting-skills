@@ -371,7 +371,7 @@ def build(record: dict, output: Path) -> None:
         quote.add_run("Internal company context is incomplete. This product is a conditional pursuit posture, not a bid or no-bid recommendation.")
 
     document.add_heading(product["immediate"], level=1)
-    add_bullets(document, next_actions[:3], "Confirm the next validation action with the accountable growth lead.")
+    add_bullets(document, next_actions[:3], "No approved immediate move was recorded.")
     document.add_heading(product["unknowns"], level=2)
     add_bullets(document, unknowns[:3], "No decision-blocking unknown was recorded.")
     decision_rule = validation.get("decision_rule")
@@ -433,7 +433,10 @@ def build(record: dict, output: Path) -> None:
     add_bullets(document, record.get("assumptions", []), "No working assumption was recorded.")
 
     document.add_heading(headings[6], level=1)
-    add_bullets(document, unknowns, "No operational unknown was recorded.")
+    # Page one already lists the controlling unknowns; do not restate them here.
+    if unknowns:
+        document.add_paragraph("The controlling unknowns appear on page one.")
+    add_bullets(document, unknowns[3:], "No additional operational unknown was recorded.")
 
     document.add_heading(headings[7], level=1)
     add_bullets(document, record.get("conflicts", []), "No source conflict was recorded.")
@@ -443,7 +446,13 @@ def build(record: dict, output: Path) -> None:
 
     document.add_heading(headings[8], level=1)
     add_bullets(document, record.get("user_decisions", []), "No user decision was recorded.")
-    add_bullets(document, next_actions, "No next action was recorded.")
+    # The first three actions are the page-one immediate moves; render only the
+    # remainder here instead of restating that list.
+    if next_actions:
+        document.add_paragraph("The immediate moves on page one lead this plan.")
+        add_bullets(document, next_actions[3:], "No further action beyond the immediate moves was recorded.")
+    else:
+        document.add_paragraph("No next action was recorded.")
 
     document.add_heading(headings[9], level=1)
     queries = record.get("queries", [])

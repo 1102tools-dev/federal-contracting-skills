@@ -106,6 +106,19 @@ Each block contains:
 
 Labor rates reference `Labor Benchmarking`. Do not hardcode a burdened rate in a Milestone Detail cost formula.
 
+Every labor category priced in Milestone Detail MUST either have its own
+SOC-matched benchmark row on `Labor Benchmarking`, or carry a Basis cell that
+explicitly names the proxy benchmark used and why it is reasonable (the Basis
+text must contain the word `proxy`). Never silently reuse another category's
+rate under a generic basis such as "Prior bounded source benchmark".
+
+Milestone labor hours MUST reconcile to milestone duration and staffing. Each
+milestone block carries an hours-basis note: a cell whose text begins
+`Hours basis:` and states the staffing and duration arithmetic behind the
+hours (for example `Hours basis: 1.5 FTE systems engineering x 6 weeks`). Do
+not repeat identical hours per category across milestones of different
+durations without that reconciliation.
+
 ## 3. Scenario Analysis
 
 Show user-approved low, working, and high assumptions. Include total project cost, Government project share, performer project share, fee, and Government funding requirement for each scenario. Use formulas referencing scenario inputs and milestone totals.
@@ -165,6 +178,24 @@ Do not call the workbook an IGCE or a FAR 15.404 analysis. Do not state a price-
 
 Record compact reproducible inputs and outputs from BLS, CALC+, Per Diem, analogous prices, quotes, and user overrides. Do not paste full payloads or credentials.
 
+## Recosting workbooks
+
+A recosting workbook (any output whose titles use "Recost" or "Recosting")
+additionally MUST:
+
+- Carry `Labor Benchmarking` rows only for roles that appear in its own
+  Milestone Detail delta rows. Never list benchmark roles, or rates, that are
+  tied to nothing in the package.
+- Decompose every labor delta as hours x rate per affected labor category. A
+  labor delta row carries Hours and Rate cells and computes its delta by
+  formula; a single lump-sum labor delta is not acceptable, especially when the
+  sheet's own management question asks whether hours and roles are
+  proportionate.
+- Include a delta row for every cost element the change register names (labor,
+  materials, travel, ODCs, or others). When the register directs repricing of
+  an element and the analysis concludes no change, carry an explicit $0 delta
+  row with a one-line justification, never a silent omission.
+
 ## Formula and presentation rules
 
 - Blue font for user-adjustable inputs; black font for formulas.
@@ -174,6 +205,10 @@ Record compact reproducible inputs and outputs from BLS, CALC+, Per Diem, analog
 - Real Excel formulas for every derived value.
 - Freeze panes below assumptions and header rows.
 - Light header fills, filters, explicit widths, and readable source notes.
+- Narrative columns (the Summary milestone Description column, Milestone Detail
+  Basis cells, and source-note text) must have wrap text enabled on every
+  populated cell and an explicit column width of at least 28 characters so no
+  text clips mid-word in the rendered or printed view.
 - No formula-error tokens, prompt text, local paths, tool namespaces, keys, or internal instructions.
 - Set workbook calculation mode to automatic when supported, but do not claim this evaluates formulas.
 - Use differentiated visual treatment by route: independent analysis favors a

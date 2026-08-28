@@ -190,6 +190,179 @@ class PolicyRecordTests(unittest.TestCase):
         record["findings"][1]["status_resolution"] = "authorized_resolution"
         self.assert_fails_with(record, "requires official resolution")
 
+    def test_scope_requires_customer_organization(self):
+        record = self.fixture()
+        del record["scope"]["customer_organization"]
+        self.assert_fails_with(record, "scope.customer_organization")
+        record["scope"]["customer_organization"] = "   "
+        self.assert_fails_with(record, "scope.customer_organization")
+
+    def test_scope_requires_decision_date(self):
+        record = self.fixture()
+        del record["scope"]["decision_date"]
+        self.assert_fails_with(record, "scope.decision_date")
+        record["scope"]["decision_date"] = "next month"
+        self.assert_fails_with(record, "scope.decision_date")
+
+    def test_refresh_requires_prior_analysis_identity(self):
+        record = self.fixture()
+        record["workflow_mode"] = "refresh"
+        self.assert_fails_with(record, "scope.prior_analysis")
+        record["scope"]["prior_analysis"] = {"title": "", "date": "2026-05-01"}
+        self.assert_fails_with(record, "prior_analysis.title")
+        record["scope"]["prior_analysis"] = {"title": "FAR Part 10 status analysis", "date": "not a date"}
+        self.assert_fails_with(record, "prior_analysis.date")
+        record["scope"]["prior_analysis"] = {"title": "FAR Part 10 status analysis", "date": "2026-05-01"}
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "pass", result["failures"])
+
+    def test_reader_visible_test_harness_vocabulary_is_rejected(self):
+        for term in ("synthetic test record", "test fixture", "a synthetic summary", "the fixture represents"):
+            record = self.fixture()
+            record["evidence"][0]["fact"] = f"This value comes from {term}."
+            self.assert_fails_with(record, "test-harness vocabulary")
+        record = self.fixture()
+        record["timeline"][0]["event"] = "The test fixture represents GSA issuance of the deviation."
+        self.assert_fails_with(record, "test-harness vocabulary")
+        record = self.fixture()
+        record["limitations"].append("Synthetic data only.")
+        self.assert_fails_with(record, "test-harness vocabulary")
+
+    def test_non_reader_visible_query_limitations_may_mention_fixtures(self):
+        record = self.fixture()
+        record["queries"][0]["limitations"] = "Offline test fixture; no live call was made."
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "pass", result["failures"])
+
+    def test_illustrative_label_passes(self):
+        record = self.fixture()
+        record["limitations"].append("Illustrative example (not live data).")
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "pass", result["failures"])
+
+
+class PolicyRenderingTests(unittest.TestCase):
+    """Regression coverage for rendered-product defects: duplicated tables, narrow
+    gate columns, scope-header propagation, and documented-status vocabulary."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.docx_validator = load_module(
+            SKILL / "scripts" / "validate_acquisition_policy_brief.py",
+            "policy_docx_validator_tests",
+        )
+
+    def build_docx(self, record: dict, directory: str) -> Path:
+        record_path = Path(directory) / "record.json"
+        record_path.write_text(json.dumps(record), encoding="utf-8")
+        output = Path(directory) / "product.docx"
+        build = subprocess.run(
+            [PYTHON, str(SKILL / "scripts" / "build_acquisition_policy_brief.py"), str(record_path), str(output)],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+        return output
+
+    def test_focused_product_does_not_duplicate_gate_rows(self):
+        from docx import Document
+        from docx.oxml.ns import qn
+
+        record = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        record["workflow_mode"] = "current_rule"
+        with tempfile.TemporaryDirectory() as directory:
+            output = self.build_docx(record, directory)
+            document = Document(str(output))
+            gate_tables = [
+                table
+                for table in document.tables
+                if table.rows and "Decision-ready evidence" in [cell.text.strip() for cell in table.rows[0].cells]
+            ]
+            self.assertEqual(len(gate_tables), 1, "gate/action rows must render exactly once")
+            text = "\n".join(paragraph.text for paragraph in document.paragraphs)
+            self.assertIn("stated once in the Owners and Decision Gates table above", text)
+            widths = [int(col.get(qn("w:w"))) for col in gate_tables[0]._tbl.tblGrid]
+            self.assertGreaterEqual(widths[0], 1700, "gate label column must not force mid-word breaks")
+
+    def test_scope_header_carries_customer_organization_and_decision_date(self):
+        from docx import Document
+
+        record = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        record["workflow_mode"] = "three_layer"
+        with tempfile.TemporaryDirectory() as directory:
+            output = self.build_docx(record, directory)
+            document = Document(str(output))
+            text = "\n".join(paragraph.text for paragraph in document.paragraphs)
+            self.assertIn(record["scope"]["customer_organization"], text)
+            self.assertIn(record["scope"]["decision_date"], text)
+
+    def test_refresh_scope_header_identifies_prior_analysis(self):
+        from docx import Document
+
+        record = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        record["workflow_mode"] = "refresh"
+        record["scope"]["prior_analysis"] = {"title": "FAR Part 10 status analysis", "date": "2026-05-01"}
+        record["validation"]["refresh_changes"] = [
+            {
+                "issue": "GSA deviation status",
+                "prior_conclusion": "Deviation posted and current",
+                "current_evidence": "Deviation remains posted",
+                "delta": "Unchanged",
+                "planning_consequence": "Continue from the documented baseline",
+                "evidence_ids": ["E003"],
+            }
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            output = self.build_docx(record, directory)
+            document = Document(str(output))
+            text = "\n".join(paragraph.text for paragraph in document.paragraphs)
+            self.assertIn("FAR Part 10 status analysis", text)
+            self.assertIn("2026-05-01", text)
+
+    def test_three_layer_status_cells_use_allowed_vocabulary(self):
+        from docx import Document
+
+        record = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        record["workflow_mode"] = "three_layer"
+        with tempfile.TemporaryDirectory() as directory:
+            output = self.build_docx(record, directory)
+            document = Document(str(output))
+            self.assertEqual(self.docx_validator.status_vocabulary_failures(document), [])
+
+    def test_agency_status_rows_never_label_rulemaking_as_baseline(self):
+        from docx import Document
+
+        record = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        record["workflow_mode"] = "agency_status"
+        with tempfile.TemporaryDirectory() as directory:
+            output = self.build_docx(record, directory)
+            document = Document(str(output))
+            self.assertEqual(self.docx_validator.status_vocabulary_failures(document), [])
+            matrix = next(
+                table
+                for table in document.tables
+                if table.rows and "Status for this question" in [cell.text.strip() for cell in table.rows[0].cells]
+            )
+            by_layer = {row.cells[0].text.strip(): row.cells[2].text.strip() for row in matrix.rows[1:]}
+            self.assertEqual(by_layer["Proposed Rule"], "Pending rulemaking; not current policy")
+            self.assertEqual(by_layer["Model Deviation"], "Published model text; not agency-operative")
+            self.assertEqual(by_layer["Codified Current"], "Government-wide baseline")
+
+    def test_status_vocabulary_validator_rejects_bad_cells(self):
+        from docx import Document
+
+        document = Document()
+        table = document.add_table(rows=3, cols=2)
+        table.rows[0].cells[0].text = "Layer"
+        table.rows[0].cells[1].text = "Documented status"
+        table.rows[1].cells[0].text = "Proposed rule"
+        table.rows[1].cells[1].text = "Government-wide baseline"
+        table.rows[2].cells[0].text = "Agency deviation"
+        table.rows[2].cells[1].text = "General Services Administration"
+        failures = self.docx_validator.status_vocabulary_failures(document)
+        self.assertTrue(any("codified-baseline status" in failure for failure in failures), failures)
+        self.assertTrue(any("outside the documented-status vocabulary" in failure for failure in failures), failures)
+
 
 class PolicyArtifactTests(unittest.TestCase):
     def test_build_and_validate_brief(self):

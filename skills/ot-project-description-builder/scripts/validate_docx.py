@@ -57,7 +57,37 @@ FORBIDDEN = {
         re.I,
     ),
     "local runtime path": re.compile(r"/(?:mnt|tmp|Users)/|[A-Za-z]:\\", re.I),
+    "instructional template residue": re.compile(
+        r"table\s+of\s+contents\s+(?:updates?|will\s+update|refreshes?)\s+automatically"
+        r"|updates?\s+automatically\s+in\s+word"
+        r"|right-click[^.\n]{0,60}update\s+field"
+        r"|press\s+F9",
+        re.I,
+    ),
 }
+
+PRODUCT_LABELS = ("project description", "delivery plan", "change register")
+
+
+def cover_product_labels(document: Document) -> set[str]:
+    parts: list[str] = []
+    for paragraph in document.paragraphs:
+        if heading_level(paragraph) is not None:
+            break
+        if paragraph.text.strip():
+            parts.append(paragraph.text)
+    text = re.sub(r"\s+", " ", " ".join(parts)).lower()
+    return {label for label in PRODUCT_LABELS if label in text}
+
+
+def header_product_labels(document: Document) -> set[str]:
+    parts = [
+        paragraph.text
+        for section in document.sections
+        for paragraph in section.header.paragraphs
+    ]
+    text = re.sub(r"\s+", " ", " ".join(parts)).lower()
+    return {label for label in PRODUCT_LABELS if label in text}
 
 
 def normalize_heading(text: str) -> str:
@@ -198,6 +228,17 @@ def validate(path: Path) -> dict[str, object]:
     for label, pattern in FORBIDDEN.items():
         if pattern.search(text):
             failures.append(f"document contains forbidden {label}")
+
+    cover_labels = cover_product_labels(document)
+    header_labels = header_product_labels(document)
+    if cover_labels and header_labels and not (cover_labels & header_labels):
+        failures.append(
+            "cover names "
+            + ", ".join(sorted(cover_labels))
+            + " but the running header names "
+            + ", ".join(sorted(header_labels))
+            + "; the cover eyebrow, title, and running header must name the same product"
+        )
 
     h1 = [
         normalize_heading(paragraph.text)

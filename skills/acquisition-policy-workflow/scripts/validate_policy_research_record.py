@@ -140,6 +140,20 @@ SENSITIVE_URL_KEYS = {
 }
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 SHA_RE = re.compile(r"^(?:[0-9a-f]{64})?$", re.I)
+TEST_HARNESS_TERMS = re.compile(r"\b(?:test record|test fixture|synthetic|fixture)\b", re.I)
+READER_VISIBLE_FIELDS = (
+    "request",
+    "scope",
+    "evidence",
+    "policy_items",
+    "findings",
+    "timeline",
+    "stakeholder_positions",
+    "limitations",
+    "conflicts",
+    "unresolved_questions",
+    "validation",
+)
 
 
 def walk(value: Any):
@@ -231,6 +245,21 @@ def validate_record(record: Any) -> dict[str, Any]:
         scope = {}
     if not valid_date(scope.get("as_of_date"), allow_empty=False):
         failures.append("scope.as_of_date must be a valid YYYY-MM-DD date")
+    customer = scope.get("customer_organization")
+    if not isinstance(customer, str) or not customer.strip():
+        failures.append("scope.customer_organization must name the requesting customer organization from intake")
+    if not valid_date(scope.get("decision_date"), allow_empty=False):
+        failures.append("scope.decision_date must be a valid YYYY-MM-DD date from intake")
+    if record.get("workflow_mode") == "refresh":
+        prior = scope.get("prior_analysis")
+        if not isinstance(prior, dict):
+            failures.append("scope.prior_analysis must identify the prior analysis for the refresh route")
+        else:
+            title = prior.get("title")
+            if not isinstance(title, str) or not title.strip():
+                failures.append("scope.prior_analysis.title must name the prior analysis")
+            if not valid_date(prior.get("date"), allow_empty=False):
+                failures.append("scope.prior_analysis.date must be a valid YYYY-MM-DD date")
     far_parts = scope.get("far_parts")
     if not isinstance(far_parts, list) or any(not isinstance(part, int) or part < 1 or part > 53 for part in far_parts):
         failures.append("scope.far_parts must contain integers from 1 through 53")
@@ -507,6 +536,16 @@ def validate_record(record: Any) -> dict[str, Any]:
             if not isinstance(validation.get(field), bool):
                 failures.append(f"validation.{field} must be boolean")
         required_string(validation, "executive_summary", "validation", failures)
+
+    for field in READER_VISIBLE_FIELDS:
+        for value in walk(record.get(field)):
+            if isinstance(value, str) and TEST_HARNESS_TERMS.search(value):
+                failures.append(
+                    f"reader-visible content in {field} contains test-harness vocabulary "
+                    "(test record, test fixture, synthetic, fixture); use the label "
+                    "'Illustrative example (not live data)' in the limitations or evidence-status block instead"
+                )
+                break
 
     serialized = json.dumps(record, sort_keys=True)
     for pattern in SECRET_PATTERNS:

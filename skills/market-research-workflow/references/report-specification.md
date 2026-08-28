@@ -34,6 +34,10 @@ When required route evidence is unavailable, return a concise evidence-acquisiti
 
 Use structured `validation` entries when the product needs them: `decision_implications`, `next_actions` (`owner`, `when`, `action`, `output`), `capability_model`, `packaging_hypotheses`, `market_engagement_instrument`, `decision_gates`, refresh-specific change fields, or `requirements_implications`. Turn every unresolved item into a visible owner, decision gate, and evidence/action need. If the record lacks an approved instrument or gate, say so; do not invent market evidence or a reserved decision in the builder.
 
+## Reader-visible language
+
+Every reader-visible field in the record is written as an acquisition-record statement, never as chat or session narration. Never place phrases such as "the user", "this session", tool or MCP names, or fixture and synthetic vocabulary in findings, unresolved items, conflicts, evidence titles, locators, facts, limitations, or `validation` narrative; label honest illustrative data as `Illustrative example data (not live research)`. Internal evidence-class tokens (for example `federal_mcp`, `user_statement`, `official_web`) stay in the JSON contract only; the builder renders reader labels such as `Federal data service`, `Customer statement`, and `Official website`. If action text references named firms or vendors, the document must actually name those concerns; otherwise rewrite the action. Keep record evidence IDs contiguous from E001; the builder renumbers the evidence a focused route renders so reader-visible IDs stay sequential, and it cross-references the opening Next practical actions table instead of repeating an identical closing action table.
+
 Every consequential finding cites an evidence ID. Document-derived claims also cite file and page, section, table, or paragraph. State the as-of date prominently. Label user-provided facts, public facts, interpretation, confidence, and unresolved questions where they affect a decision. Do not make the evidence register the main narrative.
 
 ## Completion label

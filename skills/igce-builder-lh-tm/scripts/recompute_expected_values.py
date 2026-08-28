@@ -33,6 +33,14 @@ def _setting(line: dict[str, Any], assumptions: dict[str, Any], key: str) -> flo
     return _number(value, f"{line.get('name', '<unnamed>')}.{key}", minimum=0)
 
 
+def _period_count(assumptions: dict[str, Any]) -> int:
+    """Validate assumptions.periods, the total period count (base plus options)."""
+    periods = assumptions.get("periods", 1)
+    if isinstance(periods, bool) or not isinstance(periods, int) or periods < 1:
+        raise InputError("assumptions.periods must be a whole number of at least 1")
+    return periods
+
+
 def _reference(raw: dict[str, Any], result: dict[str, Any], key: str) -> None:
     if key not in raw:
         return
@@ -140,6 +148,7 @@ def calculate(payload: dict[str, Any]) -> dict[str, Any]:
         non_labor_results.append(result)
 
     output: dict[str, Any] = {
+        "periods": _period_count(assumptions),
         "contract_type": contract_type,
         "labor_lines": labor_results,
         "non_labor_lines": non_labor_results,

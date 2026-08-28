@@ -50,6 +50,32 @@ PRODUCT_TITLES = {
     "impact_brief": "Acquisition Policy Impact Brief",
 }
 
+POLICY_ITEM_STATUSES = {
+    "codified_current",
+    "model_deviation",
+    "agency_class_deviation",
+    "proposed_rule",
+    "final_rule_pending_effective",
+    "final_rule_effective",
+    "withdrawn",
+    "superseded",
+    "nonregulatory_guidance",
+}
+
+# Reader-facing documented-status vocabulary. The Agency Policy Status Matrix
+# and Three-Layer Comparison status cells must use only these values; see
+# references/report-specification.md.
+STATUS_QUESTION_LABELS = {
+    "codified_current": "Government-wide baseline",
+    "final_rule_effective": "Government-wide baseline",
+    "model_deviation": "Published model text; not agency-operative",
+    "proposed_rule": "Pending rulemaking; not current policy",
+    "final_rule_pending_effective": "Final rule pending effective date; not current policy",
+    "withdrawn": "Withdrawn; not current policy",
+    "superseded": "Superseded; not current policy",
+    "nonregulatory_guidance": "Guidance; not regulation",
+}
+
 FOCUSED_PRODUCTS = {
     "current_rule",
     "agency_status",
@@ -460,21 +486,29 @@ def derive_planning_posture(record: dict) -> dict:
             "team treats the model text as operative."
         )
     )
+    recorded_deviation = item_with_status(record, "agency_class_deviation")
+    deviation_issuer = recorded_deviation.get("agency") or "issuing-agency"
     three_layer_rationale = (
         "The codified FAR is the government-wide baseline; the FAR Council text is a non-operative model; and "
         f"the documented {agency} deviation is the agency-operative layer only within its recorded scope and timing."
         if matched_deviation
         else (
-            "The codified FAR is current; the FAR Council text is a non-operative model; and the documented GSA "
-            f"deviation applies only within its own scope. No approved evidence shows adoption by {agency}."
+            "The codified FAR is current; the FAR Council text is a non-operative model; and the documented "
+            f"{deviation_issuer} deviation applies only within its own scope. No approved evidence shows adoption by {agency}."
         )
     )
+    baseline_ids = evidence_ids_for_statuses(record, {"codified_current", "final_rule_effective"})
+    adoption_ids = evidence_ids_for_statuses(record, {"model_deviation", "agency_class_deviation"})
+    rulemaking_ids = evidence_ids_for_statuses(
+        record, {"proposed_rule", "final_rule_pending_effective", "final_rule_effective"}
+    )
+    all_ids = evidence_ids_for_statuses(record, POLICY_ITEM_STATUSES)
     route_postures = {
         "current_rule": {
             "label": "Current rule",
             "headline": "Use the codified FAR Part 10 text as the current baseline",
             "rationale": current_rule_rationale,
-            "evidence_ids": ["E001", "E002", "E003", "E004"],
+            "evidence_ids": baseline_ids + [i for i in adoption_ids if i not in baseline_ids],
             "fill": PALE_BLUE,
             "accent": BLUE,
         },
@@ -482,7 +516,7 @@ def derive_planning_posture(record: dict) -> dict:
             "label": "Agency status",
             "headline": agency_status_headline,
             "rationale": agency_status_rationale,
-            "evidence_ids": ["E002", "E003"],
+            "evidence_ids": adoption_ids,
             "fill": PALE_GOLD,
             "accent": GOLD,
         },
@@ -490,7 +524,7 @@ def derive_planning_posture(record: dict) -> dict:
             "label": "Comparison answer",
             "headline": "The three layers do not produce one common operative rule",
             "rationale": three_layer_rationale,
-            "evidence_ids": ["E001", "E002", "E003"],
+            "evidence_ids": baseline_ids + [i for i in adoption_ids if i not in baseline_ids],
             "fill": PALE_TEAL,
             "accent": TEAL,
         },
@@ -502,7 +536,7 @@ def derive_planning_posture(record: dict) -> dict:
                 "no matched section-level text. Obtain the old and new provisions before describing changed duties, "
                 "thresholds, or procedures."
             ),
-            "evidence_ids": ["E001", "E002", "E004"],
+            "evidence_ids": baseline_ids + [i for i in adoption_ids + rulemaking_ids if i not in baseline_ids],
             "fill": PALE_GOLD,
             "accent": GOLD,
         },
@@ -510,10 +544,10 @@ def derive_planning_posture(record: dict) -> dict:
             "label": "Rulemaking status",
             "headline": "The record reaches a proposed rule, not a final effective rule",
             "rationale": (
-                "The documented sequence moves from model text to a GSA deviation and then a related proposed rule. "
+                "The documented sequence of model text, any recorded deviation, and related rulemaking reaches a proposed rule. "
                 "No final-rule or effective-date event is approved here; monitor the docket for the next formal trigger."
             ),
-            "evidence_ids": ["E002", "E003", "E004", "E005"],
+            "evidence_ids": adoption_ids + [i for i in rulemaking_ids if i not in adoption_ids],
             "fill": PALE_BLUE,
             "accent": BLUE,
         },
@@ -524,7 +558,7 @@ def derive_planning_posture(record: dict) -> dict:
                 "The record identifies a proposed-rule docket but does not supply a verified open period or closing "
                 "date. Check the live docket and Federal Register notice before assigning a response deadline."
             ),
-            "evidence_ids": ["E004", "E005"],
+            "evidence_ids": rulemaking_ids,
             "fill": PALE_GOLD,
             "accent": GOLD,
         },
@@ -536,7 +570,7 @@ def derive_planning_posture(record: dict) -> dict:
                 "cannot be responsibly characterized. Define the sampling frame, retrieve the comments, and code "
                 "the sample before drawing conclusions."
             ),
-            "evidence_ids": ["E004", "E005"],
+            "evidence_ids": rulemaking_ids,
             "fill": PALE_RED,
             "accent": RED,
         },
@@ -548,7 +582,7 @@ def derive_planning_posture(record: dict) -> dict:
                 "Preserve the prior source register, retrieve current versions, and compare status, text, scope, and "
                 "dates before reporting a change."
             ),
-            "evidence_ids": ["E001", "E002", "E003", "E004", "E005"],
+            "evidence_ids": all_ids,
             "fill": PALE_GOLD,
             "accent": GOLD,
         },
@@ -972,10 +1006,16 @@ def add_route_native_analysis(document: Document, record: dict) -> None:
         document.add_heading("Agency Adoption Status", level=1)
         rows = []
         for item in record.get("policy_items", []):
-            relevance = "Government-wide baseline" if not item.get("agency") else (
-                "Named-agency evidence" if agency_item_matches_scope(record, item) else "Comparator only; does not establish adoption for the named agency"
-            )
-            rows.append([item.get("status", "").replace("_", " ").title(), item.get("agency") or "Government-wide", relevance, ", ".join(item.get("evidence_ids", []))])
+            status = item.get("status", "")
+            if status == "agency_class_deviation":
+                relevance = (
+                    "Named-agency evidence"
+                    if agency_item_matches_scope(record, item)
+                    else "Comparator only; does not establish adoption for the named agency"
+                )
+            else:
+                relevance = STATUS_QUESTION_LABELS.get(status, "Documented status not classified")
+            rows.append([status.replace("_", " ").title(), item.get("agency") or "Government-wide", relevance, ", ".join(item.get("evidence_ids", []))])
         add_table(document, ["Layer", "Issuer/agency", "Status for this question", "Evidence"], rows, [1800, 1900, 4200, 1460])
     elif mode == "three_layer":
         document.add_heading("Three-Layer Comparison and Adoption Test", level=1)
@@ -986,10 +1026,13 @@ def add_route_native_analysis(document: Document, record: dict) -> None:
                 "Comparator only unless the issuing agency matches the procurement agency and scope/timing are confirmed"
             )
         )
+        deviation_source = deviation.get("citation", "Not recorded")
+        if deviation.get("agency"):
+            deviation_source += f" ({deviation['agency']})"
         rows = [
-            ["Codified baseline", codified.get("citation", "Not recorded"), "Current baseline reflected in the approved record", "Use as the planning baseline" + evidence_suffix(codified)],
-            ["Model text", model.get("citation", "Not recorded"), "Published model; not operative alone", "Use only to identify possible deltas" + evidence_suffix(model)],
-            ["Agency deviation", deviation.get("citation", "Not recorded"), deviation.get("agency", "Not recorded"), deviation_test + evidence_suffix(deviation)],
+            ["Codified baseline", codified.get("citation", "Not recorded"), "Codified current baseline", "Use as the planning baseline" + evidence_suffix(codified)],
+            ["Model text", model.get("citation", "Not recorded"), "Published model text; not operative alone", "Use only to identify possible deltas" + evidence_suffix(model)],
+            ["Agency deviation", deviation_source, "Agency class deviation", deviation_test + evidence_suffix(deviation)],
         ]
         add_table(document, ["Layer", "Source", "Documented status", "Adoption test"], rows, [1600, 2100, 2500, 3160])
     elif mode == "change_brief":
@@ -1089,8 +1132,17 @@ def build(record: dict, output: Path) -> None:
     subtitle.paragraph_format.space_after = Pt(14)
     if subtitle.runs:
         set_run_font(subtitle.runs[0], size=13, color=MID_GRAY)
+    add_metadata(document, "Prepared for", scope.get("customer_organization"))
+    add_metadata(document, "Decision date", scope.get("decision_date"))
     add_metadata(document, "Agency or scope", agency)
     add_metadata(document, "As of", as_of)
+    if record.get("workflow_mode") == "refresh":
+        prior = scope.get("prior_analysis") or {}
+        prior_label = " ".join(
+            part for part in (str(prior.get("title", "")).strip(), f"({prior.get('date', '')})" if prior.get("date") else "")
+            if part
+        )
+        add_metadata(document, "Prior analysis", prior_label)
     add_metadata(document, "Audience lens", lens.title())
     add_metadata(document, "Status", "Documented published-source analysis; not a legal opinion or procurement-specific determination")
     rule = document.add_paragraph()
@@ -1124,8 +1176,9 @@ def build(record: dict, output: Path) -> None:
         "Use the documented status to frame acquisition planning, timing, monitoring, and file support.",
     )
     document.add_heading("Owners and Decision Gates", level=1)
+    decision_gates = derive_decision_gates(record)
     gate_rows = []
-    for gate in derive_decision_gates(record):
+    for gate in decision_gates:
         evidence_text = gate.get("evidence", "")
         evidence_ids = gate.get("evidence_ids", [])
         if evidence_ids:
@@ -1138,11 +1191,13 @@ def build(record: dict, output: Path) -> None:
                 gate.get("timing", ""),
             ]
         )
+    # The first column must stay wide enough for multi-word gate labels such as
+    # "Adoption confirmation"; narrower widths force mid-word breaks in fixed layout.
     add_table(
         document,
         ["Gate", "Decision-ready evidence", "Owner", "Timing"],
         gate_rows,
-        [850, 3600, 1800, 3110],
+        [1800, 3160, 1700, 2700],
     )
     boundary = document.add_paragraph()
     boundary.paragraph_format.space_before = Pt(4)
@@ -1159,13 +1214,26 @@ def build(record: dict, output: Path) -> None:
 
     if record.get("workflow_mode") in FOCUSED_PRODUCTS:
         document.add_heading("Management Actions", level=1)
-        action_rows = []
-        for gate in derive_decision_gates(record):
-            evidence_text = gate.get("evidence", "")
-            if gate.get("evidence_ids"):
-                evidence_text += " [" + ", ".join(gate["evidence_ids"]) + "]"
-            action_rows.append([gate.get("owner", ""), gate.get("timing", ""), gate.get("gate", ""), evidence_text])
-        add_table(document, ["Owner", "Timing", "Action / decision gate", "Evidence needed"], action_rows, [1600, 1900, 2200, 3660], font_size=9)
+        supplied_actions = record.get("validation", {}).get("management_actions")
+        management_actions = (
+            [item for item in supplied_actions if isinstance(item, dict)]
+            if isinstance(supplied_actions, list)
+            else []
+        )
+        if not management_actions or management_actions == decision_gates:
+            # Do not repeat the decision-gate rows as a second table.
+            document.add_paragraph(
+                "The owners, timing, and decision-ready evidence for each management action are stated once in "
+                "the Owners and Decision Gates table above."
+            )
+        else:
+            action_rows = []
+            for action in management_actions:
+                evidence_text = action.get("evidence", "")
+                if action.get("evidence_ids"):
+                    evidence_text += " [" + ", ".join(action["evidence_ids"]) + "]"
+                action_rows.append([action.get("owner", ""), action.get("timing", ""), action.get("gate", ""), evidence_text])
+            add_table(document, ["Owner", "Timing", "Action / decision gate", "Evidence needed"], action_rows, [1700, 1900, 2200, 3560], font_size=9)
 
         document.add_heading("Evidence and Source Notes", level=1)
         focused_ids = focused_evidence_ids(record)

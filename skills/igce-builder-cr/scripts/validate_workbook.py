@@ -36,6 +36,12 @@ COST_B_REF = re.compile(
     r"(?:'Cost Buildup'|Cost Buildup)!\$?B\$?([1-9][0-9]*)",
     re.IGNORECASE,
 )
+BASE_PERIOD_LABEL = re.compile(r"\bBASE[\s-]*(?:YEAR|PERIOD)\b")
+OPTION_PERIOD_LABEL = re.compile(
+    r"\bOPTION\s*(?:YEAR|PERIOD)?\s*0*([1-9][0-9]*)\b|\bO[YP]\s*0*([1-9][0-9]*)\b"
+)
+TOTAL_PERIODS_CELL = "B19"
+PRICE_TOLERANCE = 1.0
 
 
 def normalize_formula(value: Any) -> str:
@@ -80,6 +86,192 @@ def check_formula(
     for item in not_contains or []:
         if normalize_formula(item) in normalized:
             failures.append(f"{sheet.title}!{coordinate} formula contains forbidden text {item}")
+
+
+def _is_number(value: Any) -> bool:
+    return not isinstance(value, bool) and isinstance(value, (int, float))
+
+
+def _nearest_header(sheet: Any, row: int, column: int, limit: int = 40) -> str:
+    """Return the closest non-formula text above a cell in the same column."""
+    for row_index in range(row - 1, max(0, row - limit), -1):
+        value = sheet.cell(row_index, column).value
+        if isinstance(value, str) and value.strip() and not value.startswith("="):
+            return value.upper()
+    return ""
+
+
+def _is_price_label(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    text = value.strip()
+    if not text or len(text) > 45 or text.endswith(".") or text.startswith("="):
+        return False
+    return "PRICE" in text.upper()
+
+
+def effective_periods(workbook: Any, payload_periods: int, failures: list[str]) -> int:
+    """Reconcile the Total Periods assumption cell with the validation input."""
+    if "IGCE Summary" not in workbook.sheetnames:
+        return payload_periods
+    value = workbook["IGCE Summary"][TOTAL_PERIODS_CELL].value
+    if value is None:
+        if payload_periods > 1:
+            failures.append(
+                f"IGCE Summary!{TOTAL_PERIODS_CELL} must record Total Periods (Base plus "
+                f"Options) for a {payload_periods}-period requirement"
+            )
+        return payload_periods
+    if not _is_number(value) or float(value) != int(value) or int(value) < 1:
+        failures.append(
+            f"IGCE Summary!{TOTAL_PERIODS_CELL} Total Periods (Base plus Options) must be "
+            "a whole number of at least 1"
+        )
+        return payload_periods
+    declared = int(value)
+    if payload_periods > 1 and declared != payload_periods:
+        failures.append(
+            f"IGCE Summary!{TOTAL_PERIODS_CELL} Total Periods is {declared} but the "
+            f"validation input states {payload_periods} periods"
+        )
+    return max(declared, payload_periods)
+
+
+def period_coverage_audit(workbook: Any, periods: int) -> list[str]:
+    """Require per-period labels on IGCE Summary for a multi-period requirement."""
+    failures: list[str] = []
+    if periods <= 1 or "IGCE Summary" not in workbook.sheetnames:
+        return failures
+    base_found = False
+    option_numbers: set[int] = set()
+    for row in workbook["IGCE Summary"].iter_rows():
+        for cell in row:
+            value = cell.value
+            if not isinstance(value, str):
+                continue
+            upper = value.upper()
+            if BASE_PERIOD_LABEL.search(upper):
+                base_found = True
+            for match in OPTION_PERIOD_LABEL.finditer(upper):
+                option_numbers.add(int(match.group(1) or match.group(2)))
+    if not base_found or len(option_numbers) < periods - 1:
+        found = ", ".join(f"Option {n}" for n in sorted(option_numbers)) or "none"
+        failures.append(
+            f"the stated period of performance has {periods} periods (base plus "
+            f"{periods - 1} options) but IGCE Summary shows no per-period breakdown of "
+            f"estimated cost, fee, and estimated price (base label found: "
+            f"{'yes' if base_found else 'no'}; option-period labels found: {found}); a "
+            "single compressed multi-year multiplier row does not show year-by-year "
+            "Government exposure"
+        )
+    return failures
+
+
+def price_integrity_audit(cached: Any) -> list[str]:
+    """Reject price-labeled totals that omit fee, and scenario fee-base drift.
+
+    Works on the cached-value view of the workbook: any total labeled as a price
+    must equal estimated cost plus fee, and the Scenario Analysis row built on
+    current assumptions must reproduce the summary estimated price.
+    """
+    failures: list[str] = []
+    if "IGCE Summary" not in cached.sheetnames:
+        return failures
+    summary = cached["IGCE Summary"]
+
+    label_cost: float | None = None
+    label_fee: float | None = None
+    for row in summary.iter_rows():
+        label = next((c.value for c in row if isinstance(c.value, str) and c.value.strip()), None)
+        numbers = [float(c.value) for c in row if _is_number(c.value)]
+        if label is None or not numbers or len(label) > 45:
+            continue
+        upper = label.upper()
+        if "PRICE" in upper:
+            continue
+        if "COST" in upper and "TOTAL" in upper and "RATE" not in upper:
+            label_cost = numbers[-1]
+        elif "FEE" in upper and not any(
+            word in upper for word in ("BASE", "BEARING", "RATE", "TYPE")
+        ):
+            label_fee = numbers[-1]
+
+    summary_cost: float | None = None
+    summary_fee: float | None = None
+    for row in summary.iter_rows():
+        price_label = next((c.value for c in row if _is_price_label(c.value)), None)
+        if price_label is None:
+            continue
+        numeric_cells = [c for c in row if _is_number(c.value)]
+        if not numeric_cells:
+            continue
+        row_cost: float | None = None
+        row_fee: float | None = None
+        for cell in numeric_cells:
+            header = _nearest_header(summary, cell.row, cell.column)
+            if "FEE" in header and "PRICE" not in header:
+                row_fee = float(cell.value)
+            elif "COST" in header and "PRICE" not in header:
+                row_cost = float(cell.value)
+        cost = row_cost if row_cost is not None else label_cost
+        fee = row_fee if row_fee is not None else label_fee
+        if cost is None or fee is None or fee <= PRICE_TOLERANCE:
+            continue
+        summary_cost, summary_fee = cost, fee
+        expected_price = cost + fee
+        values = [float(c.value) for c in numeric_cells]
+        if not any(abs(value - expected_price) <= PRICE_TOLERANCE for value in values):
+            detail = (
+                " and equals the cost subtotal"
+                if any(abs(value - cost) <= PRICE_TOLERANCE for value in values)
+                else ""
+            )
+            failures.append(
+                f"IGCE Summary row {numeric_cells[0].row} is labeled "
+                f"{price_label.strip()!r} but its total omits the fee{detail}: any total "
+                f"labeled as a price must equal estimated cost ({cost:,.2f}) plus fee "
+                f"({fee:,.2f}) = {expected_price:,.2f}"
+            )
+
+    if summary_cost is None or summary_fee is None or "Scenario Analysis" not in cached.sheetnames:
+        return failures
+    scenario = cached["Scenario Analysis"]
+    header_row = cost_column = price_column = None
+    for row in scenario.iter_rows():
+        columns = {
+            "cost": None,
+            "price": None,
+        }
+        for cell in row:
+            value = cell.value
+            if not isinstance(value, str):
+                continue
+            upper = value.upper()
+            if "PRICE" in upper:
+                columns["price"] = cell.column
+            elif "COST" in upper:
+                columns["cost"] = cell.column
+        if columns["cost"] and columns["price"]:
+            header_row, cost_column, price_column = row[0].row, columns["cost"], columns["price"]
+            break
+    if header_row is None:
+        return failures
+    expected_price = summary_cost + summary_fee
+    for row_index in range(header_row + 1, scenario.max_row + 1):
+        cost_value = scenario.cell(row_index, cost_column).value
+        price_value = scenario.cell(row_index, price_column).value
+        if not _is_number(cost_value) or abs(float(cost_value) - summary_cost) > PRICE_TOLERANCE:
+            continue
+        if _is_number(price_value) and abs(float(price_value) - expected_price) > PRICE_TOLERANCE:
+            failures.append(
+                f"Scenario Analysis row {row_index} prices the current-assumptions case at "
+                f"{float(price_value):,.2f} but the IGCE Summary estimated price is "
+                f"{expected_price:,.2f} (cost {summary_cost:,.2f} plus fee "
+                f"{summary_fee:,.2f}); the scenario sheet must apply the same fee-base "
+                "rule as the summary"
+            )
+        break
+    return failures
 
 
 def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
@@ -383,6 +575,10 @@ def main() -> int:
         expected = calculate(payload)
         formula_workbook = load_workbook(args.workbook, data_only=False)
         structural_failures = structural_audit(formula_workbook, payload)
+        periods = effective_periods(formula_workbook, expected["periods"], structural_failures)
+        structural_failures.extend(period_coverage_audit(formula_workbook, periods))
+        cached_view = load_workbook(args.workbook, data_only=True)
+        structural_failures.extend(price_integrity_audit(cached_view))
         failures = list(structural_failures)
     except (InputError, OSError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

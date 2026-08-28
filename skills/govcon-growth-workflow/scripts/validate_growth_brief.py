@@ -29,6 +29,27 @@ FORBIDDEN = [
     re.compile(r"\bmcp__|/mnt/|/Users/|[A-Za-z]:\\", re.I),
     re.compile(r"\bghp_[A-Za-z0-9]{20,}\b|\b(?:sk|cfat|SAM)-[A-Za-z0-9_-]{16,}\b", re.I),
 ]
+# Internal harness vocabulary must never reach a reader-visible field. Honest
+# illustrative labeling uses the standard limitations line from the brief
+# specification instead.
+BANNED_HARNESS_VOCABULARY = [
+    re.compile(r"\bfictional\b", re.I),
+    re.compile(r"\bsynthetic\b", re.I),
+    re.compile(r"\bfixture\b", re.I),
+    re.compile(r"\btest\b", re.I),
+    re.compile(r"\bbounded[- ]sample\b", re.I),
+    re.compile(r"\barchived record\b", re.I),
+]
+FEDERAL_SOURCE_CLASSES = {"federal_mcp", "official_web", "other_web"}
+MONEY_TERMS = ("value", "obligation", "cost", "price", "funding", "fee", "amount")
+
+
+def rendered_totals(label: str, total: float) -> set[str]:
+    """Return the total renderings the builder may emit for a numeric check."""
+    renderings = {f"{total:,.2f}"}
+    if any(term in label.lower() for term in MONEY_TERMS):
+        renderings.add(f"${total:,.0f}")
+    return renderings
 
 
 def all_text(document: Document) -> str:
@@ -36,6 +57,9 @@ def all_text(document: Document) -> str:
     for table in document.tables:
         for row in table.rows:
             parts.extend(cell.text for cell in row.cells)
+    for section in document.sections:
+        for part in (section.header, section.footer):
+            parts.extend(p.text for p in part.paragraphs)
     return "\n".join(parts)
 
 
@@ -79,6 +103,10 @@ def validate(document_path: Path, record_path: Path) -> dict:
     for pattern in FORBIDDEN:
         if pattern.search(text):
             failures.append(f"forbidden content matched: {pattern.pattern}")
+    for pattern in BANNED_HARNESS_VOCABULARY:
+        match = pattern.search(text)
+        if match:
+            failures.append(f"reader-visible harness vocabulary is prohibited: {match.group(0)}")
     for item in record.get("findings", []):
         for evidence_id in item.get("evidence_ids", []):
             if evidence_id not in text:
@@ -89,20 +117,32 @@ def validate(document_path: Path, record_path: Path) -> dict:
         if re.search(r"\b(?:recommend(?:ation)?|decision)\s*:\s*(?:bid|no[- ]bid)\b", text, re.I):
             failures.append("brief makes a bid decision without complete internal context")
     evidence = [item for item in record.get("evidence", []) if isinstance(item, dict)]
+    for item in evidence:
+        if item.get("source_class") not in FEDERAL_SOURCE_CLASSES:
+            continue
+        if not str(item.get("locator") or "").strip():
+            failures.append(
+                f"federal evidence {item.get('id', '(no id)')} has no checkable locator"
+                " (notice ID, PIID, UEI, docket, or URL)"
+            )
+        if not str(item.get("retrieved_at") or "").strip():
+            failures.append(f"federal evidence {item.get('id', '(no id)')} has no retrieval date")
     for index, check in enumerate(record.get("validation", {}).get("numeric_checks", [])):
         expected = sum(float(value) for value in check.get("components", []))
         reported = float(check.get("reported_total", expected))
         label = check.get("label", "numeric check")
         if abs(expected - reported) > 0.005:
             failures.append(f"independent recomputation failed for {label}")
-        calculated_total = f"{expected:,.2f}"
+        accepted_totals = rendered_totals(label, expected)
         calculation_lines = [
             paragraph.text
             for paragraph in document.paragraphs
-            if label in paragraph.text and calculated_total in paragraph.text
+            if label in paragraph.text and any(total in paragraph.text for total in accepted_totals)
         ]
         if not calculation_lines:
-            failures.append(f"recomputed total is missing from brief: {expected:,.2f}")
+            failures.append(
+                "recomputed total is missing from brief: " + " or ".join(sorted(accepted_totals))
+            )
             continue
         locator = f"validation.numeric_checks[{index}]"
         calculation_ids = [
