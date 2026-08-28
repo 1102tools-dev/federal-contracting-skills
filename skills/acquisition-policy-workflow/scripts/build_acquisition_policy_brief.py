@@ -32,6 +32,18 @@ CONTENT_WIDTH_DXA = 9360
 TABLE_INDENT_DXA = 120
 CELL_MARGINS_DXA = {"top": 80, "bottom": 80, "start": 120, "end": 120}
 
+PRODUCT_TITLES = {
+    "current_rule": "Current Rule Explanation",
+    "agency_status": "Agency Policy Status Matrix",
+    "three_layer": "Three-Layer Policy Comparison",
+    "change_brief": "Regulatory Change Briefing",
+    "rulemaking": "Rulemaking Timeline",
+    "watchlist": "Open Rulemaking Watchlist",
+    "comments": "Public Comment Position Analysis",
+    "refresh": "Policy Analysis Refresh",
+    "impact_brief": "Acquisition Policy Impact Brief",
+}
+
 
 def set_run_font(run, *, name: str = "Calibri", size: float | None = None, color: str | None = None,
                  bold: bool | None = None, italic: bool | None = None) -> None:
@@ -340,7 +352,10 @@ def build(record: dict, output: Path) -> None:
     kicker.paragraph_format.space_after = Pt(8)
     run = kicker.add_run("ACQUISITION POLICY")
     set_run_font(run, size=10, color=BLUE, bold=True)
-    title = document.add_paragraph("Acquisition Policy Impact Brief", style="Policy Title")
+    product_title = validation.get("report_title") or PRODUCT_TITLES.get(
+        record.get("workflow_mode", ""), "Acquisition Policy Impact Brief"
+    )
+    title = document.add_paragraph(product_title, style="Policy Title")
     subtitle = document.add_paragraph(request.get("question", ""))
     subtitle.paragraph_format.space_after = Pt(14)
     if subtitle.runs:
@@ -362,7 +377,7 @@ def build(record: dict, output: Path) -> None:
     p_bdr.append(bottom)
     p_pr.append(p_bdr)
 
-    document.add_heading("Executive Summary", level=1)
+    document.add_heading("What matters", level=1)
     document.add_paragraph(validation.get("executive_summary", "No approved executive summary was supplied."))
     boundary = document.add_paragraph(style="Intense Quote")
     boundary.add_run("Decision boundary: ").bold = True

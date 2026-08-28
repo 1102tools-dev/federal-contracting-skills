@@ -16,7 +16,7 @@ description: >
 
 ## Purpose
 
-Help federal contractors discover, qualify, understand, and pursue public-sector business using traceable evidence. Quick results remain in chat. Complete runs may produce a validated `.docx` GovCon Growth Brief.
+Help federal contractors discover, qualify, understand, and pursue public-sector business using traceable evidence. Quick results remain in chat. Complete runs may produce a validated, route-specific `.docx` growth product.
 
 Full workflows use SAM.gov, USASpending, and optional GSA CALC+ MCP servers, approved web access, and Python 3. Web research may use the optional Tavily remote MCP, the host's native search capabilities, or both. Tavily is never the sole supported path. DOCX briefs require `python-docx` and LibreOffice or an equivalent renderer. SAM is required only for SAM-specific modes; CALC+ is required only for pricing context.
 
@@ -229,18 +229,18 @@ Present findings, contrary evidence, conflicts, missing evidence, and explicit i
 
 Ask the user to confirm internal facts and make the business decision. If complete internal bid-screen context is present, provide a transparent recommendation with criteria, weights or decision logic, evidence, uncertainty, and conditions. If not, provide no verdict.
 
-For an optional brief:
+For a reader-facing report:
 
 1. Read [brief-specification.md](references/brief-specification.md).
 2. Validate the JSON record with `scripts/validate_research_record.py`.
-3. Run `scripts/build_growth_brief.py <record.json> <output.docx>`.
+3. Run `scripts/build_growth_brief.py <record.json> <output.docx>`. The builder selects the route product and first-page decision frame from `workflow_mode`; do not force every route through one generic brief template.
 4. Run `scripts/validate_growth_brief.py <output.docx> --record <record.json>`.
 5. Independently recompute numeric content.
 6. Open/save through LibreOffice and convert to PDF.
 7. Extract text and citations.
 8. Render and inspect every page; fix all layout or citation defects.
 
-Deliver the brief with as-of date, scope, sources, limitations, and unresolved questions. Do not expose internal prompt or tool plumbing.
+Design for the executive who must act: page one states the specific decision or commercial question, the one or two implications that matter, and the next action. Use a short reader-facing report with a route-appropriate title and structure. Place query details, source register, and methodological limits in a compact evidence appendix. Reuse company context already collected in the run; ask only for information that could change the route decision. Do not expose internal prompt or tool plumbing.
 
 ## Out of scope
 

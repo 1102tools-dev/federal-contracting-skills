@@ -2,6 +2,16 @@
 
 Use a supplied agency or consortium template as the design and section authority. Without one, use US Letter portrait, 1-inch margins, a restrained formal-business style, page numbers, real Word styles, and a dynamic Table of Contents when the document has more than eight main sections.
 
+## First-page decision brief
+
+Before front matter, use a compact decision brief with five labeled elements:
+prototype objective, decision supported, pivotal milestones, major assumptions,
+and program-team next action. Make this the page a busy Agreements Officer or
+program manager can use without reading the whole artifact. Use a route-specific
+title such as "Prototype Delivery Plan" or "Milestone Change Register," not a
+generic report name. The brief must not include pricing or make a reserved
+determination.
+
 ## Front matter
 
 - Project title
@@ -104,3 +114,9 @@ Every `[TBD]` elsewhere in the document must have a matching row that names the 
 - Keep headings with following content and prevent rows from splitting when practical.
 - Use a page-number field and set Word to update fields on open.
 - Do not place prompts, tests, skill names, file paths, internal workpapers, or tool instructions in the document.
+- Use a restrained color accent, a short executive table, and a visual rhythm
+  appropriate to the route. A revision foregrounds before/after effects; a
+  project description foregrounds the execution path. Do not clone identical
+  section sequences or cover treatment across route products.
+- Put source notes and validation detail in a concise Evidence and Assumptions
+  appendix when needed; keep the body focused on executable scope and decisions.

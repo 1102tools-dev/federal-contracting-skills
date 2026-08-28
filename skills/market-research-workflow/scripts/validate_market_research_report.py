@@ -14,7 +14,7 @@ from docx import Document
 
 
 REQUIRED_HEADINGS = [
-    "Executive Summary",
+    "Executive assessment",
     "Requirement and Decision Context",
     "Documents Reviewed",
     "Research Scope and Method",

@@ -25,6 +25,10 @@ Never combine the handoffs with the document. FAR 37.602(b)(1) directs agencies,
 
 No external MCP server is required.
 
+## Product quality default
+
+Make the PWS/SOW read like a concise acquisition-file deliverable, not a process transcript. Its first page must identify the mission need, the performance decision it supports, the material operating assumptions, and the next acquisition-team action. Use a requirement-specific title, a short executive purpose block, and distinct visual hierarchy appropriate to the document type. Put detailed evidence and source notes in a compact appendix only when they affect a requirement; never let them crowd out executable requirements. This does not permit staffing, SOC, CLIN, pricing, or IGCE content inside the document.
+
 Load supporting files only when needed:
 
 - [question-blocks.md](references/question-blocks.md) for intake and scope questions.

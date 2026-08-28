@@ -29,6 +29,10 @@ Assemble data and format workbooks. Do not originate professional judgments rese
 
 If a sentence concludes whether a number is right or wrong, stop and replace it with sourced data, arithmetic, and the decision left to the Contracting Officer.
 
+## Product quality default
+
+Build a decision-ready FFP estimate, not an evidence dump. The `IGCE Summary` sheet must start with the acquisition purpose, decision supported, grand total, period, pricing basis, editable assumptions, top drivers, material limitations, and the next Contracting Officer action. Use `FFP Independent Government Cost Estimate — [Requirement]` as the default title, adapting it to a deliverable or period-priced estimate. Keep raw calls, exact query inputs, and source detail in `Raw Data`; keep calculation explanation in `Methodology`. Never turn neutral positioning into a fair-and-reasonable conclusion.
+
 ## Reference map
 
 Read only the references needed for the active workflow:

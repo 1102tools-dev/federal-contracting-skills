@@ -2,6 +2,14 @@
 
 Ask only for missing facts. Use the host's structured question tool when available; otherwise use numbered questions with an `Other` or free-text path. Batch related items, but do not cross a required approval gate in the same response.
 
+## Compact reusable context record
+
+Capture these facts once and reuse them across the project description,
+handoff, revision, and cost analysis: agency mission; prototype objective;
+baseline; authority and path facts; participants; locations; data and security
+boundaries; transition intent; and the decision owner for each pending item.
+Do not ask a later route to restate this record unless a fact changes.
+
 ## Stage A: authority and acquisition frame
 
 1. Which authority has the Agreements Officer identified: 10 U.S.C. 4021 research, 4022 prototype, or 4022(f) follow-on production?

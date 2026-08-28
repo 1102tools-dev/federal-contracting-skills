@@ -12,6 +12,15 @@ Build one `.xlsx` with exactly these seven sheets:
 
 ## 1. OT Cost Summary
 
+### First-view decision dashboard
+
+The first visible area must be a decision dashboard, not a wall of assumptions.
+Show the prototype objective, analysis purpose, selected milestone basis,
+Government funding planning range, performer contribution treatment, three key
+drivers, and next required action. Keep formulas and editable assumptions below
+the dashboard. Use a route-specific workbook title, for example "Independent
+Prototype Cost Model" or "Recosting Decision Book."
+
 ### Assumptions
 
 Keep these cells stable so validators and downstream users can audit formulas:
@@ -147,7 +156,7 @@ Use sections:
 5. Materials, travel, and ODC bases
 6. Contribution and fee treatment
 7. Neutral comparison and scenarios
-8. Data sources and as-of dates
+8. Data sources and as-of dates (compact evidence table, not raw payloads)
 9. Limitations, open decisions, and refresh needs
 
 Do not call the workbook an IGCE or a FAR 15.404 analysis. Do not state a price-reasonableness conclusion. For Workflow B Option B, place only the user's exact text in a separate block titled `DRAFT - USER-SUPPLIED DETERMINATION TEXT`.
@@ -167,3 +176,12 @@ Record compact reproducible inputs and outputs from BLS, CALC+, Per Diem, analog
 - Light header fills, filters, explicit widths, and readable source notes.
 - No formula-error tokens, prompt text, local paths, tool namespaces, keys, or internal instructions.
 - Set workbook calculation mode to automatic when supported, but do not claim this evaluates formulas.
+- Use differentiated visual treatment by route: independent analysis favors a
+  neutral benchmark dashboard; recosting foregrounds before/after deltas and
+  changed assumptions. Do not reuse the same title and hierarchy for every output.
+- Before delivery, calculate and save the final `.xlsx` through a spreadsheet
+  engine so the delivered file carries cached values for every formula displayed
+  on `OT Cost Summary`, including each milestone, total should-cost, ceiling
+  basis, and Government project share. Render the delivered summary sheet and
+  reject blank formula outputs, zeroes that result from missing cached values,
+  clipped titles, or a dashboard that requires horizontal scrolling to read.

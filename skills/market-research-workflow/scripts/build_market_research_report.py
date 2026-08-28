@@ -146,28 +146,36 @@ def build(record: dict, output: Path) -> None:
     document = Document()
     configure(document)
     complete = bool(validation.get("commercial_evidence_complete"))
-    title = "FAR Part 10 Market Research Report" if complete else "Federal-Data Desk-Research Draft"
+    route_titles = {
+        "complete_report": "FAR Part 10 Market Research Report" if complete else "Federal-Data Desk-Research Draft",
+        "refresh": "Market Research Refresh",
+        "one_question": "Market Evidence Analysis",
+        "pre_award_handoff": "Pre-Award Market Research Handoff",
+    }
+    title = validation.get("report_title") or route_titles.get(record.get("workflow_mode"), "Market Research Analysis")
     subtitle = record.get("question", "Market research")
     as_of = record.get("scope", {}).get("as_of_date", "Not stated")
 
-    paragraph = document.add_paragraph()
-    paragraph.paragraph_format.space_before = Pt(115)
-    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = paragraph.add_run("1102tools")
+    paragraph = document.add_paragraph("MARKET RESEARCH | DECISION PRODUCT")
+    run = paragraph.runs[0]
     run.bold = True
-    run.font.size = Pt(12)
+    run.font.size = Pt(9)
     run.font.color.rgb = RGBColor.from_string(GREEN)
     title_p = document.add_paragraph(title, style="Title")
-    title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     sub = document.add_paragraph(subtitle)
-    sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    sub.runs[0].font.size = Pt(14)
-    meta = document.add_paragraph(f"As of {as_of}\nPrepared by: ____________________")
-    meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    document.add_page_break()
+    sub.runs[0].font.size = Pt(13)
+    document.add_paragraph(f"As of {as_of} | Evidence-backed acquisition research")
+    lead = document.add_table(rows=1, cols=1)
+    lead.style = "Table Grid"
+    lead.cell(0, 0).text = "WHAT THE EVIDENCE SAYS\n" + validation.get(
+        "executive_summary", "No approved executive summary was supplied."
+    )
+    shade(lead.cell(0, 0), "E8EEF5")
+    document.add_heading("Next practical action", level=2)
+    add_bullets(document, validation.get("next_actions", []))
 
     sections = [
-        "Executive Summary",
+        "Executive assessment",
         "Requirement and Decision Context",
         "Documents Reviewed",
         "Research Scope and Method",

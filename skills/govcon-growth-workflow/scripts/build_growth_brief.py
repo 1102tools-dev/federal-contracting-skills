@@ -22,6 +22,17 @@ NAVY = "17365D"
 GREEN = "167D5A"
 GRAY = "5B6573"
 
+WORKFLOW_PRODUCTS = {
+    "opportunity": ("Federal Opportunity Shortlist", "Priority opportunities", "48-hour capture moves"),
+    "bid_screen": ("Opportunity Evidence Screen", "Pursuit posture", "Conditions before commitment"),
+    "competitor": ("Competitor Landscape", "Positioning snapshot", "Where to engage"),
+    "recompete": ("Recompete and Follow-on Pipeline", "Recompete radar", "Validation calendar"),
+    "teaming": ("Teaming Partner Decision Card", "Partner thesis", "Next conversation"),
+    "market": ("Agency or Market Account Plan", "Market thesis", "90-day account moves"),
+    "pricing": ("Labor-Rate and Pricing Context", "Rate signal", "Proposal guardrails"),
+    "refresh": ("Prior-Research Delta Audit", "What changed", "Updated actions"),
+}
+
 
 def shade(cell, fill: str) -> None:
     props = cell._tc.get_or_add_tcPr()
@@ -137,41 +148,47 @@ def build(record: dict, output: Path) -> None:
     configure(document)
     as_of = record.get("scope", {}).get("as_of_date", "Not stated")
     has_bid_decision = bool(record.get("validation", {}).get("bid_context_complete"))
-    label = "GovCon Growth Brief" if has_bid_decision else "Evidence Brief - No Bid Decision"
+    workflow_mode = record.get("workflow_mode", "")
+    label, analysis_heading, action_heading = WORKFLOW_PRODUCTS.get(
+        workflow_mode, ("GovCon Growth Analysis", "Decision-relevant analysis", "Next actions")
+    )
+    label = record.get("validation", {}).get("report_title", label)
 
-    brand = document.add_paragraph()
-    brand.paragraph_format.space_before = Pt(115)
-    brand.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = brand.add_run("1102tools")
-    run.bold = True
-    run.font.size = Pt(12)
-    run.font.color.rgb = RGBColor.from_string(GREEN)
-    title = document.add_paragraph(label, style="Title")
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    brand = document.add_paragraph("GOVCON GROWTH | DECISION PRODUCT")
+    brand.runs[0].bold = True
+    brand.runs[0].font.size = Pt(9)
+    brand.runs[0].font.color.rgb = RGBColor.from_string(GREEN)
+    document.add_paragraph(label, style="Title")
     subtitle = document.add_paragraph(record.get("question", "GovCon growth research"))
-    subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    subtitle.runs[0].font.size = Pt(14)
-    meta = document.add_paragraph(f"As of {as_of}\nPrepared by: ____________________")
-    meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    document.add_page_break()
+    subtitle.runs[0].font.size = Pt(13)
+    subtitle.runs[0].font.color.rgb = RGBColor.from_string(GRAY)
+    document.add_paragraph(f"As of {as_of} | Public-source research with supplied company context")
+    opening_findings = record.get("findings", [])
+    opening_insight = opening_findings[0].get("text", "No approved finding was recorded.") if opening_findings else "No approved finding was recorded."
+    callout = document.add_table(rows=1, cols=1)
+    callout.style = "Table Grid"
+    shade(callout.cell(0, 0), "E8EEF5")
+    set_cell_text(callout.cell(0, 0), f"WHAT MATTERS\n{opening_insight}", bold=True, color=NAVY)
+    document.add_heading("Do next", level=2)
+    add_bullets(document, record.get("validation", {}).get("next_actions", []), "Confirm the next validation action with the capture lead.")
 
     headings = [
-        "Executive Summary",
-        "Business Question and Scope",
-        "Company Context and Missing Inputs",
-        "Evidence and Analysis",
-        "Assessment or Pipeline",
-        "Risks, Contrary Evidence, and Limitations",
-        "User Decision and Next Actions",
-        "Reproducible Search Log",
-        "Evidence Register",
+        "Executive assessment",
+        "Business question and scope",
+        "Company context and missing inputs",
+        analysis_heading,
+        "Assessment",
+        "Risks, contrary evidence, and limitations",
+        action_heading,
+        "Research record",
+        "Evidence appendix",
     ]
     document.add_heading(headings[0], level=1)
     document.add_paragraph(record.get("validation", {}).get("executive_summary", "This brief organizes the approved public and internal evidence."))
     if not has_bid_decision:
         quote = document.add_paragraph(style="Intense Quote")
         quote.add_run("Decision boundary: ").bold = True
-        quote.add_run("Internal company context is incomplete. This brief contains no bid or no-bid recommendation.")
+        quote.add_run("Internal company context is incomplete. This product is a conditional pursuit posture, not a bid or no-bid recommendation.")
 
     document.add_heading(headings[1], level=1)
     document.add_paragraph(record.get("question", "Not provided"))

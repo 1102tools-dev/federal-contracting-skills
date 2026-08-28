@@ -166,3 +166,11 @@ Record compact reproducible parameters and result summaries, not full JSON dumps
 - Escape text beginning with `=`, `+`, `-`, or `@` so Excel does not parse it as a formula.
 - Use numeric zero, never text `TBD`, in formula ranges.
 - Autosize columns within readable limits and wrap long notes.
+
+### Delivery-view gate
+
+Before delivery, recalculate and save the final workbook through a calculation
+engine. The delivered file must retain cached values for formula cells on `IGCE
+Summary`, including fee-bearing cost, total cost, fee, and total price. Render
+the summary and correct blank formula outputs, clipped limitations, unreadable
+assumptions, or a summary that requires horizontal scrolling to understand.

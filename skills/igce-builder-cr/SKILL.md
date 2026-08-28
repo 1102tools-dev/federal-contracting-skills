@@ -30,6 +30,10 @@ Load supporting files only when needed:
 
 ## Operating principle
 
+## Product quality default
+
+Build a cost-and-fee model that lets the acquisition team see what changes the estimate. The summary begins with the requirement, CR subtype and form when confirmed, decision supported, estimated cost, fee treatment, material assumptions, scenario range, limitations, and next human action. Use a specific title such as `CPFF Independent Government Cost Estimate — [Requirement]`. Keep rate evidence and source inputs in dedicated sheets, retain a clear fee-bearing versus pass-through distinction, and never use the workbook to originate a fee objective or a fair-and-reasonable conclusion.
+
 This skill assembles data and formats analysis. The Contracting Officer owns cost-realism judgments, fair-and-reasonable determinations, fee objectives, negotiation positions, and approval documents.
 
 - Use neutral positional language such as `at CALC+ P77 (n=42)` or `above CALC+ P50 by 18%`.

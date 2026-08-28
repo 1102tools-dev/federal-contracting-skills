@@ -16,6 +16,10 @@ description: >
 
 ## Overview
 
+## Product quality default
+
+Build a route-specific operational estimate. The summary begins with the requirement, whether the estimate is LH or T&M, the decision supported, ceiling or labor basis, material assumptions, top drivers, limitations, and next human action. Use `Labor-Hour Independent Government Cost Estimate — [Requirement]` or `Time-and-Materials Independent Government Cost Estimate — [Requirement]`, never a generic evidence-brief title. Keep rate evidence and source inputs in their own sheets; keep materials separate from labor and do not convert neutral benchmarking into a procurement conclusion.
+
 Build an auditable Labor-Hour or Time-and-Materials Independent Government Cost Estimate. Both contract types use fixed hourly rates that include wages, overhead, G&A, and profit. T&M also reimburses materials at actual cost, subject to the contract and applicable indirect-cost treatment; LH does not include a materials-reimbursement component.
 
 Regulatory anchors: FAR 15.404-1, FAR 16.600 and 16.601, FAR 31.205-26, and FAR 52.232-7. Apply the current regulation, solicitation, clauses, and agency supplement. This skill does not prepare the Determination and Findings required to use T&M/LH or make legal determinations.

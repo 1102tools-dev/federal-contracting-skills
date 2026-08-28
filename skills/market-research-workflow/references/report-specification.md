@@ -4,22 +4,20 @@
 
 Use US Letter, 0.75 to 1 inch margins, Aptos or Arial body text, restrained navy and green accents, accessible contrast, page numbers, repeating table headers, and real Word heading styles. Avoid decorative clutter. Use landscape pages only for wide evidence tables.
 
-## Required sections
+## Route-specific products
 
-1. Executive Summary
-2. Requirement and Decision Context
-3. Documents Reviewed
-4. Research Scope and Method
-5. Federal Market Evidence
-6. Commercial and Other Market Evidence
-7. Small-Business and Competition Evidence
-8. Pricing and Contract-Structure Context
-9. Findings and Approved Decisions
-10. Limitations, Conflicts, and Unresolved Questions
-11. Reproducible Search Log
-12. Evidence Register
+Select the lightest product that answers the selected route. Never force a refresh, one-question analysis, or Pre-Award handoff into the full-report template.
 
-Every consequential finding cites an evidence ID. Document-derived claims also cite file and page, section, table, or paragraph. State the as-of date prominently.
+| Route | Product title pattern | Core reader need |
+| --- | --- | --- |
+| Complete report | `[Acquisition] Market Research Report` | Decision-ready evidence across the market-research scope. |
+| Refresh | `Market Research Refresh` | What changed, what remains usable, and what must be rechecked. |
+| One question | `[Question] Market Evidence Analysis` | A bounded answer, evidence limits, and useful next research options. |
+| Pre-Award handoff | `Pre-Award Market Research Handoff` | Approved research observations that later scope and pricing work may consume. |
+
+Every product begins with a useful first page: the acquisition question, what the evidence shows, decision implications, and the next practical action. Use a short decision callout rather than a cover page that consumes a full page. Put source logs and full evidence-register detail in an appendix. A complete report normally includes acquisition context, evidence, market options to test, method, and human-owned decisions. Other products use only the route-specific sections needed to make the reader effective.
+
+Every consequential finding cites an evidence ID. Document-derived claims also cite file and page, section, table, or paragraph. State the as-of date prominently. Label user-provided facts, public facts, interpretation, confidence, and unresolved questions where they affect a decision. Do not make the evidence register the main narrative.
 
 ## Completion label
 

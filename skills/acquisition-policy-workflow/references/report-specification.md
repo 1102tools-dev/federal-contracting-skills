@@ -1,6 +1,21 @@
-# Acquisition Policy Impact Brief specification
+# Acquisition Policy written-product specification
 
-## Required sections
+## Route-specific written products
+
+Use a distinct product name and lead form for each route. The first page states the policy question, as-of date, governing source layers, documented status, practical acquisition impact, key uncertainty, and next responsible action. Keep evidence in an appendix or source note, not in the opening view.
+
+| Route | Product | Lead form |
+|---|---|---|
+| Current text | Current Rule Explanation | annotated rule card |
+| Agency status | Agency Policy Status Matrix | status dashboard and confirmation list |
+| Three-layer comparison | Three-Layer Policy Comparison | comparison table and adoption test |
+| Change comparison | Regulatory Change Briefing | before/after change map |
+| Rulemaking | Rulemaking Timeline | dated milestone sequence |
+| Comment periods | Open Rulemaking Watchlist | deadline watchlist |
+| Comments | Public Comment Position Analysis | sample-method panel and theme map |
+| Refresh | Policy Analysis Refresh | change log and carry-forward decisions |
+
+## Impact Brief required sections
 
 1. Executive Summary
 2. Question and Scope

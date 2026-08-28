@@ -13,17 +13,16 @@ from pathlib import Path
 from docx import Document
 
 
-REQUIRED_HEADINGS = [
-    "Executive Summary",
-    "Business Question and Scope",
-    "Company Context and Missing Inputs",
-    "Evidence and Analysis",
-    "Assessment or Pipeline",
-    "Risks, Contrary Evidence, and Limitations",
-    "User Decision and Next Actions",
-    "Reproducible Search Log",
-    "Evidence Register",
-]
+ROUTE_HEADINGS = {
+    "opportunity": ("Priority opportunities", "48-hour capture moves"),
+    "bid_screen": ("Pursuit posture", "Conditions before commitment"),
+    "competitor": ("Positioning snapshot", "Where to engage"),
+    "recompete": ("Recompete radar", "Validation calendar"),
+    "teaming": ("Partner thesis", "Next conversation"),
+    "market": ("Market thesis", "90-day account moves"),
+    "pricing": ("Rate signal", "Proposal guardrails"),
+    "refresh": ("What changed", "Updated actions"),
+}
 FORBIDDEN = [
     re.compile(r"\bguaranteed\s+(?:award|opportunity|recompete|win)\b", re.I),
     re.compile(r"\bmcp__|/mnt/|/Users/|[A-Za-z]:\\", re.I),
@@ -47,10 +46,18 @@ def validate(document_path: Path, record_path: Path) -> dict:
     record = json.loads(record_path.read_text(encoding="utf-8"))
     text = all_text(document)
     headings = [p.text.strip() for p in document.paragraphs if getattr(p.style, "name", "") == "Heading 1"]
-    for heading in REQUIRED_HEADINGS:
+    analysis_heading, action_heading = ROUTE_HEADINGS.get(
+        record.get("workflow_mode", ""), ("Decision-relevant analysis", "Next actions")
+    )
+    required_headings = [
+        "Executive assessment", "Business question and scope", "Company context and missing inputs",
+        analysis_heading, "Assessment", "Risks, contrary evidence, and limitations", action_heading,
+        "Research record", "Evidence appendix",
+    ]
+    for heading in required_headings:
         if heading not in headings:
             failures.append(f"missing Heading 1 section: {heading}")
-    if [h for h in headings if h in REQUIRED_HEADINGS] != REQUIRED_HEADINGS:
+    if [h for h in headings if h in required_headings] != required_headings:
         failures.append("required Heading 1 sections are out of order")
     for pattern in FORBIDDEN:
         if pattern.search(text):
@@ -60,8 +67,8 @@ def validate(document_path: Path, record_path: Path) -> dict:
             if evidence_id not in text:
                 failures.append(f"finding evidence ID not present in brief: {evidence_id}")
     if not record.get("validation", {}).get("bid_context_complete"):
-        if "Evidence Brief - No Bid Decision" not in text:
-            failures.append("incomplete internal context is not labeled as no-bid-decision evidence")
+        if "conditional pursuit posture" not in text:
+            failures.append("incomplete internal context is not labeled as a conditional pursuit posture")
         if re.search(r"\b(?:recommend(?:ation)?|decision)\s*:\s*(?:bid|no[- ]bid)\b", text, re.I):
             failures.append("brief makes a bid decision without complete internal context")
     evidence = [item for item in record.get("evidence", []) if isinstance(item, dict)]

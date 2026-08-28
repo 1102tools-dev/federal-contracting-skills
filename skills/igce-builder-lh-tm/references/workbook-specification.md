@@ -150,3 +150,11 @@ Record compact, reproducible parameters and result summaries, not full JSON. Inc
 - Escape text beginning with `=`, `+`, `-`, or `@`.
 - Use numeric zero, not text `TBD`, inside formula ranges.
 - Wrap long notes and cap column widths at readable sizes.
+
+### Delivery-view gate
+
+Before delivery, recalculate and save the final workbook through a calculation
+engine. The delivered file must retain cached values for formula cells on `IGCE
+Summary`, including labor totals, materials, and the ceiling or scenario totals.
+Render the summary and fix any blank total, clipped limitation, unreadable
+assumption, or summary that requires horizontal scrolling to understand.

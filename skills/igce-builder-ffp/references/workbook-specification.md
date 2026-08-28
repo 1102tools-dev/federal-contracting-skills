@@ -254,6 +254,17 @@ Record compact reproducibility tables, not full JSON dumps. Include operation na
 
 Auto-size with sensible caps so headers and values remain readable.
 
+### Delivery-view gate
+
+Before delivery, open/save the final workbook through a calculation engine and
+confirm that the delivered `.xlsx` carries cached values for every formula on
+`IGCE Summary`, including every labor line, travel, and grand total. Render the
+summary sheet and inspect it as a reader would: the grand total, scenario
+range, top drivers, and next action must be visible without horizontal scrolling;
+long limitations must wrap inside a readable field. A workbook that shows blank
+formula results in a PDF or preview is not deliverable, even if its formulas are
+structurally correct.
+
 ## 9. Validation sidecar
 
 Create a temporary JSON file that follows [validation-gates.md](validation-gates.md). Include:

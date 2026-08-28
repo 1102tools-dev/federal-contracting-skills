@@ -16,7 +16,7 @@ from docx.oxml.ns import qn
 
 
 REQUIRED_HEADINGS = [
-    "Executive Summary",
+    "What matters",
     "Question and Scope",
     "Documented Current Status",
     "Source Hierarchy and Authorities",
