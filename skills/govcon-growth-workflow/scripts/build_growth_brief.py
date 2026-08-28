@@ -143,6 +143,30 @@ def cite_ids(paragraph, ids: list[str]) -> None:
         paragraph.add_run("]")
 
 
+def research_basis(record: dict) -> str:
+    """Return a reader-facing evidence basis without overstating research performed."""
+    web_mode = record.get("web_research", {}).get("mode")
+    queries = record.get("queries", [])
+    if web_mode == "no_public_web":
+        return "Supplied evidence only | No public research performed"
+    if queries:
+        return "Public-source research with supplied company context"
+    return "Supplied company and planning evidence | No external query recorded"
+
+
+def scope_rows(scope: dict) -> list[list[object]]:
+    """Format scope metadata as executive-readable labels and values."""
+    rows: list[list[object]] = []
+    for key, value in scope.items():
+        label = key.replace("_", " ").title()
+        if key.endswith("_usd"):
+            label = label.removesuffix(" Usd")
+            if isinstance(value, (int, float)):
+                value = f"${value:,.0f}"
+        rows.append([label, value])
+    return rows
+
+
 def build(record: dict, output: Path) -> None:
     document = Document()
     configure(document)
@@ -162,7 +186,7 @@ def build(record: dict, output: Path) -> None:
     subtitle = document.add_paragraph(record.get("question", "GovCon growth research"))
     subtitle.runs[0].font.size = Pt(13)
     subtitle.runs[0].font.color.rgb = RGBColor.from_string(GRAY)
-    document.add_paragraph(f"As of {as_of} | Public-source research with supplied company context")
+    document.add_paragraph(f"As of {as_of} | {research_basis(record)}")
     opening_findings = record.get("findings", [])
     opening_insight = opening_findings[0].get("text", "No approved finding was recorded.") if opening_findings else "No approved finding was recorded."
     callout = document.add_table(rows=1, cols=1)
@@ -192,7 +216,7 @@ def build(record: dict, output: Path) -> None:
 
     document.add_heading(headings[1], level=1)
     document.add_paragraph(record.get("question", "Not provided"))
-    add_table(document, ["Scope field", "Value"], [[key.replace("_", " ").title(), value] for key, value in record.get("scope", {}).items()], [2.1, 4.8])
+    add_table(document, ["Scope field", "Value"], scope_rows(record.get("scope", {})), [2.1, 4.8])
 
     document.add_heading(headings[2], level=1)
     add_bullets(document, record.get("user_context", []), "No internal company context was supplied.")

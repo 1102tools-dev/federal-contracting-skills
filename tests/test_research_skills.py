@@ -633,6 +633,22 @@ class ArtifactTests(unittest.TestCase):
             "growth-brief.docx",
         )
 
+    def test_growth_brief_labels_no_public_web_and_formats_currency_scope(self):
+        with tempfile.TemporaryDirectory() as directory:
+            record = json.loads((ROOT / "tests/fixtures/govcon-growth-record.json").read_text(encoding="utf-8"))
+            record["scope"]["estimated_total_value_usd"] = 18_000_000
+            record_path = Path(directory) / "growth-record.json"
+            output = Path(directory) / "growth-brief.docx"
+            record_path.write_text(json.dumps(record), encoding="utf-8")
+            builder = ROOT / "skills/govcon-growth-workflow/scripts/build_growth_brief.py"
+            build = subprocess.run([PYTHON, str(builder), str(record_path), str(output)], capture_output=True, text=True)
+            self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+            text = "\n".join(paragraph.text for paragraph in Document(output).paragraphs)
+            self.assertIn("Supplied evidence only | No public research performed", text)
+            values = [cell.text for table in Document(output).tables for row in table.rows for cell in row.cells]
+            self.assertIn("$18,000,000", values)
+            self.assertNotIn("Estimated Total Value Usd", values)
+
     def test_growth_brief_numeric_check_must_cite_linked_evidence_id(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "growth-brief.docx"
