@@ -107,7 +107,7 @@ def format_calculated_total(label: str, total: float) -> str:
     """Use currency formatting for money-like checks without changing other totals."""
     money_terms = ("value", "obligation", "cost", "price", "funding", "fee", "amount")
     if any(term in label.lower() for term in money_terms):
-        return f"{label}: ${total:,.0f}"
+        return f"{label}: ${total:,.2f}"
     return f"{label}: {total:,.2f}"
 
 
@@ -175,6 +175,63 @@ def structured_rows(items: list[object], fields: list[tuple[str, str]], default:
         else:
             rows.append([str(item)] + [fallback for _, fallback in fields[1:]])
     return rows or [[default] + [fallback for _, fallback in fields[1:]]]
+
+
+def route_payload(record: dict, field: str) -> list[dict]:
+    value = record.get("validation", {}).get(field, [])
+    return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
+
+
+def require_route_value(record: dict, field: str, purpose: str) -> list[dict]:
+    rows = route_payload(record, field)
+    if not rows:
+        raise ValueError(
+            f"{record.get('workflow_mode')} cannot produce a paid-value DOCX without {purpose}; "
+            "return a concise evidence-acquisition note instead"
+        )
+    return rows
+
+
+def with_evidence(item: dict, field: str) -> str:
+    text = str(item.get(field, ""))
+    ids = item.get("evidence_ids", [])
+    if ids:
+        text += " [" + ", ".join(str(value) for value in ids) + "]"
+    return text
+
+
+def enforce_route_content(record: dict) -> None:
+    route = record.get("workflow_mode")
+    validation = record.get("validation", {})
+    if route == "refresh":
+        require_route_value(record, "refresh_comparison", "a dated prior/current comparison")
+    elif route == "one_question" and validation.get("analysis_focus") == "small_business":
+        require_route_value(record, "small_business_candidates", "a named candidate or documented search-result population")
+        if not str(validation.get("rule_of_two_assessment", "")).strip():
+            raise ValueError("small-business analysis requires a bounded Rule of Two assessment")
+    elif route == "pre_award_handoff":
+        for field, purpose in (
+            ("scope_implications", "scope implications"),
+            ("packaging_implications", "packaging implications"),
+            ("performance_implications", "performance implications"),
+            ("pricing_inputs", "pricing inputs and boundaries"),
+            ("handoff_risks", "a risk register"),
+        ):
+            require_route_value(record, field, purpose)
+
+
+def collect_evidence_ids(value: object) -> set[str]:
+    ids: set[str] = set()
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key == "evidence_ids" and isinstance(item, list):
+                ids.update(str(candidate) for candidate in item)
+            else:
+                ids.update(collect_evidence_ids(item))
+    elif isinstance(value, list):
+        for item in value:
+            ids.update(collect_evidence_ids(item))
+    return ids
 
 
 def shade(cell, fill: str) -> None:
@@ -295,6 +352,7 @@ def build(record: dict, output: Path) -> None:
     for field in ("findings_approved", "decisions_approved", "unresolved_items_disposition_approved"):
         if validation.get(field) is not True:
             raise ValueError(f"{field} must be true before report generation")
+    enforce_route_content(record)
     document = Document()
     configure(document)
     route = record.get("workflow_mode")
@@ -452,12 +510,26 @@ def build(record: dict, output: Path) -> None:
     elif route == "refresh":
         document.add_heading("Refresh assessment", level=1)
         document.add_paragraph(validation.get("change_assessment", validation.get("executive_summary", "No change assessment was recorded.")))
-        document.add_heading("What remains usable", level=1)
-        add_bullets(document, validation.get("remains_usable", []))
-        document.add_heading("What changed", level=1)
-        add_bullets(document, validation.get("changed_evidence", []))
-        document.add_heading("What must be rechecked", level=1)
-        add_bullets(document, validation.get("recheck_items", []))
+        document.add_heading("Prior-to-current evidence comparison", level=1)
+        refresh_rows = require_route_value(record, "refresh_comparison", "a dated prior/current comparison")
+        add_table(
+            document,
+            ["Decision area", "Prior baseline", "Current evidence", "Material delta", "Acquisition consequence"],
+            [[item.get("decision_area", ""), item.get("prior_baseline", ""), with_evidence(item, "current_evidence"), item.get("delta", ""), item.get("decision_impact", "")] for item in refresh_rows],
+            [1.15, 1.35, 1.75, 1.25, 1.4],
+        )
+        document.add_heading("Vendor and market-structure changes", level=1)
+        add_bullets(document, validation.get("vendor_landscape_changes", []), "No material vendor-landscape change was established.")
+        document.add_heading("Strategy changes to make now", level=1)
+        add_bullets(document, validation.get("strategy_changes", []), "No acquisition-strategy change was approved.")
+        document.add_heading("What remains usable and what must be rechecked", level=1)
+        add_table(
+            document,
+            ["Carry forward", "Recheck before use"],
+            [[item_text(value), item_text(validation.get("recheck_items", [])[index]) if index < len(validation.get("recheck_items", [])) else "No paired recheck item"] for index, value in enumerate(validation.get("remains_usable", []))]
+            or [["No prior conclusion was approved for carry-forward.", "Rebuild the baseline before relying on the refresh."]],
+            [3.45, 3.45],
+        )
         document.add_heading("Refresh action plan", level=1)
         add_table(document, ["Owner", "Action", "Output or gate"], structured_rows(validation.get("next_actions", []), [("owner", "Acquisition team"), ("action", "Not recorded"), ("output", "Not recorded")]), [1.45, 3.85, 1.6])
         document.add_heading("Human-owned decisions and unknowns", level=1)
@@ -466,9 +538,36 @@ def build(record: dict, output: Path) -> None:
     elif route == "one_question":
         document.add_heading("Bounded answer", level=1)
         document.add_paragraph(validation.get("executive_summary", "No approved bounded answer was recorded."))
-        document.add_heading("Evidence for and against", level=1)
-        add_findings_block()
-        add_bullets(document, record.get("conflicts", []), "No contrary evidence or conflict was recorded.")
+        if validation.get("analysis_focus") == "small_business":
+            document.add_heading("Candidate small-business market", level=1)
+            candidates = require_route_value(record, "small_business_candidates", "a named candidate or documented search-result population")
+            add_table(
+                document,
+                ["Concern", "Status / vehicles", "Relevant capability", "Recent federal evidence", "Gap to close"],
+                [[item.get("name", ""), item.get("status_and_vehicles", ""), item.get("capability", ""), with_evidence(item, "recent_award_evidence"), item.get("gap", "")] for item in candidates],
+                [1.3, 1.35, 1.65, 1.6, 1.0],
+            )
+            document.add_heading("Rule of Two evidence assessment", level=1)
+            document.add_paragraph(validation.get("rule_of_two_assessment", ""))
+            document.add_heading("Evidence supporting and cutting against a small-business strategy", level=1)
+            add_table(
+                document,
+                ["Supports", "Cuts against / remains unknown"],
+                [[item_text(value), item_text(validation.get("contrary_evidence", [])[index]) if index < len(validation.get("contrary_evidence", [])) else "No paired contrary item"] for index, value in enumerate(validation.get("supporting_evidence", []))]
+                or [["No approved supporting evidence was recorded.", "The market conclusion remains open."]],
+                [3.45, 3.45],
+            )
+            document.add_heading("Targeted outreach plan", level=1)
+            add_table(
+                document,
+                ["Owner", "Outreach action", "Proof requested", "Decision use"],
+                structured_rows(validation.get("outreach_plan", []), [("owner", "Market research lead"), ("action", "Not recorded"), ("proof_requested", "Not recorded"), ("decision_use", "Not recorded")]),
+                [1.2, 2.1, 2.2, 1.4],
+            )
+        else:
+            document.add_heading("Evidence for and against", level=1)
+            add_findings_block()
+            add_bullets(document, record.get("conflicts", []), "No contrary evidence or conflict was recorded.")
         document.add_heading("Decision implications", level=1)
         add_bullets(document, validation.get("decision_implications", []))
         document.add_heading("Further research options", level=1)
@@ -481,10 +580,36 @@ def build(record: dict, output: Path) -> None:
         document.add_paragraph(validation.get("executive_summary", "No approved handoff summary was recorded."))
         document.add_heading("Approved market observations", level=1)
         add_findings_block()
-        document.add_heading("Requirements implications", level=1)
-        add_bullets(document, validation.get("requirements_implications", []))
-        document.add_heading("Pricing evidence boundaries", level=1)
-        document.add_paragraph(validation.get("pricing_analysis", "No approved pricing evidence was recorded."))
+        document.add_heading("Market findings translated into acquisition inputs", level=1)
+        add_table(
+            document,
+            ["Pre-Award area", "Approved implication", "Source boundary", "Owner / decision gate"],
+            [
+                [label, item.get("implication", ""), with_evidence(item, "source_boundary"), item.get("owner_gate", "")]
+                for label, field in (
+                    ("Scope", "scope_implications"),
+                    ("Packaging", "packaging_implications"),
+                    ("Performance", "performance_implications"),
+                    ("Competition", "competition_implications"),
+                )
+                for item in route_payload(record, field)
+            ],
+            [1.0, 2.5, 1.8, 1.6],
+        )
+        document.add_heading("Pricing inputs and boundaries", level=1)
+        add_table(
+            document,
+            ["Input", "Usable evidence", "Do not infer", "Next owner"],
+            [[item.get("input", ""), with_evidence(item, "usable_evidence"), item.get("boundary", ""), item.get("owner", "")] for item in require_route_value(record, "pricing_inputs", "pricing inputs and boundaries")],
+            [1.2, 2.4, 2.2, 1.1],
+        )
+        document.add_heading("Pre-Award risk register", level=1)
+        add_table(
+            document,
+            ["Risk", "Why it matters", "Mitigation / evidence gate", "Owner"],
+            [[item.get("risk", ""), item.get("why", ""), with_evidence(item, "mitigation"), item.get("owner", "")] for item in require_route_value(record, "handoff_risks", "a risk register")],
+            [1.3, 2.0, 2.6, 1.0],
+        )
         document.add_heading("Pre-Award intake and next actions", level=1)
         add_table(document, ["Owner", "Action", "Output or gate"], structured_rows(validation.get("next_actions", []), [("owner", "Pre-Award lead"), ("action", "Not recorded"), ("output", "Not recorded")]), [1.45, 3.85, 1.6])
         document.add_heading("Human-owned decisions and unknowns", level=1)
@@ -497,29 +622,39 @@ def build(record: dict, output: Path) -> None:
     document.add_paragraph(validation.get("methodology", "Sources, scope, and limitations are recorded in the query and evidence registers."))
     add_bullets(document, record.get("conflicts", []), "No unresolved source conflict was recorded.")
 
-    document.add_heading("Documents reviewed", level=2)
-    docs = record.get("document_register", [])
-    add_table(
-        document,
-        ["File", "Type and status", "Role", "Gaps or conflicts"],
-        [[d.get("file", ""), f"{d.get('document_type', '')} / {d.get('status', 'unclear')}", d.get("role", ""), d.get("gaps_or_conflicts", "")] for d in docs],
-        [1.5, 1.55, 2.0, 1.85],
-    ) if docs else document.add_paragraph("No acquisition documents were available for this research record.")
+    if route == "complete_report":
+        document.add_heading("Documents reviewed", level=2)
+        docs = record.get("document_register", [])
+        add_table(
+            document,
+            ["File", "Type and status", "Role", "Gaps or conflicts"],
+            [[d.get("file", ""), f"{d.get('document_type', '')} / {d.get('status', 'unclear')}", d.get("role", ""), d.get("gaps_or_conflicts", "")] for d in docs],
+            [1.5, 1.55, 2.0, 1.85],
+        ) if docs else document.add_paragraph("No acquisition documents were available for this research record.")
 
-    document.add_heading("Reproducible search log", level=2)
-    queries = record.get("queries", [])
-    add_table(
-        document,
-        ["Source / operation", "Sanitized parameters", "Retrieved", "Coverage and limits"],
-        [[q.get("operation", q.get("source", "")), json.dumps(q.get("parameters", {}), sort_keys=True), q.get("retrieved_at", ""), f"{q.get('count', 'n/a')}; {q.get('limitations', '')}"] for q in queries],
-        [1.5, 2.35, 1.25, 1.8],
-    ) if queries else document.add_paragraph("No external query was made.")
+        document.add_heading("Reproducible search log", level=2)
+        queries = record.get("queries", [])
+        add_table(
+            document,
+            ["Source / operation", "Sanitized parameters", "Retrieved", "Coverage and limits"],
+            [[q.get("operation", q.get("source", "")), json.dumps(q.get("parameters", {}), sort_keys=True), q.get("retrieved_at", ""), f"{q.get('count', 'n/a')}; {q.get('limitations', '')}"] for q in queries],
+            [1.5, 2.35, 1.25, 1.8],
+        ) if queries else document.add_paragraph("No external query was made.")
+    else:
+        document.add_paragraph(
+            "The evidence register below contains the sources used for this focused decision product. "
+            "Detailed retrieval records remain in the approved research record."
+        )
 
     document.add_heading("Evidence register", level=2)
+    report_evidence = record.get("evidence", [])
+    if route != "complete_report":
+        cited_ids = collect_evidence_ids(validation)
+        report_evidence = [item for item in report_evidence if item.get("id") in cited_ids]
     evidence_table = add_table(
         document,
         ["ID / class", "Source", "Decision-useful fact", "Limit"],
-        [[f"{e.get('id', '')}\n{e.get('source_class', '')}", f"{e.get('title', '')}\n{e.get('locator', '')}", e.get("fact", ""), e.get("limitations", "")] for e in record.get("evidence", [])],
+        [[f"{e.get('id', '')}\n{e.get('source_class', '')}", f"{e.get('title', '')}\n{e.get('locator', '')}", e.get("fact", ""), e.get("limitations", "")] for e in report_evidence],
         [0.75, 1.85, 2.75, 1.55],
     )
     for row in evidence_table.rows:
@@ -530,7 +665,8 @@ def build(record: dict, output: Path) -> None:
                 for run in paragraph.runs:
                     run.font.size = Pt(7.5)
 
-    for index, check in enumerate(record.get("validation", {}).get("numeric_checks", [])):
+    numeric_checks = record.get("validation", {}).get("numeric_checks", []) if route == "complete_report" else []
+    for index, check in enumerate(numeric_checks):
         components = [float(value) for value in check.get("components", [])]
         locator = f"validation.numeric_checks[{index}]"
         calculation_ids = [
@@ -547,7 +683,8 @@ def build(record: dict, output: Path) -> None:
         paragraph = document.add_paragraph(format_calculated_total(check.get("label", "Calculated total"), sum(components)))
         cite_ids(paragraph, calculation_ids)
 
-    for item in record.get("inferences", []):
+    report_inferences = record.get("inferences", []) if route == "complete_report" else validation.get("inferences", [])
+    for item in report_inferences:
         p = document.add_paragraph("Inference: " + item.get("text", item.get("reasoning", "")), style="List Bullet")
         cite_ids(p, item.get("evidence_ids", []))
 

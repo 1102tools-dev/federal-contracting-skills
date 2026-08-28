@@ -26,9 +26,10 @@ ROUTE_HEADINGS = {
     ],
     "refresh": [
         "Refresh assessment",
-        "What remains usable",
-        "What changed",
-        "What must be rechecked",
+        "Prior-to-current evidence comparison",
+        "Vendor and market-structure changes",
+        "Strategy changes to make now",
+        "What remains usable and what must be rechecked",
         "Refresh action plan",
         "Human-owned decisions and unknowns",
         "Method, limitations, and evidence",
@@ -44,8 +45,9 @@ ROUTE_HEADINGS = {
     "pre_award_handoff": [
         "Handoff summary",
         "Approved market observations",
-        "Requirements implications",
-        "Pricing evidence boundaries",
+        "Market findings translated into acquisition inputs",
+        "Pricing inputs and boundaries",
+        "Pre-Award risk register",
         "Pre-Award intake and next actions",
         "Human-owned decisions and unknowns",
         "Method, limitations, and evidence",
@@ -95,7 +97,19 @@ def validate(document_path: Path, record_path: Path) -> dict:
     text = all_text(document)
     headings = [p.text.strip() for p in document.paragraphs if getattr(p.style, "name", "") == "Heading 1"]
     route = record.get("workflow_mode")
-    required_headings = ROUTE_HEADINGS.get(route, [])
+    required_headings = list(ROUTE_HEADINGS.get(route, []))
+    if route == "one_question" and record.get("validation", {}).get("analysis_focus") == "small_business":
+        required_headings = [
+            "Bounded answer",
+            "Candidate small-business market",
+            "Rule of Two evidence assessment",
+            "Evidence supporting and cutting against a small-business strategy",
+            "Targeted outreach plan",
+            "Decision implications",
+            "Further research options",
+            "Human-owned decisions and unknowns",
+            "Method, limitations, and evidence",
+        ]
     if not required_headings:
         failures.append(f"unsupported workflow_mode for report validation: {route}")
     for heading in required_headings:
@@ -119,7 +133,8 @@ def validate(document_path: Path, record_path: Path) -> dict:
     if route == "complete_report" and not complete and "FAR Part 10 Market Research Report" in text:
         failures.append("incomplete evidence is mislabeled as a FAR Part 10 Market Research Report")
     evidence = [item for item in record.get("evidence", []) if isinstance(item, dict)]
-    for index, check in enumerate(record.get("validation", {}).get("numeric_checks", [])):
+    numeric_checks = record.get("validation", {}).get("numeric_checks", []) if route == "complete_report" else []
+    for index, check in enumerate(numeric_checks):
         expected = sum(float(value) for value in check.get("components", []))
         reported = float(check.get("reported_total", expected))
         label = check.get("label", "numeric check")

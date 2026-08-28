@@ -50,6 +50,8 @@ PRODUCT_TITLES = {
     "impact_brief": "Acquisition Policy Impact Brief",
 }
 
+FOCUSED_PRODUCTS = {"change_brief", "watchlist", "comments", "refresh"}
+
 
 def set_run_font(run, *, name: str = "Calibri", size: float | None = None, color: str | None = None,
                  bold: bool | None = None, italic: bool | None = None) -> None:
@@ -585,6 +587,9 @@ def derive_planning_posture(record: dict) -> dict:
 
 
 def derive_front_page_interpretation(record: dict) -> str:
+    approved = str(record.get("validation", {}).get("reader_bottom_line", "")).strip()
+    if approved:
+        return approved
     interpretations = {
         "current_rule": (
             "Bottom line: the codified FAR Part 10 text is the only government-wide current rule established by "
@@ -628,6 +633,33 @@ def derive_front_page_interpretation(record: dict) -> str:
         record.get("workflow_mode", ""),
         record.get("validation", {}).get("executive_summary", "No approved executive summary was supplied."),
     )
+
+
+def collect_evidence_ids(value: object) -> set[str]:
+    ids: set[str] = set()
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key == "evidence_ids" and isinstance(item, list):
+                ids.update(str(candidate) for candidate in item)
+            else:
+                ids.update(collect_evidence_ids(item))
+    elif isinstance(value, list):
+        for item in value:
+            ids.update(collect_evidence_ids(item))
+    return ids
+
+
+def focused_evidence_ids(record: dict) -> set[str]:
+    """Return evidence cited by the selected focused product, excluding unused fixture fields."""
+    mode = record.get("workflow_mode", "")
+    validation = record.get("validation", {})
+    route_fields = {
+        "change_brief": ("focused_findings", "focused_impacts", "planning_posture", "decision_gates", "change_map", "implementation_actions"),
+        "watchlist": ("focused_findings", "focused_impacts", "planning_posture", "decision_gates", "rulemaking_watchlist", "watch_priorities"),
+        "comments": ("focused_findings", "focused_impacts", "planning_posture", "decision_gates", "comment_themes"),
+        "refresh": ("focused_findings", "focused_impacts", "planning_posture", "decision_gates", "refresh_changes", "carry_forward_decisions"),
+    }
+    return collect_evidence_ids({field: validation.get(field) for field in route_fields.get(mode, ())})
 
 
 def route_owner_labels(mode: str) -> tuple[str, str, str]:
@@ -764,6 +796,43 @@ def evidence_suffix(item: dict) -> str:
     return " [" + ", ".join(ids) + "]" if ids else ""
 
 
+def validation_rows(record: dict, field: str) -> list[dict]:
+    value = record.get("validation", {}).get(field, [])
+    return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
+
+
+def require_validation_rows(record: dict, field: str, purpose: str) -> list[dict]:
+    rows = validation_rows(record, field)
+    if not rows:
+        raise ValueError(
+            f"{record.get('workflow_mode')} cannot produce a paid-value DOCX without {purpose}; "
+            "return a concise evidence-acquisition note instead"
+        )
+    return rows
+
+
+def value_with_evidence(item: dict, field: str) -> str:
+    text = str(item.get(field, ""))
+    ids = item.get("evidence_ids", [])
+    if ids:
+        text += " [" + ", ".join(str(value) for value in ids) + "]"
+    return text
+
+
+def enforce_route_content(record: dict) -> None:
+    mode = record.get("workflow_mode")
+    if mode == "change_brief":
+        require_validation_rows(record, "change_map", "matched before-and-after provisions")
+    elif mode == "watchlist":
+        require_validation_rows(record, "rulemaking_watchlist", "live rulemaking matters, timing, and owner actions")
+    elif mode == "comments":
+        require_validation_rows(record, "comment_themes", "an approved comment sample and coded themes")
+        if not record.get("stakeholder_positions"):
+            raise ValueError("comments cannot produce a paid-value DOCX without stakeholder-position coverage")
+    elif mode == "refresh":
+        require_validation_rows(record, "refresh_changes", "a dated prior/current comparison")
+
+
 def add_route_native_analysis(document: Document, record: dict) -> None:
     mode = record.get("workflow_mode", "")
     agency = record.get("scope", {}).get("agency") or "the named agency"
@@ -799,13 +868,16 @@ def add_route_native_analysis(document: Document, record: dict) -> None:
         add_table(document, ["Layer", "Source", "Documented status", "Adoption test"], rows, [1600, 2100, 2500, 3160])
     elif mode == "change_brief":
         document.add_heading("Before/After Change Map", level=1)
-        rows = [
-            ["Before/current baseline", codified.get("citation", "Not recorded"), codified.get("applicability_summary", "Not recorded") + evidence_suffix(codified)],
-            ["Published alternative", model.get("citation", "Not recorded"), "A separate model-text layer, not agency-operative by itself." + evidence_suffix(model)],
-            ["Verified textual delta", "Not supplied", "The approved fixture does not contain section-level before/after text. Do not infer a substantive change from titles or status labels."],
-            ["Implementation consequence", deviation.get("agency", "Not recorded"), "Only an agency-issued source with applicable scope and timing can operationalize model text for that agency." + evidence_suffix(deviation)],
-        ]
-        add_table(document, ["Change-map field", "Recorded source/value", "Reader conclusion"], rows, [1900, 2400, 5060])
+        rows = require_validation_rows(record, "change_map", "matched before-and-after provisions")
+        add_table(
+            document,
+            ["Provision", "Before", "After", "Substantive delta", "Operational consequence"],
+            [[item.get("provision", ""), item.get("before", ""), item.get("after", ""), value_with_evidence(item, "delta"), item.get("operational_consequence", "")] for item in rows],
+            [1250, 1900, 1900, 2100, 2210],
+            font_size=8.5,
+        )
+        document.add_heading("Implementation decisions", level=2)
+        add_bullets(document, record.get("validation", {}).get("implementation_actions", []), "No implementation action was approved.")
     elif mode == "rulemaking":
         document.add_heading("Rulemaking Milestones and Next Trigger", level=1)
         rows = [[item.get("date", ""), item.get("status", ""), item.get("event", ""), ", ".join(item.get("evidence_ids", []))] for item in record.get("timeline", [])]
@@ -813,34 +885,49 @@ def add_route_native_analysis(document: Document, record: dict) -> None:
         document.add_paragraph("Next status-changing trigger: an effective final rule, correction, withdrawal, codification update, or applicable agency instruction. Until then, the proposed-rule layer remains non-operative.")
     elif mode == "watchlist":
         document.add_heading("Open Rulemaking Watchlist", level=1)
-        rows = [[proposed.get("citation", "Not recorded"), "Proposed rule", "No verified open comment deadline is recorded in the approved fixture.", "Policy analyst", "Refresh Federal Register and docket status before acting" + evidence_suffix(proposed)]]
-        add_table(document, ["Matter", "Status", "Verified deadline", "Owner", "Next trigger"], rows, [1700, 1300, 2500, 1400, 2460])
+        rows = require_validation_rows(record, "rulemaking_watchlist", "live rulemaking matters, timing, and owner actions")
+        add_table(
+            document,
+            ["Matter / docket", "Stage", "Deadline", "Next event", "Owner", "Recommended action"],
+            [[item.get("matter", ""), item.get("stage", ""), value_with_evidence(item, "deadline"), item.get("next_event", ""), item.get("owner", ""), item.get("recommended_action", "")] for item in rows],
+            [1800, 1050, 1250, 1700, 1200, 2360],
+            font_size=8.5,
+        )
+        document.add_heading("Response priorities", level=2)
+        add_bullets(document, record.get("validation", {}).get("watch_priorities", []), "No response priority was approved.")
     elif mode == "comments":
         document.add_heading("Comment Sample and Theme Coverage", level=1)
         positions = record.get("stakeholder_positions", [])
-        if positions:
-            rows = [[item.get("submitter_type", ""), item.get("position", ""), f"{item.get('reviewed_count', 0)} of {item.get('returned_count', 0)}", item.get("sample_method", ""), item.get("limitations", "")] for item in positions]
-            add_table(document, ["Submitter", "Observed position", "Coverage", "Method", "Limits"], rows, [1300, 2600, 1100, 1900, 2460])
-        else:
-            rows = [
-                ["Approved sample", "None recorded", "No stakeholder theme or position conclusion is supportable."],
-                ["Needed evidence", "Defined query, returned count, reviewed count, sampling method, contrary positions, and limitations", "Acquire and approve a bounded sample before issuing a position analysis."],
-            ]
-            add_table(document, ["Coverage field", "Approved record", "Reader conclusion"], rows, [1700, 3600, 4060])
+        rows = [[item.get("submitter_type", ""), item.get("position", ""), f"{item.get('reviewed_count', 0)} of {item.get('returned_count', 0)}", item.get("sample_method", ""), item.get("limitations", "")] for item in positions]
+        add_table(document, ["Stakeholder segment", "Observed position", "Coverage", "Sample method", "Limits"], rows, [1500, 2500, 1050, 1900, 2410], font_size=7.5)
+        document.add_heading("Coded themes and acquisition implications", level=1)
+        themes = require_validation_rows(record, "comment_themes", "an approved comment sample and coded themes")
+        add_table(
+            document,
+            ["Theme", "Observed pattern", "Segments", "Contrary view", "Acquisition implication"],
+            [[item.get("theme", ""), value_with_evidence(item, "observed_pattern"), item.get("segments", ""), item.get("contrary_view", ""), item.get("acquisition_implication", "")] for item in themes],
+            [1400, 2100, 1450, 1800, 2610],
+            font_size=7.5,
+        )
     elif mode == "refresh":
         document.add_heading("Refresh Change Register", level=1)
-        rows = [
-            ["Carried forward", "Codified baseline, model-text distinction, and agency-adoption boundary", "Retain unless a cited source changes"],
-            ["Newly verified", "No discrete new source or status change is identified in the approved fixture", "Do not imply a change merely because the analysis was rerun"],
-            ["Next refresh trigger", "Agency instruction, effective final rule, correction, withdrawal, codification update, or procurement timing change", "Refresh only when the trigger can change the documented status"],
-        ]
-        add_table(document, ["Change class", "Result", "Carry-forward treatment"], rows, [1800, 4300, 3260])
+        rows = require_validation_rows(record, "refresh_changes", "a dated prior/current comparison")
+        add_table(
+            document,
+            ["Policy issue", "Prior conclusion", "Current evidence", "Changed / unchanged", "Planning consequence"],
+            [[item.get("issue", ""), item.get("prior_conclusion", ""), value_with_evidence(item, "current_evidence"), item.get("delta", ""), item.get("planning_consequence", "")] for item in rows],
+            [1450, 2000, 2250, 1500, 2160],
+            font_size=8.5,
+        )
+        document.add_heading("Carry-forward decisions", level=2)
+        add_bullets(document, record.get("validation", {}).get("carry_forward_decisions", []), "No prior conclusion was approved for carry-forward.")
 
 
 def build(record: dict, output: Path) -> None:
     validation = record.get("validation", {})
     if not validation.get("findings_approved") or not validation.get("brief_approved"):
         raise ValueError("findings and brief generation must be approved before building the DOCX")
+    enforce_route_content(record)
 
     document = Document()
     configure_styles(document)
@@ -858,6 +945,11 @@ def build(record: dict, output: Path) -> None:
     product_title = validation.get("report_title") or PRODUCT_TITLES.get(
         record.get("workflow_mode", ""), "Acquisition Policy Impact Brief"
     )
+    for section in document.sections:
+        header = section.header.paragraphs[0]
+        header.text = f"1102tools  |  {product_title}"
+        header.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        set_run_font(header.runs[0], size=8, color=MID_GRAY)
     title = document.add_paragraph(style="Policy Title")
     title.alignment = WD_ALIGN_PARAGRAPH.LEFT
     title_run = title.add_run(product_title)
@@ -892,14 +984,14 @@ def build(record: dict, output: Path) -> None:
     add_posture_banner(document, derive_planning_posture(record))
     document.add_paragraph(derive_front_page_interpretation(record))
     document.add_heading("What is established", level=2)
-    approved_findings = record.get("findings", [])
+    approved_findings = validation.get("focused_findings") or record.get("findings", [])
     for finding in approved_findings[:3]:
         paragraph = document.add_paragraph(finding.get("text", ""), style="List Bullet")
         cite_ids(paragraph, finding.get("evidence_ids", []))
     if not approved_findings:
         document.add_paragraph("No approved finding was recorded.")
     document.add_heading("Immediate implications", level=2)
-    leading_impacts = impact_items(record, lens)[:3]
+    leading_impacts = (validation.get("focused_impacts") or impact_items(record, lens))[:3]
     add_bullets(
         document,
         leading_impacts,
@@ -938,6 +1030,54 @@ def build(record: dict, output: Path) -> None:
     set_run_font(boundary_text, size=9.5, color=BLACK)
 
     add_route_native_analysis(document, record)
+
+    if record.get("workflow_mode") in FOCUSED_PRODUCTS:
+        document.add_heading("Management Actions", level=1)
+        action_rows = []
+        for gate in derive_decision_gates(record):
+            evidence_text = gate.get("evidence", "")
+            if gate.get("evidence_ids"):
+                evidence_text += " [" + ", ".join(gate["evidence_ids"]) + "]"
+            action_rows.append([gate.get("owner", ""), gate.get("timing", ""), gate.get("gate", ""), evidence_text])
+        add_table(document, ["Owner", "Timing", "Action / decision gate", "Evidence needed"], action_rows, [1600, 1900, 2200, 3660], font_size=9)
+
+        document.add_heading("Evidence and Source Notes", level=1)
+        focused_ids = focused_evidence_ids(record)
+        evidence = [item for item in record.get("evidence", []) if item.get("id") in focused_ids]
+        if evidence:
+            table = add_table(
+                document,
+                ["ID", "Source", "Decision-useful fact", "Limit"],
+                [[item.get("id", ""), f"{item.get('title', '')}\n{item.get('locator', '')}", item.get("fact", ""), item.get("limitations", "")] for item in evidence],
+                [700, 2600, 3900, 2160],
+                font_size=8.5,
+                add_spacer=False,
+            )
+            for row, item in zip(table.rows[1:], evidence):
+                url = item.get("canonical_url", "")
+                if url:
+                    paragraph = row.cells[1].add_paragraph()
+                    paragraph.paragraph_format.space_after = Pt(0)
+                    add_hyperlink(paragraph, urlparse(url).netloc or "Official source", url, font_size=8.5)
+        else:
+            document.add_paragraph("No approved evidence item was recorded.")
+
+        document.add_heading("Limitations and Reserved Determinations", level=1)
+        limitations = list(record.get("limitations", [])) or ["No additional limitation was recorded."]
+        limitations[-1] += (
+            " This product does not provide legal advice. It states what cited published sources indicate as of the date shown. "
+            "An authorized agency official must determine procurement-specific applicability."
+        )
+        limitation_start = len(document.paragraphs)
+        add_bullets(document, limitations, "No additional limitation was recorded.")
+        for paragraph in document.paragraphs[limitation_start:]:
+            paragraph.paragraph_format.space_after = Pt(2)
+            paragraph.paragraph_format.line_spacing = 1.0
+            for run in paragraph.runs:
+                set_run_font(run, size=8.5, color=BLACK)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        document.save(output)
+        return
 
     document.add_heading("Question and Scope", level=1)
     document.add_paragraph(request.get("question", "Not stated"))

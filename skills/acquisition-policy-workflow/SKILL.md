@@ -204,12 +204,13 @@ For chat, provide the approved findings, citations, reproducible source summary,
 For a formal brief:
 
 1. Read [report-specification.md](references/report-specification.md).
-2. Save the record as JSON and run `scripts/validate_policy_research_record.py`.
-3. Run `scripts/build_acquisition_policy_brief.py <record.json> <output.docx>`.
-4. Run `scripts/validate_acquisition_policy_brief.py <output.docx> --record <record.json>`.
-5. Open/save or convert through LibreOffice.
-6. Extract text and inspect live hyperlinks.
-7. Render and inspect every page as the intended government, industry, or neutral reader. Correct clipping, overflow, broken tables, blank pages, citation defects, weak first-page decision utility, process-heavy framing, generic owner assignments, or scenarios that do not materially change the treatment; then repeat validation and rendering.
+2. Apply the route-content minimums in the specification. Do not generate a Regulatory Change Briefing without matched text, a Watchlist without live matters and timing, a Public Comment Position Analysis without an approved comment sample and coded themes, or a Refresh without a dated prior/current comparison. Return a short evidence-acquisition note in chat when the product has not been earned by the evidence.
+3. Save the record as JSON and run `scripts/validate_policy_research_record.py`.
+4. Run `scripts/build_acquisition_policy_brief.py <record.json> <output.docx>`.
+5. Run `scripts/validate_acquisition_policy_brief.py <output.docx> --record <record.json>`.
+6. Open/save or convert through LibreOffice.
+7. Extract text and inspect live hyperlinks.
+8. Render and inspect every page as the intended government, industry, or neutral reader. Correct clipping, overflow, broken tables, blank pages, citation defects, weak first-page decision utility, process-heavy framing, generic owner assignments, or scenarios that do not materially change the treatment; then repeat validation and rendering.
 
 Deliver only the final `.docx` unless the user asks for the research record or QA outputs.
 

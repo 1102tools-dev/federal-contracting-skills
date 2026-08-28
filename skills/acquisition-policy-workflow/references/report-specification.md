@@ -15,6 +15,15 @@ Use a distinct product name and lead form for each route. The first page states 
 | Comments | Public Comment Position Analysis | sample-method panel and theme map |
 | Refresh | Policy Analysis Refresh | change log and carry-forward decisions |
 
+The product name is a substantive promise, not merely a heading:
+
+- A Regulatory Change Briefing requires matched before-and-after text, a clause- or section-level delta, operational consequences, and evidence IDs.
+- An Open Rulemaking Watchlist requires live matter or docket identifiers, stage, verified deadline or an explicit no-open-window result, next event, owner, and recommended action.
+- A Public Comment Position Analysis requires an approved sample frame, returned and reviewed counts, stakeholder segments, coded themes, contrary positions, limitations, and acquisition implications.
+- A Policy Analysis Refresh requires a dated prior baseline, current retrievals, changed and unchanged conclusions, consequences, and refresh actions.
+
+If the approved record lacks the evidence that makes the selected product useful, provide a short evidence-acquisition note in chat. Do not turn an evidence gap into a six-page report that resembles a completed analysis.
+
 ## Product-first reader contract
 
 Every written product must lead with the operational meaning of the approved evidence, not a recap of the request or a research-process summary. Before the detailed source sections, the opening view must provide:

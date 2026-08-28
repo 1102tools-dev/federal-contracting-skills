@@ -29,6 +29,12 @@ REQUIRED_HEADINGS = [
     "Evidence Register",
     "Limitations and Reserved Determinations",
 ]
+FOCUSED_HEADINGS = {
+    "change_brief": "Before/After Change Map",
+    "watchlist": "Open Rulemaking Watchlist",
+    "comments": "Comment Sample and Theme Coverage",
+    "refresh": "Refresh Change Register",
+}
 FORBIDDEN = [
     re.compile(r"\bmcp__|/mnt/|/Users/|[A-Za-z]:\\", re.I),
     re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b|\b(?:sk|cfat|SAM)-[A-Za-z0-9_-]{16,}\b", re.I),
@@ -62,6 +68,33 @@ def external_hyperlinks(document: Document) -> set[str]:
         if relationship.reltype.endswith("/hyperlink") and relationship.is_external:
             urls.add(relationship.target_ref)
     return urls
+
+
+def collect_evidence_ids(value: object) -> set[str]:
+    """Collect evidence IDs from the portion of the approved record rendered by a focused product."""
+    ids: set[str] = set()
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key == "evidence_ids" and isinstance(item, list):
+                ids.update(str(evidence_id) for evidence_id in item if evidence_id)
+            else:
+                ids.update(collect_evidence_ids(item))
+    elif isinstance(value, list):
+        for item in value:
+            ids.update(collect_evidence_ids(item))
+    return ids
+
+
+def focused_evidence_ids(record: dict) -> set[str]:
+    mode = record.get("workflow_mode", "")
+    validation = record.get("validation", {})
+    route_fields = {
+        "change_brief": ("focused_findings", "focused_impacts", "planning_posture", "decision_gates", "change_map", "implementation_actions"),
+        "watchlist": ("focused_findings", "focused_impacts", "planning_posture", "decision_gates", "rulemaking_watchlist", "watch_priorities"),
+        "comments": ("focused_findings", "focused_impacts", "planning_posture", "decision_gates", "comment_themes"),
+        "refresh": ("focused_findings", "focused_impacts", "planning_posture", "decision_gates", "refresh_changes", "carry_forward_decisions"),
+    }
+    return collect_evidence_ids({field: validation.get(field) for field in route_fields.get(mode, ())})
 
 
 def table_geometry_failures(document: Document) -> list[str]:
@@ -112,10 +145,23 @@ def validate(document_path: Path, record_path: Path) -> dict:
         for paragraph in document.paragraphs
         if getattr(paragraph.style, "name", "") == "Heading 1"
     ]
-    for heading in REQUIRED_HEADINGS:
+    mode = record.get("workflow_mode", "")
+    required_headings = (
+        [
+            "Planning Posture and Implications",
+            "Owners and Decision Gates",
+            FOCUSED_HEADINGS[mode],
+            "Management Actions",
+            "Evidence and Source Notes",
+            "Limitations and Reserved Determinations",
+        ]
+        if mode in FOCUSED_HEADINGS
+        else REQUIRED_HEADINGS
+    )
+    for heading in required_headings:
         if heading not in headings:
             failures.append(f"missing Heading 1 section: {heading}")
-    if [heading for heading in headings if heading in REQUIRED_HEADINGS] != REQUIRED_HEADINGS:
+    if [heading for heading in headings if heading in required_headings] != required_headings:
         failures.append("required Heading 1 sections are out of order")
 
     for pattern in FORBIDDEN:
@@ -125,7 +171,8 @@ def validate(document_path: Path, record_path: Path) -> dict:
     for phrase in BOUNDARY_PHRASES:
         if phrase not in lowered:
             failures.append(f"required decision-boundary language is missing: {phrase}")
-    for product_element in ("Decision-ready evidence", "Owner", "Timing", "Scenario", "Planning treatment"):
+    product_elements = ("Decision-ready evidence", "Owner", "Timing") if mode in FOCUSED_HEADINGS else ("Decision-ready evidence", "Owner", "Timing", "Scenario", "Planning treatment")
+    for product_element in product_elements:
         if product_element not in text:
             failures.append(f"required reader-facing product element is missing: {product_element}")
     if not headings or headings[0] != "Planning Posture and Implications":
@@ -134,21 +181,31 @@ def validate(document_path: Path, record_path: Path) -> dict:
     if as_of and as_of not in text:
         failures.append("record as-of date is missing from the brief")
 
-    evidence_ids = {item.get("id") for item in record.get("evidence", []) if isinstance(item, dict)}
-    for finding in record.get("findings", []):
+    validation = record.get("validation", {})
+    focused = mode in FOCUSED_HEADINGS
+    findings = validation.get("focused_findings", []) if focused else record.get("findings", [])
+    relevant_evidence_ids = (
+        focused_evidence_ids(record)
+        if focused
+        else {item.get("id") for item in record.get("evidence", []) if isinstance(item, dict)}
+    )
+    for finding in findings:
         for evidence_id in finding.get("evidence_ids", []):
             if evidence_id not in text:
                 failures.append(f"finding evidence ID not present in brief: {evidence_id}")
-    for policy in record.get("policy_items", []):
-        policy_id = policy.get("id")
-        if policy_id and policy_id not in text:
-            failures.append(f"policy item ID not present in brief: {policy_id}")
-    for evidence_id in sorted(evidence_ids):
+    if mode not in FOCUSED_HEADINGS:
+        for policy in record.get("policy_items", []):
+            policy_id = policy.get("id")
+            if policy_id and policy_id not in text:
+                failures.append(f"policy item ID not present in brief: {policy_id}")
+    for evidence_id in sorted(relevant_evidence_ids):
         if evidence_id not in text:
             failures.append(f"evidence register is missing ID: {evidence_id}")
 
     urls = external_hyperlinks(document)
     for item in record.get("evidence", []):
+        if focused and item.get("id") not in relevant_evidence_ids:
+            continue
         url = item.get("canonical_url", "")
         if url and url not in urls:
             failures.append(f"evidence URL is not a live DOCX hyperlink: {url}")
