@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -353,6 +354,288 @@ class OtRecostAuditTests(unittest.TestCase):
 
         with self.assertRaises(self.validator.InputError):
             self.validator.recost_audit(workbook, {"recost_register_elements": "travel"})
+
+
+class OtHoursDerivationAuditTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.validator = load_validator()
+
+    def _hours_workbook(
+        self,
+        *,
+        hours="derived",
+        drivers=True,
+        reconciliation="formula",
+        scenario=None,
+    ):
+        workbook = Workbook()
+        workbook.active.title = "OT Cost Summary"
+        detail = workbook.create_sheet("Milestone Detail")
+        detail["A2"] = "M1: baseline and test design"
+        detail["A3"], detail["B3"] = "Duration (weeks)", 6
+        headers = ["Labor Category", "FTE Loading", "Weeks", "Hours per FTE-week", "Hours"]
+        if not drivers:
+            headers = ["Labor Category", "Hours"]
+        for column, header in enumerate(headers, start=1):
+            detail.cell(row=4, column=column, value=header)
+        hours_column = len(headers)
+        for offset, (name, fte) in enumerate((("Systems engineer", 1.0), ("Software developer", 0.5))):
+            row = 5 + offset
+            detail.cell(row=row, column=1, value=name)
+            if drivers:
+                detail.cell(row=row, column=2, value=fte)
+                detail.cell(row=row, column=3, value=6)
+                detail.cell(row=row, column=4, value=36.1538)
+            if hours == "derived":
+                value = f"=B{row}*C{row}*D{row}"
+            elif hours == "unlinked":
+                value = f"={fte}*6*36.1538"
+            else:
+                value = round(fte * 6 * 36.1538, 4)
+            detail.cell(row=row, column=hours_column, value=value)
+        detail.cell(row=7, column=1, value="Labor subtotal")
+        detail.cell(row=7, column=hours_column, value="=SUM(E5:E6)")
+        if reconciliation == "formula":
+            detail.cell(row=8, column=1, value="Hours reconcile to duration and staffing")
+            detail.cell(row=8, column=2, value='=IF(ROUND(E7-SUM(B5:B6)*B3*D5,4)=0,"OK","MISMATCH")')
+        elif reconciliation == "prose":
+            detail.cell(row=8, column=1, value="Hours basis: 1.5 FTE x 6 weeks. Hours reconcile to M1.")
+        if scenario is not None:
+            analysis = workbook.create_sheet("Scenario Analysis")
+            analysis["A4"], analysis["B4"] = "Labor category", "M1 hours"
+            analysis["A5"] = "Systems engineer"
+            analysis["B5"] = 216.9228 if scenario == "literal" else "='Milestone Detail'!E5"
+        return workbook, detail
+
+    def test_asserted_hours_constant_fails(self):
+        workbook, _ = self._hours_workbook(hours="asserted")
+
+        failures = self.validator.hours_derivation_audit(workbook)
+
+        self.assertEqual(len(failures), 1)
+        self.assertIn("Milestone Detail!E5 asserts hours for 'Systems engineer'", failures[0])
+        self.assertIn("2 of 2 labor rows", failures[0])
+        self.assertIn("must be a formula", failures[0])
+
+    def test_missing_driver_columns_fail(self):
+        workbook, _ = self._hours_workbook(hours="asserted", drivers=False)
+
+        failures = self.validator.hours_derivation_audit(workbook)
+
+        self.assertEqual(len(failures), 2)
+        self.assertIn("exposes no FTE loading, weeks or duration, hours per FTE-week", failures[0])
+        self.assertIn("asserts hours", failures[1])
+
+    def test_hours_formula_ignoring_driver_cells_fails(self):
+        workbook, _ = self._hours_workbook(hours="unlinked")
+
+        failures = self.validator.hours_derivation_audit(workbook)
+
+        self.assertEqual(len(failures), 6)
+        self.assertIn("Milestone Detail!E5 hours formula does not reference its FTE loading", failures[0])
+        self.assertIn("driver cell B5", failures[0])
+
+    def test_non_numeric_driver_cell_fails(self):
+        workbook, detail = self._hours_workbook()
+        detail["B5"] = "1.0 FTE"
+
+        failures = self.validator.hours_derivation_audit(workbook)
+
+        self.assertEqual(len(failures), 1)
+        self.assertIn("Milestone Detail!B5 FTE loading driver is not a numeric input cell", failures[0])
+
+    def test_prose_reconciliation_fails(self):
+        workbook, _ = self._hours_workbook(reconciliation="prose")
+
+        failures = self.validator.hours_derivation_audit(workbook)
+
+        self.assertEqual(len(failures), 1)
+        self.assertIn("carry no formula reconciling derived hours", failures[0])
+        self.assertIn("OK or MISMATCH state", failures[0])
+        self.assertIn("'Hours basis:' note is prose", failures[0])
+
+    def test_missing_reconciliation_fails(self):
+        workbook, _ = self._hours_workbook(reconciliation=None)
+
+        failures = self.validator.hours_derivation_audit(workbook)
+
+        self.assertEqual(len(failures), 1)
+        self.assertIn("carry no formula reconciling derived hours", failures[0])
+        self.assertNotIn("Hours basis", failures[0])
+
+    def test_scenario_sheet_restating_hours_as_literals_fails(self):
+        workbook, _ = self._hours_workbook(scenario="literal")
+
+        failures = self.validator.hours_derivation_audit(workbook)
+
+        self.assertEqual(len(failures), 1)
+        self.assertIn("Scenario Analysis!B5 restates milestone hours as the constant", failures[0])
+        self.assertIn("must reference those cells by formula", failures[0])
+
+    def test_conforming_derived_hours_pass(self):
+        workbook, _ = self._hours_workbook(scenario="linked")
+
+        self.assertEqual(self.validator.hours_derivation_audit(workbook), [])
+
+    def test_workbook_without_labor_block_is_not_audited(self):
+        workbook = Workbook()
+        workbook.active.title = "OT Cost Summary"
+        workbook.create_sheet("Milestone Detail")["A1"] = "Milestone Detail"
+
+        self.assertEqual(self.validator.hours_derivation_audit(workbook), [])
+
+    def test_structural_audit_wires_in_the_hours_derivation_gate(self):
+        workbook, _ = self._hours_workbook(hours="asserted")
+
+        failures = self.validator.structural_audit(workbook, {"required_sheets": []})
+
+        self.assertTrue(
+            any("asserts hours for 'Systems engineer'" in failure for failure in failures),
+            failures,
+        )
+
+
+class TextClippingAuditTests(unittest.TestCase):
+    """A text cell overflows only into an empty neighbour; anything else clips."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.validator = load_validator()
+
+    def _sheet(self):
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "Scenario Analysis"
+        sheet.column_dimensions["A"].width = 12
+        sheet.column_dimensions["B"].width = 12
+        sheet.column_dimensions["C"].width = 12
+        return workbook, sheet
+
+    def test_long_label_beside_occupied_neighbour_fails(self):
+        workbook, sheet = self._sheet()
+        sheet["A1"] = "Scenario Analysis: Senior Software Engineer"
+        sheet["B1"] = "SOC 15-1252"
+
+        failures = self.validator.text_clipping_audit(workbook)
+
+        self.assertEqual(len(failures), 1, failures)
+        self.assertIn("Scenario Analysis!A1 is clipped in print", failures[0])
+        self.assertIn("Scenario Analysis: Senior Software Engineer", failures[0])
+        self.assertIn("column A gives 12", failures[0])
+        self.assertIn("B1 blocks the overflow", failures[0])
+        self.assertIn("widen the column to at least 36", failures[0])
+
+    def test_long_label_with_empty_neighbour_passes(self):
+        workbook, sheet = self._sheet()
+        sheet["A1"] = "Scenario Analysis: Senior Software Engineer"
+
+        self.assertEqual(self.validator.text_clipping_audit(workbook), [])
+
+    def test_blank_string_neighbour_counts_as_empty(self):
+        workbook, sheet = self._sheet()
+        sheet["A1"] = "Scenario Analysis: Senior Software Engineer"
+        sheet["B1"] = "   "
+
+        self.assertEqual(self.validator.text_clipping_audit(workbook), [])
+
+    def test_merged_label_that_fits_the_span_passes(self):
+        workbook, sheet = self._sheet()
+        sheet["A1"] = "Scenario Analysis: Senior Software Engineer"
+        sheet["D1"] = "SOC 15-1252"
+        sheet.column_dimensions["A"].width = 44
+        sheet.merge_cells("A1:C1")
+
+        self.assertEqual(self.validator.text_clipping_audit(workbook), [])
+
+    def test_wrapped_cell_passes(self):
+        workbook, sheet = self._sheet()
+        sheet["A1"] = "Scenario Analysis: Senior Software Engineer"
+        sheet["A1"].alignment = Alignment(wrap_text=True)
+        sheet["B1"] = "SOC 15-1252"
+
+        self.assertEqual(self.validator.text_clipping_audit(workbook), [])
+
+    def test_label_that_fits_its_column_passes(self):
+        workbook, sheet = self._sheet()
+        sheet["A1"] = "Senior SWE"
+        sheet["B1"] = "SOC 15-1252"
+
+        self.assertEqual(self.validator.text_clipping_audit(workbook), [])
+
+    def test_borderline_label_within_tolerance_passes(self):
+        workbook, sheet = self._sheet()
+        sheet["A1"] = "abcdefghijklm"
+        sheet["B1"] = "occupied"
+
+        self.assertEqual(self.validator.text_clipping_audit(workbook), [])
+
+    def test_right_aligned_label_overflows_left_not_right(self):
+        workbook, sheet = self._sheet()
+        sheet["B1"] = "Scenario Analysis: Senior Software Engineer"
+        sheet["B1"].alignment = Alignment(horizontal="right")
+        sheet["C1"] = "occupied"
+
+        self.assertEqual(self.validator.text_clipping_audit(workbook), [])
+
+        sheet["A1"] = "occupied"
+        failures = self.validator.text_clipping_audit(workbook)
+        self.assertEqual(len(failures), 1, failures)
+        self.assertIn("A1 blocks the overflow", failures[0])
+
+    def test_formula_and_numeric_cells_are_not_audited(self):
+        workbook, sheet = self._sheet()
+        sheet["A1"] = "=CONCATENATE(B1,C1,\"a very long generated label indeed\")"
+        sheet["B1"] = 1234567890123456789
+        sheet["C1"] = "occupied"
+
+        self.assertEqual(self.validator.text_clipping_audit(workbook), [])
+
+    def test_bold_text_is_measured_wider(self):
+        workbook, sheet = self._sheet()
+        sheet.column_dimensions["A"].width = 20
+        sheet["A1"] = "Period Totals (Current)"
+        sheet["B1"] = "occupied"
+        plain = self.validator.estimated_text_width(sheet["A1"].value, sheet["A1"].font)
+        bold = self.validator.estimated_text_width(sheet["A1"].value, Font(bold=True))
+
+        self.assertGreater(bold, plain)
+        self.assertAlmostEqual(bold / plain, self.validator.CLIPPING_BOLD_FACTOR, places=6)
+
+    def test_structural_audit_reports_clipping(self):
+        workbook, sheet = self._sheet()
+        sheet["A1"] = "Scenario Analysis: Senior Software Engineer"
+        sheet["B1"] = "SOC 15-1252"
+
+        failures = self.validator.structural_audit(workbook, {"required_sheets": []})
+
+        self.assertTrue(
+            any("Scenario Analysis!A1 is clipped in print" in failure for failure in failures),
+            failures,
+        )
+
+    def test_conforming_fixture_passes_every_remedy(self):
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "Scenario Analysis"
+        sheet.column_dimensions["A"].width = 46
+        sheet.column_dimensions["B"].width = 16
+        sheet.column_dimensions["C"].width = 16
+        # Merged block title spanning the block.
+        sheet["A1"] = "Scenario Analysis: Senior Software Engineer"
+        sheet.merge_cells("A1:C1")
+        # Label that fits its own column beside an occupied neighbour.
+        sheet["A2"] = "Aged Annual Wage"
+        sheet["B2"] = 183633.94
+        # Wrapped narrative beside an occupied neighbour.
+        sheet["A3"] = "Directional only: the CALC+ pool holds 28 records, below the guidance threshold."
+        sheet["A3"].alignment = Alignment(wrap_text=True)
+        sheet.row_dimensions[3].height = 60
+        sheet["B3"] = "CALC+"
+        # Long label on a row whose neighbours are empty.
+        sheet["A4"] = "Government share plus performer contribution less project cost"
+
+        self.assertEqual(self.validator.text_clipping_audit(workbook), [])
 
 
 if __name__ == "__main__":

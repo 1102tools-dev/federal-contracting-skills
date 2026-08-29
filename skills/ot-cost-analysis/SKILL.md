@@ -217,6 +217,7 @@ Read [workbook-specification.md](references/workbook-specification.md) in full. 
 
 - Blank proposed-amount cells when no proposal exists, with conditional variance formulas.
 - Formula-driven labor, escalation, ceiling, share, fee, scenario, and cumulative-funding cells.
+- Derived milestone labor hours: each priced labor row carries FTE loading, weeks, and hours-per-FTE-week input cells and computes hours as a formula over them, each milestone carries a formula reconciliation returning `OK` or `MISMATCH`, and any sheet restating those hours references the Milestone Detail cells. Never write hours as a literal or demote the reconciliation to prose.
 - Separate performer and Government contributions that reconcile to total project cost.
 - Cost-type should-cost and ceiling views using the same contribution basis.
 - Compact, reproducible raw-data records rather than full API payloads.

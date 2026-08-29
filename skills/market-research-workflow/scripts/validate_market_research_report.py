@@ -62,6 +62,41 @@ FORBIDDEN = [
 # Internal evidence-class vocabulary must never render into a reader-visible
 # document; the builder maps these tokens to reader labels.
 INTERNAL_CLASS_TOKENS = ("federal_mcp", "official_web", "other_web", "user_statement", "source_class")
+MIDNIGHT_TIMESTAMP = re.compile(r"T00:00(?::00(?:\.0+)?)?(?:Z|[+-]00:00)?$")
+# A retrieval stamp is a per-call fact. Three or more midnight-exact stamps, or
+# five or more byte-identical stamps, are a synthesized batch value rather than
+# the recorded time of each source call.
+MIDNIGHT_PLACEHOLDER_LIMIT = 3
+IDENTICAL_PLACEHOLDER_LIMIT = 5
+
+
+def retrieval_timestamps(record: dict) -> list[str]:
+    """Every recorded retrieval stamp across the source-call and evidence logs."""
+    items = [item for item in record.get("queries", []) if isinstance(item, dict)]
+    items += [item for item in record.get("evidence", []) if isinstance(item, dict)]
+    return [
+        str(item.get("retrieved_at") or "").strip()
+        for item in items
+        if str(item.get("retrieved_at") or "").strip()
+    ]
+
+
+def placeholder_timestamp_failures(record: dict) -> list[str]:
+    failures: list[str] = []
+    stamps = retrieval_timestamps(record)
+    if len(stamps) >= MIDNIGHT_PLACEHOLDER_LIMIT and all(
+        MIDNIGHT_TIMESTAMP.search(value) for value in stamps
+    ):
+        failures.append(
+            f"all {len(stamps)} retrieval timestamps are midnight-exact placeholders;"
+            " record the actual retrieval time of each source call"
+        )
+    if len(stamps) >= IDENTICAL_PLACEHOLDER_LIMIT and len(set(stamps)) == 1:
+        failures.append(
+            f"all {len(stamps)} retrieval timestamps are identical ({stamps[0]});"
+            " record the actual retrieval time of each source call"
+        )
+    return failures
 
 
 def collect_evidence_ids(value) -> set[str]:
@@ -168,6 +203,7 @@ def validate(document_path: Path, record_path: Path) -> dict:
         failures.append("incomplete commercial evidence is not labeled as a desk-research draft")
     if route == "complete_report" and not complete and "FAR Part 10 Market Research Report" in text:
         failures.append("incomplete evidence is mislabeled as a FAR Part 10 Market Research Report")
+    failures.extend(placeholder_timestamp_failures(record))
     evidence = [item for item in record.get("evidence", []) if isinstance(item, dict)]
     # Every [E###] identifier rendered in the document must resolve to a row
     # of the rendered evidence register (the record's own IDs for the complete

@@ -210,6 +210,133 @@ def require_route_value(record: dict, field: str, purpose: str) -> list[dict]:
     return rows
 
 
+ACTION_NAME_LIMIT = 72
+ACTION_NAME_ELLIPSIS = "..."
+# Words that read as debris when a truncation lands on them, so a word-boundary
+# cut drops them before the ellipsis is appended.
+DANGLING_WORDS = {
+    "a", "an", "and", "against", "as", "at", "by", "for", "from", "in", "into",
+    "its", "no", "of", "on", "or", "over", "per", "that", "the", "their",
+    "these", "this", "those", "to", "under", "using", "via", "with", "within",
+    "each", "every", "both", "such", "so",
+}
+DETERMINERS = {"a", "an", "the", "its", "their", "this", "these", "those", "each", "every"}
+# Citation lead-ins: a label left stranded at the end of a truncation would read
+# as a broken reference, so it is dropped with the citation it introduces.
+CITATION_LEAD_INS = {
+    "far", "dfars", "cfr", "c.f.r.", "u.s.c.", "usc", "part", "subpart",
+    "section", "clause", "naics", "psc", "sin", "fasa", "pub.", "no.",
+}
+# Abbreviations whose trailing period never ends a sentence.
+ABBREVIATIONS = {
+    "u.s", "e.g", "i.e", "etc", "no", "inc", "corp", "co", "llc", "ltd", "jr",
+    "sr", "dr", "mr", "mrs", "ms", "st", "vs", "fig", "approx", "est", "dept",
+    "govt", "cf", "al",
+}
+
+
+def _is_sentence_end(text: str, index: int) -> bool:
+    """Report whether the period at ``index`` genuinely ends a sentence.
+
+    A period inside a citation (FAR 19.502-2, 48 CFR 10.001, 13 C.F.R.
+    121.402), a decimal number, or an abbreviation (U.S., e.g., No., Inc.) is
+    not a sentence boundary.
+    """
+    after = text[index + 1 :]
+    # A decimal or a citation continues with a digit or a word character.
+    if after[:1] and not after[:1].isspace():
+        return False
+    # A real sentence break is followed by end-of-string or a capitalized word.
+    remainder = after.lstrip()
+    if remainder and not remainder[0].isupper():
+        return False
+    preceding = re.search(r"([A-Za-z.]+)$", text[:index])
+    if preceding:
+        token = preceding.group(1).lower()
+        # A single letter or a dotted initialism before the period is an
+        # abbreviation (U.S., e.g., C.F.R.), not a sentence end.
+        if len(token) == 1 or "." in token or token in ABBREVIATIONS:
+            return False
+    return True
+
+
+def first_sentence(text: str) -> str:
+    """Return the first genuine sentence of ``text`` without its terminator."""
+    for index, char in enumerate(text):
+        if char in ";:":
+            return text[:index].strip()
+        if char == "." and _is_sentence_end(text, index):
+            return text[:index].strip()
+    return text.strip()
+
+
+def _trim_dangling(words: list[str]) -> list[str]:
+    while words:
+        bare = words[-1].strip(",;:.()").lower()
+        if bare in DANGLING_WORDS or bare in CITATION_LEAD_INS or not bare:
+            words.pop()
+            continue
+        break
+    return words
+
+
+def shorten_action(text: str, limit: int = ACTION_NAME_LIMIT) -> str:
+    """Return an intelligible short identifier for an action.
+
+    The whole first sentence is used when one genuinely ends and fits. Anything
+    longer is cut at a clause or word boundary, never inside a citation, a
+    decimal, an abbreviation, or a word, and always carries a single trailing
+    ellipsis.
+    """
+    text = " ".join(str(text).split())
+    if not text:
+        return text
+    sentence = first_sentence(text)
+    if sentence and len(sentence) <= limit:
+        return sentence
+    source = sentence or text
+    budget = limit - len(ACTION_NAME_ELLIPSIS)
+    # Prefer a comma boundary when it keeps a substantial clause.
+    clause = ""
+    for match in re.finditer(r",", source):
+        candidate = source[: match.start()].rstrip()
+        if len(candidate) <= budget and len(candidate) >= budget // 2:
+            clause = candidate
+    if clause:
+        return _finish(clause)
+    words = source[: budget + 1].split(" ")
+    if len(words) > 1 and len(source) > budget:
+        words = words[:-1]
+    words = _trim_dangling(words)
+    return _finish(_drop_trailing_conjunct(words, budget))
+
+
+def _drop_trailing_conjunct(words: list[str], budget: int) -> str:
+    """Drop a stranded "and the <noun>" tail when enough text remains.
+
+    "…the capability hypotheses and the packaging" keeps only the first
+    conjunct, while "…currency and exclusion status" and "Select the vehicle
+    and competition strategy" are left whole: their second conjunct still
+    carries meaning, or dropping it would leave too little to identify the row.
+    """
+    for index in range(len(words) - 1, 0, -1):
+        if words[index].strip(",;:").lower() not in {"and", "or", "plus"}:
+            continue
+        tail = words[index + 1 :]
+        if len(tail) > 3 or tail[0].strip(",;:").lower() not in DETERMINERS:
+            break
+        prefix = " ".join(words[:index]).rstrip(" ,;:")
+        if len(prefix) >= budget // 2:
+            return prefix
+        break
+    return " ".join(words)
+
+
+def _finish(fragment: str) -> str:
+    fragment = fragment.rstrip(" ,;:.-")
+    return f"{fragment}{ACTION_NAME_ELLIPSIS}" if fragment else fragment
+
+
 def action_name(item: object) -> str:
     """Short reader label for an action row so a closing table can point back to
     the lead Next practical actions table instead of repeating its Action and
@@ -218,10 +345,7 @@ def action_name(item: object) -> str:
         text = str(item.get("action") or "No approved action was recorded.")
     else:
         text = str(item)
-    name = re.split(r"[.;:]", text, maxsplit=1)[0].strip()
-    if len(name) > 72:
-        name = name[:69].rstrip() + "..."
-    return name or text
+    return shorten_action(text) or text
 
 
 def with_evidence(item: dict, field: str, id_map: dict[str, str] | None = None) -> str:

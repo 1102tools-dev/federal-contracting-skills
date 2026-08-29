@@ -180,6 +180,54 @@ Record compact reproducible parameters and result summaries, not full JSON dumps
 - Use numeric zero, never text `TBD`, in formula ranges.
 - Autosize columns within readable limits and wrap long notes.
 
+### Column widths and text clipping
+
+Excel and LibreOffice let a text cell overflow into the next cell **only when
+that neighbour is empty**. The moment the cell to the right of a label carries a
+value or a formula, the label is cut off at its own column boundary in the
+printed and rendered output, however much white space appears to follow it on
+screen. Setting a column width without accounting for this is what produces
+labels such as `Government sh`, `0047900 Washington-Arlin`, and
+`Scenario Analysis: Senior Software En` in a delivered workbook.
+
+Every populated text cell must therefore satisfy at least one of the following,
+and `validate_workbook.py` fails the workbook when none of them holds:
+
+- **Fit.** The label fits inside its own column width.
+- **Wrap.** The cell sets `wrap_text=True` and the row height is tall enough to
+  show every wrapped line.
+- **Free overflow.** Every cell on the label's overflow side in the same row is
+  empty. That is the right-hand neighbour for left-aligned and general text, the
+  left-hand neighbour for right-aligned text, and both neighbours for centred
+  text.
+- **Merge.** The label is merged across the columns it needs. The merged span,
+  not the anchor column alone, is what has to fit.
+
+Section headers and block titles are the common failure. A title such as
+`Scenario Analysis: Senior Software Engineer` must be merged across the block it
+introduces, placed on a row whose neighbouring cells are left empty, or shortened
+until it fits. Never rely on visual overflow for a block title that sits beside a
+populated cell.
+
+Concrete generator guidance:
+
+- Compute each column width from the **longest label actually written to that
+  column**, not from the header text or a fixed guess. Walk the column after the
+  data is written, take the widest populated string, and set
+  `width = min(cap, needed + 2)`.
+- Estimate a label in column-width units rather than characters. One unit is
+  about one digit at Calibri 11. Lowercase letters run about 0.96 units,
+  uppercase about 1.05, `i`/`l`/`j` and spaces and most punctuation about 0.45,
+  `m` and `w` about 1.66, and bold text is about 14 percent wider overall.
+- Prefer a merged header cell for every block title, and reserve narrow columns
+  for short codes, dates, and numbers.
+- Where a column must stay narrow, move the long text into a wrapped narrative
+  column with an explicit width and an adequate row height. Cap runaway widths
+  in the 60 to 90 unit range and wrap instead of widening past that.
+- The audit allows roughly one column-width unit of slack, so a label that is
+  genuinely borderline will not fail. Do not aim for the tolerance; aim for the
+  fit.
+
 ### Delivery-view gate
 
 Before delivery, recalculate and save the final workbook through a calculation

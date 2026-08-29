@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from openpyxl import load_workbook
+from openpyxl.utils import column_index_from_string, get_column_letter
 
 from recompute_expected_values import InputError, calculate, load_payload
 
@@ -167,8 +168,12 @@ def hours_reconciliation_audit(workbook: Any) -> list[str]:
     return failures
 
 
-def narrative_format_audit(workbook: Any) -> list[str]:
-    """Narrative columns must wrap text and meet the width floor."""
+def narrative_format_audit(workbook: Any, reported: set[str] | None = None) -> list[str]:
+    """Narrative columns must wrap text and meet the width floor.
+
+    Cells reported here are recorded in ``reported`` so the clipping audit does
+    not raise a second finding against the same unwrapped narrative cell.
+    """
     failures: list[str] = []
     seen: set[tuple[str, str]] = set()
     for sheet_name in ("OT Cost Summary", "Milestone Detail"):
@@ -205,6 +210,8 @@ def narrative_format_audit(workbook: Any) -> list[str]:
                             f"{sheet_name}!{below.coordinate} narrative cell under "
                             f"'{cell.value.strip()}' does not have wrap text enabled"
                         )
+                        if reported is not None:
+                            reported.add(f"{sheet_name}!{below.coordinate}")
                         break
     return failures
 
@@ -332,6 +339,367 @@ def recost_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
     return failures
 
 
+CATEGORY_HEADERS = {"labor category", "category", "role"}
+HOURS_DRIVERS = (
+    ("fte", "FTE loading"),
+    ("duration", "weeks or duration"),
+    ("hours_per_period", "hours per FTE-week"),
+)
+RESTATED_HOURS_EXEMPT_SHEETS = {"Milestone Detail", "Labor Benchmarking"}
+RESTATED_HOURS_SKIP = ("productive", "annual", "per year", "/year")
+
+
+def _normalized_header(value: Any) -> str:
+    return re.sub(r"\s+", " ", value).strip().lower() if isinstance(value, str) else ""
+
+
+def _hours_header_columns(row: Any) -> dict[str, int]:
+    """Classify a Milestone Detail labor header row into hours and driver columns."""
+    columns: dict[str, int] = {}
+    for cell in row:
+        header = _normalized_header(cell.value)
+        if not header:
+            continue
+        mentions_hours = "hour" in header or "hrs" in header
+        if header in CATEGORY_HEADERS:
+            columns.setdefault("category", cell.column)
+        elif header == "hours":
+            columns.setdefault("hours", cell.column)
+        elif mentions_hours and ("week" in header or "fte" in header or "day" in header):
+            columns.setdefault("hours_per_period", cell.column)
+        elif "fte" in header:
+            columns.setdefault("fte", cell.column)
+        elif "week" in header or "duration" in header or "month" in header:
+            columns.setdefault("duration", cell.column)
+    return columns
+
+
+def _labor_block_rows(sheet: Any, header_row: int, category_column: int) -> list[int]:
+    rows: list[int] = []
+    for row_number in range(header_row + 1, sheet.max_row + 1):
+        label = sheet.cell(row=row_number, column=category_column).value
+        if not isinstance(label, str) or not label.strip():
+            break
+        if "subtotal" in label.lower() or "total" in label.lower():
+            break
+        rows.append(row_number)
+    return rows
+
+
+def _reconciliation_regions(header_rows: list[int], max_row: int) -> list[tuple[int, int]]:
+    regions: list[tuple[int, int]] = []
+    for index, header_row in enumerate(header_rows):
+        start = 1 if index == 0 else (header_rows[index - 1] + header_row) // 2
+        end = max_row if index == len(header_rows) - 1 else (header_row + header_rows[index + 1]) // 2
+        regions.append((start, end))
+    return regions
+
+
+def _restated_hours_failures(workbook: Any) -> list[str]:
+    failures: list[str] = []
+    for sheet_name in REQUIRED_SHEETS:
+        if sheet_name in RESTATED_HOURS_EXEMPT_SHEETS or sheet_name not in workbook.sheetnames:
+            continue
+        sheet = workbook[sheet_name]
+        for row in sheet.iter_rows():
+            for cell in row:
+                header = _normalized_header(cell.value)
+                if "hour" not in header or any(token in header for token in RESTATED_HOURS_SKIP):
+                    continue
+                seen_value = False
+                for row_number in range(cell.row + 1, sheet.max_row + 1):
+                    below = sheet.cell(row=row_number, column=cell.column)
+                    value = below.value
+                    if value is None:
+                        if seen_value:
+                            break
+                        continue
+                    seen_value = True
+                    if isinstance(value, bool) or not isinstance(value, (int, float)):
+                        continue
+                    failures.append(
+                        f"{sheet_name}!{below.coordinate} restates milestone hours as the constant "
+                        f"{float(value):g} under '{str(cell.value).strip()}'; a sheet that repeats Milestone "
+                        "Detail hours must reference those cells by formula"
+                    )
+                    break
+    return failures
+
+
+def hours_derivation_audit(workbook: Any) -> list[str]:
+    """Milestone labor hours must be derived from driver input cells, not asserted."""
+    failures: list[str] = []
+    if "Milestone Detail" not in workbook.sheetnames:
+        return failures
+    detail = workbook["Milestone Detail"]
+
+    blocks: list[tuple[int, dict[str, int]]] = []
+    for row in detail.iter_rows():
+        columns = _hours_header_columns(row)
+        if "hours" in columns and "category" in columns:
+            blocks.append((row[0].row, columns))
+    if not blocks:
+        return failures
+
+    regions = _reconciliation_regions([header_row for header_row, _ in blocks], detail.max_row)
+    for (header_row, columns), (region_start, region_end) in zip(blocks, regions):
+        data_rows = _labor_block_rows(detail, header_row, columns["category"])
+        missing_drivers = [
+            label for key, label in HOURS_DRIVERS if key not in columns
+        ]
+        if missing_drivers and data_rows:
+            failures.append(
+                f"Milestone Detail labor block at row {header_row} exposes no "
+                f"{', '.join(missing_drivers)} input column; every priced labor row must carry its hours "
+                "drivers as input cells"
+            )
+
+        asserted: list[int] = []
+        for row_number in data_rows:
+            hours_cell = detail.cell(row=row_number, column=columns["hours"])
+            value = hours_cell.value
+            if value is None:
+                continue
+            if not (isinstance(value, str) and value.startswith("=")):
+                asserted.append(row_number)
+                continue
+            normalized = normalize_formula(value)
+            for key, label in HOURS_DRIVERS:
+                if key not in columns:
+                    continue
+                driver = detail.cell(row=row_number, column=columns[key])
+                if isinstance(driver.value, bool) or not isinstance(driver.value, (int, float)):
+                    failures.append(
+                        f"Milestone Detail!{driver.coordinate} {label} driver is not a numeric input cell; "
+                        "the hours formula has nothing to recompute from"
+                    )
+                elif normalize_formula(driver.coordinate) not in normalized:
+                    failures.append(
+                        f"Milestone Detail!{hours_cell.coordinate} hours formula does not reference its "
+                        f"{label} driver cell {driver.coordinate}"
+                    )
+        if asserted:
+            first = detail.cell(row=asserted[0], column=columns["hours"])
+            category = detail.cell(row=asserted[0], column=columns["category"]).value
+            failures.append(
+                f"Milestone Detail!{first.coordinate} asserts hours for "
+                f"'{str(category).strip()}' as the constant {first.value} "
+                f"({len(asserted)} of {len(data_rows)} labor rows in this block); milestone labor hours must be "
+                "a formula over the FTE loading, duration, and hours-per-FTE-week input cells"
+            )
+
+        has_reconciliation = False
+        has_prose_note = False
+        for row in detail.iter_rows(min_row=region_start, max_row=region_end):
+            for cell in row:
+                value = cell.value
+                if not isinstance(value, str):
+                    continue
+                if value.startswith("="):
+                    upper = value.upper()
+                    if "MISMATCH" in upper and "OK" in upper:
+                        has_reconciliation = True
+                elif "hours basis" in value.lower():
+                    has_prose_note = True
+        if not has_reconciliation:
+            prose = " The 'Hours basis:' note is prose, not a check." if has_prose_note else ""
+            failures.append(
+                f"Milestone Detail rows {region_start}-{region_end} carry no formula reconciling derived "
+                "hours to milestone duration and staffing; the reconciliation must be a formula rendering an "
+                f"OK or MISMATCH state.{prose}"
+            )
+
+    failures.extend(_restated_hours_failures(workbook))
+    return failures
+
+
+# --- Rendered-text clipping audit -------------------------------------------
+# A text cell overflows into the next cell only when that neighbour is empty.
+# When the neighbour is occupied the label is cut off in the printed workbook,
+# so every such label must fit its column, wrap, or be merged across the block.
+
+CLIPPING_GLYPH_WIDTHS = {
+    " ": 0.45,
+    ".": 0.45,
+    ",": 0.45,
+    ";": 0.45,
+    ":": 0.45,
+    "'": 0.35,
+    "`": 0.45,
+    "!": 0.45,
+    "|": 0.45,
+    "(": 0.55,
+    ")": 0.55,
+    "[": 0.55,
+    "]": 0.55,
+    "{": 0.60,
+    "}": 0.60,
+    "-": 0.60,
+    "/": 0.55,
+    "\\": 0.55,
+    '"': 0.60,
+    "%": 1.50,
+    "@": 1.70,
+    "$": 1.00,
+}
+CLIPPING_LOWER_NARROW = "ijl"
+CLIPPING_LOWER_SEMI = "frt"
+CLIPPING_LOWER_WIDE = "mw"
+CLIPPING_UPPER_NARROW = "I"
+CLIPPING_UPPER_WIDE = "MW"
+CLIPPING_BOLD_FACTOR = 1.14
+CLIPPING_ABSOLUTE_TOLERANCE = 0.75
+CLIPPING_RELATIVE_TOLERANCE = 0.04
+CLIPPING_DEFAULT_WIDTH = 8.43
+CLIPPING_MESSAGE_TEXT_LIMIT = 120
+
+
+def glyph_width(character: str) -> float:
+    """Width of one glyph in Excel column-width units (1.0 = one digit)."""
+    if character in CLIPPING_GLYPH_WIDTHS:
+        return CLIPPING_GLYPH_WIDTHS[character]
+    if character in CLIPPING_LOWER_NARROW:
+        return 0.48
+    if character in CLIPPING_LOWER_SEMI:
+        return 0.59
+    if character in CLIPPING_LOWER_WIDE:
+        return 1.66
+    if character in CLIPPING_UPPER_NARROW:
+        return 0.45
+    if character in CLIPPING_UPPER_WIDE:
+        return 1.55
+    if character.islower():
+        return 0.96
+    if character.isupper():
+        return 1.05
+    return 1.0
+
+
+def estimated_text_width(text: str, font: Any = None) -> float:
+    """Estimated rendered width of a label in column-width units."""
+    lines = str(text).split("\n")
+    units = max((sum(glyph_width(character) for character in line) for line in lines), default=0.0)
+    size = getattr(font, "size", None) or 11.0
+    if float(size) != 11.0:
+        units *= float(size) / 11.0
+    if getattr(font, "bold", False):
+        units *= CLIPPING_BOLD_FACTOR
+    return units
+
+
+def column_width_map(sheet: Any) -> tuple[dict[int, float], float]:
+    """Explicit column widths by index plus the sheet default width."""
+    widths: dict[int, float] = {}
+    for letter, dimension in sheet.column_dimensions.items():
+        if dimension.width is None:
+            continue
+        # In-memory dimensions created by a generator carry no min/max, so fall
+        # back to the column the dimension is keyed under.
+        try:
+            own = column_index_from_string(letter)
+        except ValueError:
+            own = None
+        first = dimension.min or own or 1
+        last = dimension.max or own or first
+        for index in range(first, last + 1):
+            widths[index] = float(dimension.width)
+    default = sheet.sheet_format.defaultColWidth or CLIPPING_DEFAULT_WIDTH
+    return widths, float(default)
+
+
+def merged_ranges_by_anchor(sheet: Any) -> tuple[dict[tuple[int, int], Any], set[tuple[int, int]]]:
+    """Merged-range lookup keyed by anchor cell, plus every covered cell."""
+    anchors: dict[tuple[int, int], Any] = {}
+    covered: set[tuple[int, int]] = set()
+    for merged in sheet.merged_cells.ranges:
+        anchors[(merged.min_row, merged.min_col)] = merged
+        for row in range(merged.min_row, merged.max_row + 1):
+            for column in range(merged.min_col, merged.max_col + 1):
+                covered.add((row, column))
+    return anchors, covered
+
+
+def _is_blank(value: Any) -> bool:
+    if value is None:
+        return True
+    return isinstance(value, str) and not value.strip()
+
+
+def text_clipping_audit(
+    workbook: Any,
+    *,
+    sheets: list[str] | None = None,
+    exempt: set[str] | None = None,
+) -> list[str]:
+    """Flag text that is cut off in print because an occupied neighbour blocks overflow."""
+    failures: list[str] = []
+    skipped = exempt or set()
+    for sheet in workbook.worksheets:
+        if sheets is not None and sheet.title not in sheets:
+            continue
+        widths, default_width = column_width_map(sheet)
+        anchors, covered = merged_ranges_by_anchor(sheet)
+        max_column = sheet.max_column
+        for row in sheet.iter_rows():
+            for cell in row:
+                value = cell.value
+                if not isinstance(value, str) or not value.strip() or value.startswith("="):
+                    continue
+                position = (cell.row, cell.column)
+                if position in covered and position not in anchors:
+                    continue
+                alignment = cell.alignment
+                if alignment.wrap_text or alignment.horizontal in {"fill", "distributed"}:
+                    continue
+                if f"{sheet.title}!{cell.coordinate}" in skipped:
+                    continue
+                merged = anchors.get(position)
+                first_column = cell.column
+                last_column = merged.max_col if merged is not None else cell.column
+                available = sum(
+                    widths.get(index, default_width)
+                    for index in range(first_column, last_column + 1)
+                )
+                needed = estimated_text_width(value, cell.font)
+                tolerance = max(
+                    CLIPPING_ABSOLUTE_TOLERANCE,
+                    CLIPPING_RELATIVE_TOLERANCE * available,
+                )
+                if needed <= available + tolerance:
+                    continue
+                blockers = []
+                if alignment.horizontal in {"right", "center", "centerContinuous"}:
+                    left = first_column - 1
+                    if left < 1:
+                        blockers.append("the left sheet edge")
+                    elif not _is_blank(sheet.cell(row=cell.row, column=left).value):
+                        blockers.append(sheet.cell(row=cell.row, column=left).coordinate)
+                if alignment.horizontal != "right":
+                    right = last_column + 1
+                    if right <= max_column and not _is_blank(
+                        sheet.cell(row=cell.row, column=right).value
+                    ):
+                        blockers.append(sheet.cell(row=cell.row, column=right).coordinate)
+                if not blockers:
+                    continue
+                shown = value.strip()
+                if len(shown) > CLIPPING_MESSAGE_TEXT_LIMIT:
+                    shown = shown[: CLIPPING_MESSAGE_TEXT_LIMIT - 3] + "..."
+                span = (
+                    cell.column_letter
+                    if merged is None
+                    else f"{cell.column_letter}:{get_column_letter(last_column)}"
+                )
+                failures.append(
+                    f"{sheet.title}!{cell.coordinate} is clipped in print: '{shown}' needs about "
+                    f"{needed:.1f} column-width units but column {span} gives {available:g} and "
+                    f"{', '.join(blockers)} blocks the overflow; widen the column to at least "
+                    f"{math.ceil(needed):g}, enable wrap text with adequate row height, merge the "
+                    f"label across the block, or shorten it"
+                )
+    return failures
+
+
 def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
     failures: list[str] = []
     for sheet_name in payload.get("required_sheets", REQUIRED_SHEETS):
@@ -384,7 +752,10 @@ def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
 
     failures.extend(labor_benchmark_audit(workbook))
     failures.extend(hours_reconciliation_audit(workbook))
-    failures.extend(narrative_format_audit(workbook))
+    failures.extend(hours_derivation_audit(workbook))
+    narrative_reported: set[str] = set()
+    failures.extend(narrative_format_audit(workbook, narrative_reported))
+    failures.extend(text_clipping_audit(workbook, exempt=narrative_reported))
     failures.extend(print_setup_audit(workbook))
     if is_recost_workbook(workbook):
         failures.extend(recost_audit(workbook, payload))

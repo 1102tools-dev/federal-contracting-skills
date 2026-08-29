@@ -519,5 +519,259 @@ class DanglingCitationValidationTests(unittest.TestCase):
             self.assertIn("E026", check.stdout + check.stderr)
 
 
+class ActionNameTests(unittest.TestCase):
+    """The execution-plan Action cell must always read as intelligible English.
+
+    The shipped defect split an action on the period inside a citation and cut
+    siblings mid-word, rendering cells such as "Complete the FAR 19",
+    "as a...", "every re...", and "the vehicle-acces...".
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.builder = load_module(
+            SCRIPTS / "build_market_research_report.py", "market_research_builder"
+        )
+
+    def shorten(self, text: str) -> str:
+        return self.builder.action_name({"action": text})
+
+    def assertIntelligible(self, text: str) -> str:
+        name = self.shorten(text)
+        self.assertLessEqual(len(name), self.builder.ACTION_NAME_LIMIT)
+        self.assertFalse(name.endswith("...."), name)
+        self.assertNotRegex(name, r"\.\.\.\.", name)
+        body = name[:-3] if name.endswith("...") else name
+        # Never end mid-citation or on a stranded citation lead-in.
+        self.assertNotRegex(
+            body,
+            r"(?i)\b(?:FAR|DFARS|CFR|C\.F\.R\.|U\.S\.C\.|Part|Section|NAICS|PSC)$",
+            name,
+        )
+        # Never end mid-word: the retained text must be a whole-word prefix.
+        self.assertTrue(
+            " ".join(text.split()).startswith(body) or body in " ".join(text.split()),
+            name,
+        )
+        if body and body != " ".join(text.split()):
+            remainder = " ".join(text.split())[len(body) :]
+            if remainder:
+                self.assertFalse(remainder[0].isalnum(), name)
+        return name
+
+    def test_citation_period_is_not_a_sentence_boundary(self):
+        action = (
+            "Complete the FAR 19.502-2 Rule of Two inquiry using the response evidence "
+            "on price, quality, and delivery, and expressly address whether the pool "
+            "sustains small business status across the three-year period of performance."
+        )
+        name = self.assertIntelligible(action)
+        self.assertNotEqual(name, "Complete the FAR 19")
+        self.assertIn("19.502-2", name)
+        self.assertTrue(name.endswith("..."), name)
+
+    def test_shipped_execution_plan_rows_are_not_fragments(self):
+        cases = [
+            (
+                "Issue the ten-theme market-engagement instrument in this report as a "
+                "sources-sought notice under NAICS 541512 and PSC DA01, with a 15-day "
+                "response period, requesting size status against the 541512 standard "
+                "and vehicle holdings as mandatory response elements.",
+                "as a",
+            ),
+            (
+                "Re-verify SAM registration currency and exclusion status for every "
+                "responding concern, giving specific attention to the Bellese "
+                "Technologies registration expiring 2026-12-19.",
+                "every re",
+            ),
+            (
+                "Analyze responses against the capability hypotheses and the packaging "
+                "hypotheses in this report, and record for each hypothesis whether it "
+                "survived, failed, or remains untested.",
+                "the packaging",
+            ),
+            (
+                "Determine commerciality on this requirement's facts, and determine "
+                "contract type with steady-state operations and quarterly modernization "
+                "increments treated as distinct pricing problems.",
+                "determine co",
+            ),
+            (
+                "Select the vehicle and competition strategy against the vehicle-access "
+                "responses, and complete the consolidation and bundling analysis on this "
+                "requirement's own facts.",
+                "the vehicle-acces",
+            ),
+        ]
+        for action, old_stub in cases:
+            with self.subTest(action=action[:40]):
+                name = self.assertIntelligible(action)
+                self.assertTrue(name.endswith("..."), name)
+                self.assertFalse(name[:-3].endswith(old_stub), name)
+
+    def test_every_truncated_name_carries_one_ellipsis(self):
+        action = (
+            "Send the same instrument directly to the six verified concerns, and log "
+            "each transmittal in the contract file so the record shows the outreach."
+        )
+        name = self.shorten(action)
+        self.assertEqual(name.count("..."), 1)
+        self.assertTrue(name.endswith("..."))
+
+    def test_decimal_number_is_not_a_sentence_boundary(self):
+        name = self.shorten(
+            "Confirm the 7.5 million dollar ceiling with the program office before "
+            "the acquisition strategy meeting is scheduled for the quarter."
+        )
+        self.assertNotEqual(name, "Confirm the 7")
+        self.assertIn("7.5 million", name)
+
+    def test_abbreviations_are_not_sentence_boundaries(self):
+        for action, fragment in (
+            ("Cite U.S. Government contracting data in the record.", "U.S. Government"),
+            ("Use No. 5 pricing tables from the schedule.", "No. 5 pricing"),
+            ("Confirm the award with Acme, Inc. before the gate.", "Inc."),
+            ("Screen e.g. incumbent vendors before the gate.", "e.g. incumbent"),
+            ("Apply 13 C.F.R. 121.402 to the size determination.", "13 C.F.R. 121.402"),
+        ):
+            with self.subTest(action=action):
+                self.assertIn(fragment, self.shorten(action))
+
+    def test_short_action_is_returned_whole_without_ellipsis(self):
+        name = self.shorten("Issue the sources-sought notice.")
+        self.assertEqual(name, "Issue the sources-sought notice")
+
+    def test_first_sentence_is_preferred_when_it_ends_and_fits(self):
+        name = self.shorten(
+            "Issue the sources-sought notice. Then analyze every response received "
+            "against the capability hypotheses recorded in this report."
+        )
+        self.assertEqual(name, "Issue the sources-sought notice")
+
+    def test_rendered_execution_plan_cells_are_intelligible(self):
+        record = complete_record()
+        record["validation"]["next_actions"] = [
+            {
+                "when": "Before the set-aside decision",
+                "owner": "Contracting Officer",
+                "action": (
+                    "Complete the FAR 19.502-2 Rule of Two inquiry using the response "
+                    "evidence on price, quality, and delivery, and expressly address "
+                    "whether the pool sustains small business status."
+                ),
+                "output": "Documented Rule of Two determination",
+            },
+            {
+                "when": "Within 5 business days",
+                "owner": "Market research lead",
+                "action": "Issue the sources-sought notice.",
+                "output": "Posted notice",
+            },
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            document = Document(build(record, directory))
+            plan = next(
+                table
+                for table in document.tables
+                if [cell.text for cell in table.rows[0].cells] == ["When", "Action"]
+            )
+            cells = [row.cells[1].text for row in plan.rows[1:]]
+            self.assertEqual(len(cells), 2)
+            self.assertNotIn("Complete the FAR 19", cells)
+            self.assertIn("Issue the sources-sought notice", cells)
+            for cell in cells:
+                self.assertLessEqual(len(cell), self.builder.ACTION_NAME_LIMIT)
+                self.assertFalse(cell.endswith(("FAR", "the", "a", "as a")), cell)
+
+
+class PlaceholderTimestampTests(unittest.TestCase):
+    """Retrieval stamps are per-call facts, not one synthesized batch value."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.validator = load_module(
+            SCRIPTS / "validate_market_research_report.py", "market_report_validator_stamps"
+        )
+
+    def record_with(self, stamps: list[str]) -> dict:
+        return {
+            "queries": [{"retrieved_at": value} for value in stamps],
+            "evidence": [],
+        }
+
+    def test_clean_varied_timestamps_pass(self):
+        failures = self.validator.placeholder_timestamp_failures(
+            self.record_with(
+                [
+                    "2026-08-28T21:40:00Z",
+                    "2026-08-28T21:42:13Z",
+                    "2026-08-28T21:47:51Z",
+                    "2026-08-28T22:01:09Z",
+                    "2026-08-28T22:05:44Z",
+                ]
+            )
+        )
+        self.assertEqual(failures, [])
+
+    def test_three_midnight_exact_timestamps_fail(self):
+        failures = self.validator.placeholder_timestamp_failures(
+            self.record_with(
+                ["2026-08-26T00:00:00Z", "2026-08-27T00:00:00Z", "2026-08-28T00:00Z"]
+            )
+        )
+        self.assertTrue(any("midnight-exact placeholders" in item for item in failures), failures)
+        self.assertTrue(any("actual retrieval time" in item for item in failures), failures)
+
+    def test_two_midnight_exact_timestamps_pass(self):
+        failures = self.validator.placeholder_timestamp_failures(
+            self.record_with(["2026-08-26T00:00:00Z", "2026-08-27T00:00:00Z"])
+        )
+        self.assertEqual(failures, [])
+
+    def test_five_identical_timestamps_fail(self):
+        failures = self.validator.placeholder_timestamp_failures(
+            self.record_with(["2026-08-28T21:40:00Z"] * 5)
+        )
+        self.assertTrue(any("are identical" in item for item in failures), failures)
+        self.assertTrue(any("actual retrieval time" in item for item in failures), failures)
+
+    def test_four_identical_timestamps_pass(self):
+        failures = self.validator.placeholder_timestamp_failures(
+            self.record_with(["2026-08-28T21:40:00Z"] * 4)
+        )
+        self.assertEqual(failures, [])
+
+    def test_gate_counts_evidence_and_query_stamps_together(self):
+        record = self.record_with(["2026-08-28T21:40:00Z"] * 3)
+        record["evidence"] = [{"retrieved_at": "2026-08-28T21:40:00Z"} for _ in range(2)]
+        failures = self.validator.placeholder_timestamp_failures(record)
+        self.assertTrue(any("are identical" in item for item in failures), failures)
+
+    def test_report_validator_rejects_identical_batch_stamps(self):
+        record = refresh_record()
+        stamp = "2026-08-28T21:40:00Z"
+        for query in record.get("queries", []):
+            query["retrieved_at"] = stamp
+        for item in record.get("evidence", []):
+            if item.get("retrieved_at"):
+                item["retrieved_at"] = stamp
+        with tempfile.TemporaryDirectory() as directory:
+            output = build(record, directory)
+            check = subprocess.run(
+                [
+                    PYTHON,
+                    str(SCRIPTS / "validate_market_research_report.py"),
+                    str(output),
+                    "--record",
+                    str(Path(directory) / "record.json"),
+                ],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(check.returncode, 0)
+            self.assertIn("retrieval time", check.stdout + check.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

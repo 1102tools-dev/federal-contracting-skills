@@ -116,12 +116,39 @@ explicitly names the proxy benchmark used and why it is reasonable (the Basis
 text must contain the word `proxy`). Never silently reuse another category's
 rate under a generic basis such as "Prior bounded source benchmark".
 
-Milestone labor hours MUST reconcile to milestone duration and staffing. Each
-milestone block carries an hours-basis note: a cell whose text begins
-`Hours basis:` and states the staffing and duration arithmetic behind the
-hours (for example `Hours basis: 1.5 FTE systems engineering x 6 weeks`). Do
-not repeat identical hours per category across milestones of different
-durations without that reconciliation.
+Milestone labor hours MUST be DERIVED in the workbook, never asserted. A
+hardcoded hours figure is not auditable: a reviewer who changes staffing or
+duration must see the estimate move. Each priced labor row therefore exposes
+its drivers as input cells on the row itself and computes hours from them:
+
+| Column role | Cell type | Header text the validator recognizes |
+|---|---|---|
+| FTE loading | Blue numeric input | a header containing `FTE` |
+| Weeks or duration | Blue numeric input | `Weeks`, or a header containing `duration` |
+| Hours per FTE-week | Blue numeric input | a header naming hours per week or per FTE |
+| Hours | Formula over the three driver cells | exactly `Hours` |
+
+The hours cell is a real formula referencing those cells on its own row, for
+example `=C15*D15*E15`. Never write the product as a literal and never move
+the FTE and duration arithmetic into Basis prose; the Basis cell explains the
+staffing judgment, it does not carry the math.
+
+Each milestone block also carries a visible reconciliation that is itself a
+formula, not a sentence. It compares the block's derived hours to the
+milestone duration and staffing and renders a clear state, for example:
+
+```text
+=IF(ROUND(F20-SUM(C15:C19)*$B$5*E15,4)=0,"OK","MISMATCH")
+```
+
+A prose note beginning `Hours basis:` may accompany the check as narrative,
+but it does not satisfy it. Do not repeat identical hours per category across
+milestones of different durations.
+
+Any sheet that restates milestone hours, `Scenario Analysis` above all, must
+reference the `Milestone Detail` hours cells by formula. Repeating the hours
+figures as literals on a second sheet breaks the link the workbook exists to
+provide.
 
 ## 3. Scenario Analysis
 
@@ -236,3 +263,56 @@ additionally MUST:
   wider than 8 used columns must set `ws.page_setup.orientation = "landscape"`.
   `validate_workbook.py` fails the workbook when any canonical sheet misses any
   of these.
+
+### Column widths and text clipping
+
+Excel and LibreOffice let a text cell overflow into the next cell **only when
+that neighbour is empty**. The moment the cell to the right of a label carries a
+value or a formula, the label is cut off at its own column boundary in the
+printed and rendered output, however much white space appears to follow it on
+screen. Setting a column width without accounting for this is what produces
+labels such as `Government sh`, `0047900 Washington-Arlin`, and
+`Scenario Analysis: Senior Software En` in a delivered workbook.
+
+Every populated text cell must therefore satisfy at least one of the following,
+and `validate_workbook.py` fails the workbook when none of them holds:
+
+- **Fit.** The label fits inside its own column width.
+- **Wrap.** The cell sets `wrap_text=True` and the row height is tall enough to
+  show every wrapped line.
+- **Free overflow.** Every cell on the label's overflow side in the same row is
+  empty. That is the right-hand neighbour for left-aligned and general text, the
+  left-hand neighbour for right-aligned text, and both neighbours for centred
+  text.
+- **Merge.** The label is merged across the columns it needs. The merged span,
+  not the anchor column alone, is what has to fit.
+
+Section headers and block titles are the common failure. A title such as
+`Scenario Analysis: Senior Software Engineer` must be merged across the block it
+introduces, placed on a row whose neighbouring cells are left empty, or shortened
+until it fits. Never rely on visual overflow for a block title that sits beside a
+populated cell.
+
+Concrete generator guidance:
+
+- Compute each column width from the **longest label actually written to that
+  column**, not from the header text or a fixed guess. Walk the column after the
+  data is written, take the widest populated string, and set
+  `width = min(cap, needed + 2)`.
+- Estimate a label in column-width units rather than characters. One unit is
+  about one digit at Calibri 11. Lowercase letters run about 0.96 units,
+  uppercase about 1.05, `i`/`l`/`j` and spaces and most punctuation about 0.45,
+  `m` and `w` about 1.66, and bold text is about 14 percent wider overall.
+- Prefer a merged header cell for every block title, and reserve narrow columns
+  for short codes, dates, and numbers.
+- Where a column must stay narrow, move the long text into a wrapped narrative
+  column with an explicit width and an adequate row height. Cap runaway widths
+  in the 60 to 90 unit range and wrap instead of widening past that.
+- The audit allows roughly one column-width unit of slack, so a label that is
+  genuinely borderline will not fail. Do not aim for the tolerance; aim for the
+  fit.
+
+The narrative wrap rule above and this clipping rule are one system. Narrative
+columns wrap and carry a width floor; every other populated text cell is checked
+for clipping. The clipping audit skips any cell the narrative audit has already
+reported, so a missing wrap is reported once, not twice.

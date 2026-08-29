@@ -76,6 +76,7 @@ The audit checks:
 - No generated price-reasonableness conclusion
 - Every Milestone Detail labor line priced from `Labor Benchmarking` matches its own benchmark row or carries a Basis naming the proxy source
 - No category repeats identical hours across milestones without an `Hours basis:` reconciliation note
+- Milestone labor hours are derived, not asserted: every priced labor row exposes FTE loading, weeks or duration, and hours-per-FTE-week input cells; its Hours cell is a formula referencing those cells; each milestone carries a formula reconciliation rendering `OK` or `MISMATCH` rather than prose; and no other canonical sheet restates milestone hours as literals
 - Narrative columns (Description, Basis, Source note) wrap text and meet the 28-character width floor
 - Every canonical sheet has an explicit print area, enables fitToPage scaling (`ws.sheet_properties.pageSetUpPr.fitToPage`), and uses landscape orientation when it spans more than 8 used columns
 - For recost workbooks: no benchmark rows for roles absent from Milestone Detail, no lump-sum labor deltas without Hours and Rate cells, and a delta row for every element listed in the optional `recost_register_elements` payload array (list every cost element the change register names; a $0 delta needs a one-line justification)
@@ -121,6 +122,9 @@ The validator recalculates a temporary copy through LibreOffice when available a
 
 ### Formula behavior
 
+- Milestone labor hours are a formula over driver input cells; an asserted hours literal is a delivery failure even when the number is right.
+- The per-milestone hours reconciliation is a formula with an `OK` or `MISMATCH` result, not a sentence asserting that the hours reconcile.
+- Sheets that restate milestone hours link to `Milestone Detail` instead of duplicating literals.
 - BLS aging is cell referenced.
 - Materials escalation uses milestone-start months.
 - Cost-type Government and performer values use the same ceiling basis.

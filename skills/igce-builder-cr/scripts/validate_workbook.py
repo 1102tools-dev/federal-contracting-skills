@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from openpyxl import load_workbook
+from openpyxl.utils import column_index_from_string, get_column_letter
 
 from recompute_expected_values import InputError, calculate, load_payload
 
@@ -274,6 +275,193 @@ def price_integrity_audit(cached: Any) -> list[str]:
     return failures
 
 
+# --- Rendered-text clipping audit -------------------------------------------
+# A text cell overflows into the next cell only when that neighbour is empty.
+# When the neighbour is occupied the label is cut off in the printed workbook,
+# so every such label must fit its column, wrap, or be merged across the block.
+
+CLIPPING_GLYPH_WIDTHS = {
+    " ": 0.45,
+    ".": 0.45,
+    ",": 0.45,
+    ";": 0.45,
+    ":": 0.45,
+    "'": 0.35,
+    "`": 0.45,
+    "!": 0.45,
+    "|": 0.45,
+    "(": 0.55,
+    ")": 0.55,
+    "[": 0.55,
+    "]": 0.55,
+    "{": 0.60,
+    "}": 0.60,
+    "-": 0.60,
+    "/": 0.55,
+    "\\": 0.55,
+    '"': 0.60,
+    "%": 1.50,
+    "@": 1.70,
+    "$": 1.00,
+}
+CLIPPING_LOWER_NARROW = "ijl"
+CLIPPING_LOWER_SEMI = "frt"
+CLIPPING_LOWER_WIDE = "mw"
+CLIPPING_UPPER_NARROW = "I"
+CLIPPING_UPPER_WIDE = "MW"
+CLIPPING_BOLD_FACTOR = 1.14
+CLIPPING_ABSOLUTE_TOLERANCE = 0.75
+CLIPPING_RELATIVE_TOLERANCE = 0.04
+CLIPPING_DEFAULT_WIDTH = 8.43
+CLIPPING_MESSAGE_TEXT_LIMIT = 120
+
+
+def glyph_width(character: str) -> float:
+    """Width of one glyph in Excel column-width units (1.0 = one digit)."""
+    if character in CLIPPING_GLYPH_WIDTHS:
+        return CLIPPING_GLYPH_WIDTHS[character]
+    if character in CLIPPING_LOWER_NARROW:
+        return 0.48
+    if character in CLIPPING_LOWER_SEMI:
+        return 0.59
+    if character in CLIPPING_LOWER_WIDE:
+        return 1.66
+    if character in CLIPPING_UPPER_NARROW:
+        return 0.45
+    if character in CLIPPING_UPPER_WIDE:
+        return 1.55
+    if character.islower():
+        return 0.96
+    if character.isupper():
+        return 1.05
+    return 1.0
+
+
+def estimated_text_width(text: str, font: Any = None) -> float:
+    """Estimated rendered width of a label in column-width units."""
+    lines = str(text).split("\n")
+    units = max((sum(glyph_width(character) for character in line) for line in lines), default=0.0)
+    size = getattr(font, "size", None) or 11.0
+    if float(size) != 11.0:
+        units *= float(size) / 11.0
+    if getattr(font, "bold", False):
+        units *= CLIPPING_BOLD_FACTOR
+    return units
+
+
+def column_width_map(sheet: Any) -> tuple[dict[int, float], float]:
+    """Explicit column widths by index plus the sheet default width."""
+    widths: dict[int, float] = {}
+    for letter, dimension in sheet.column_dimensions.items():
+        if dimension.width is None:
+            continue
+        # In-memory dimensions created by a generator carry no min/max, so fall
+        # back to the column the dimension is keyed under.
+        try:
+            own = column_index_from_string(letter)
+        except ValueError:
+            own = None
+        first = dimension.min or own or 1
+        last = dimension.max or own or first
+        for index in range(first, last + 1):
+            widths[index] = float(dimension.width)
+    default = sheet.sheet_format.defaultColWidth or CLIPPING_DEFAULT_WIDTH
+    return widths, float(default)
+
+
+def merged_ranges_by_anchor(sheet: Any) -> tuple[dict[tuple[int, int], Any], set[tuple[int, int]]]:
+    """Merged-range lookup keyed by anchor cell, plus every covered cell."""
+    anchors: dict[tuple[int, int], Any] = {}
+    covered: set[tuple[int, int]] = set()
+    for merged in sheet.merged_cells.ranges:
+        anchors[(merged.min_row, merged.min_col)] = merged
+        for row in range(merged.min_row, merged.max_row + 1):
+            for column in range(merged.min_col, merged.max_col + 1):
+                covered.add((row, column))
+    return anchors, covered
+
+
+def _is_blank(value: Any) -> bool:
+    if value is None:
+        return True
+    return isinstance(value, str) and not value.strip()
+
+
+def text_clipping_audit(
+    workbook: Any,
+    *,
+    sheets: list[str] | None = None,
+    exempt: set[str] | None = None,
+) -> list[str]:
+    """Flag text that is cut off in print because an occupied neighbour blocks overflow."""
+    failures: list[str] = []
+    skipped = exempt or set()
+    for sheet in workbook.worksheets:
+        if sheets is not None and sheet.title not in sheets:
+            continue
+        widths, default_width = column_width_map(sheet)
+        anchors, covered = merged_ranges_by_anchor(sheet)
+        max_column = sheet.max_column
+        for row in sheet.iter_rows():
+            for cell in row:
+                value = cell.value
+                if not isinstance(value, str) or not value.strip() or value.startswith("="):
+                    continue
+                position = (cell.row, cell.column)
+                if position in covered and position not in anchors:
+                    continue
+                alignment = cell.alignment
+                if alignment.wrap_text or alignment.horizontal in {"fill", "distributed"}:
+                    continue
+                if f"{sheet.title}!{cell.coordinate}" in skipped:
+                    continue
+                merged = anchors.get(position)
+                first_column = cell.column
+                last_column = merged.max_col if merged is not None else cell.column
+                available = sum(
+                    widths.get(index, default_width)
+                    for index in range(first_column, last_column + 1)
+                )
+                needed = estimated_text_width(value, cell.font)
+                tolerance = max(
+                    CLIPPING_ABSOLUTE_TOLERANCE,
+                    CLIPPING_RELATIVE_TOLERANCE * available,
+                )
+                if needed <= available + tolerance:
+                    continue
+                blockers = []
+                if alignment.horizontal in {"right", "center", "centerContinuous"}:
+                    left = first_column - 1
+                    if left < 1:
+                        blockers.append("the left sheet edge")
+                    elif not _is_blank(sheet.cell(row=cell.row, column=left).value):
+                        blockers.append(sheet.cell(row=cell.row, column=left).coordinate)
+                if alignment.horizontal != "right":
+                    right = last_column + 1
+                    if right <= max_column and not _is_blank(
+                        sheet.cell(row=cell.row, column=right).value
+                    ):
+                        blockers.append(sheet.cell(row=cell.row, column=right).coordinate)
+                if not blockers:
+                    continue
+                shown = value.strip()
+                if len(shown) > CLIPPING_MESSAGE_TEXT_LIMIT:
+                    shown = shown[: CLIPPING_MESSAGE_TEXT_LIMIT - 3] + "..."
+                span = (
+                    cell.column_letter
+                    if merged is None
+                    else f"{cell.column_letter}:{get_column_letter(last_column)}"
+                )
+                failures.append(
+                    f"{sheet.title}!{cell.coordinate} is clipped in print: '{shown}' needs about "
+                    f"{needed:.1f} column-width units but column {span} gives {available:g} and "
+                    f"{', '.join(blockers)} blocks the overflow; widen the column to at least "
+                    f"{math.ceil(needed):g}, enable wrap text with adequate row height, merge the "
+                    f"label across the block, or shorten it"
+                )
+    return failures
+
+
 def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
     failures: list[str] = []
     required_sheets = payload.get("required_sheets", DEFAULT_SHEETS)
@@ -440,6 +628,7 @@ def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
             contains=contains,
             not_contains=not_contains,
         )
+    failures.extend(text_clipping_audit(workbook))
     return failures
 
 
