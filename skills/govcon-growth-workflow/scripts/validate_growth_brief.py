@@ -42,6 +42,15 @@ BANNED_HARNESS_VOCABULARY = [
 ]
 FEDERAL_SOURCE_CLASSES = {"federal_mcp", "official_web", "other_web"}
 MONEY_TERMS = ("value", "obligation", "cost", "price", "funding", "fee", "amount")
+# Reader-facing evidence-basis claims that assert no live research happened.
+SUPPLIED_ONLY_CLAIMS = (
+    "Supplied evidence only",
+    "No public research performed",
+    "No external query recorded",
+)
+# Reader-facing evidence-basis claims that assert live research happened.
+LIVE_RESEARCH_CLAIM = re.compile(r"\b(?:public-source|live)\b.*\bresearch\b", re.I)
+MIDNIGHT_TIMESTAMP = re.compile(r"T00:00(?::00(?:\.0+)?)?(?:Z|[+-]00:00)?$")
 
 
 def rendered_totals(label: str, total: float) -> set[str]:
@@ -116,6 +125,35 @@ def validate(document_path: Path, record_path: Path) -> dict:
             failures.append("incomplete internal context is not labeled as a conditional pursuit posture")
         if re.search(r"\b(?:recommend(?:ation)?|decision)\s*:\s*(?:bid|no[- ]bid)\b", text, re.I):
             failures.append("brief makes a bid decision without complete internal context")
+    logged_calls = [item for item in record.get("queries", []) if isinstance(item, dict)]
+    basis_lines = [
+        paragraph.text
+        for paragraph in document.paragraphs
+        if paragraph.text.startswith("As of ") and " | " in paragraph.text
+    ]
+    if not basis_lines:
+        failures.append("evidence-basis line is missing (expected an 'As of <date> | <basis>' line)")
+    for line in basis_lines:
+        supplied_only_claims = [claim for claim in SUPPLIED_ONLY_CLAIMS if claim in line]
+        if logged_calls and supplied_only_claims:
+            failures.append(
+                f"evidence-basis line claims '{supplied_only_claims[0]}'"
+                f" but the research record logs {len(logged_calls)} live source call(s)"
+            )
+        if not logged_calls and LIVE_RESEARCH_CLAIM.search(line):
+            failures.append(
+                "evidence-basis line claims live research but the research record logs no source calls"
+            )
+    retrieval_times = [
+        str(item.get("retrieved_at") or "").strip()
+        for item in logged_calls + [item for item in record.get("evidence", []) if isinstance(item, dict)]
+        if str(item.get("retrieved_at") or "").strip()
+    ]
+    if len(retrieval_times) >= 3 and all(MIDNIGHT_TIMESTAMP.search(value) for value in retrieval_times):
+        failures.append(
+            f"all {len(retrieval_times)} retrieval timestamps are midnight-exact placeholders;"
+            " record actual retrieval times for each source call"
+        )
     evidence = [item for item in record.get("evidence", []) if isinstance(item, dict)]
     for item in evidence:
         if item.get("source_class") not in FEDERAL_SOURCE_CLASSES:

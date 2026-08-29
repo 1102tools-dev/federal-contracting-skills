@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -207,6 +208,20 @@ def require_route_value(record: dict, field: str, purpose: str) -> list[dict]:
             "return a concise evidence-acquisition note instead"
         )
     return rows
+
+
+def action_name(item: object) -> str:
+    """Short reader label for an action row so a closing table can point back to
+    the lead Next practical actions table instead of repeating its Action and
+    Output text verbatim."""
+    if isinstance(item, dict):
+        text = str(item.get("action") or "No approved action was recorded.")
+    else:
+        text = str(item)
+    name = re.split(r"[.;:]", text, maxsplit=1)[0].strip()
+    if len(name) > 72:
+        name = name[:69].rstrip() + "..."
+    return name or text
 
 
 def with_evidence(item: dict, field: str, id_map: dict[str, str] | None = None) -> str:
@@ -487,9 +502,6 @@ def build(record: dict, output: Path) -> None:
         note.add_run("Completion boundary: ").bold = True
         note.add_run("Missing " + ", ".join(missing_classes) + ". This product must remain a desk-research draft.")
 
-    if route == "complete_report":
-        document.add_page_break()
-
     def add_findings_block(empty: str = "No approved finding was recorded.") -> None:
         if not findings:
             document.add_paragraph(empty)
@@ -527,7 +539,12 @@ def build(record: dict, output: Path) -> None:
 
     scope = record.get("scope", {})
     if route == "complete_report":
-        document.add_heading("Acquisition and decision frame", level=1)
+        # Start the report body on a fresh page without an explicit break
+        # paragraph: an empty paragraph that carries only a page-break run can
+        # land alone on a page and render an entirely blank page when the
+        # first-page content already spills past one page.
+        frame_heading = document.add_heading("Acquisition and decision frame", level=1)
+        frame_heading.paragraph_format.page_break_before = True
         document.add_paragraph(record.get("question", "Not provided"))
         add_table(document, ["Scope field", "Working value"], [[pretty_label(key), display_value(value)] for key, value in scope.items()], [2.0, 4.9])
         document.add_heading("Context and assumptions", level=2)
@@ -573,15 +590,27 @@ def build(record: dict, output: Path) -> None:
             [0.85, 1.25, 2.3, 2.5],
         )
 
+        # The lead Next practical actions table already carries the full
+        # Owner/Action/Output text for these same actions, so the execution
+        # plan adds only the timing and a short action name plus a
+        # cross-reference instead of repeating the action text verbatim.
         document.add_heading("Research execution plan", level=1)
+        plan_items = validation.get("next_actions", []) or fallbacks["next_actions"]
         add_table(
             document,
-            ["When", "Owner", "Action", "Output"],
-            structured_rows(
-                validation.get("next_actions", []) or fallbacks["next_actions"],
-                [("when", "Next"), ("owner", "Acquisition team"), ("action", "No approved action was recorded."), ("output", "Not recorded")],
-            ),
-            [0.9, 1.35, 3.15, 1.5],
+            ["When", "Action"],
+            [
+                [
+                    str(item.get("when") or "Next") if isinstance(item, dict) else "Next",
+                    action_name(item),
+                ]
+                for item in plan_items
+            ],
+            [1.6, 5.3],
+        )
+        document.add_paragraph(
+            "Full owner, action, and output text for each row is consolidated in the "
+            "Next practical actions table at the start of this document."
         )
 
         document.add_heading("Human-owned decisions and unknowns", level=1)

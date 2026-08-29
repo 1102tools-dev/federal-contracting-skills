@@ -198,6 +198,12 @@ def refresh_record() -> dict:
     }
 
 
+def complete_record() -> dict:
+    return json.loads(
+        (ROOT / "tests/fixtures/market-research-record.json").read_text(encoding="utf-8")
+    )
+
+
 def build(record: dict, directory: str) -> Path:
     record_path = Path(directory) / "record.json"
     output = Path(directory) / "report.docx"
@@ -294,6 +300,73 @@ class FocusedRouteRenderingTests(unittest.TestCase):
         self.fail("fontTable.xml part is missing")
 
 
+class CompleteRouteRenderingTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.directory = tempfile.TemporaryDirectory()
+        record = complete_record()
+        record["validation"]["next_actions"] = [
+            {
+                "when": "Within 2 weeks",
+                "owner": "Market research lead",
+                "action": "Issue the market engagement instrument to the candidate vendor population and collect comparable delivery evidence.",
+                "output": "Approved evidence-register updates before the strategy decision",
+            },
+            {
+                "when": "Before acquisition strategy",
+                "owner": "Contracting Officer",
+                "action": "Review the collected capability evidence and confirm whether the competition assumption still holds.",
+                "output": "Documented competition assessment for the strategy decision",
+            },
+        ]
+        cls.record = record
+        cls.output = build(record, cls.directory.name)
+        cls.document = Document(cls.output)
+        cls.text = document_text(cls.document)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.directory.cleanup()
+
+    def test_no_stray_page_break_paragraph_after_completion_boundary(self):
+        # The forced break used to be an empty paragraph carrying only a
+        # page-break run, which could land alone on a page and render an
+        # entirely blank page. The body page start is now a paragraph property
+        # on the first body heading, so no page-break run exists at all.
+        breaks = [
+            br
+            for br in self.document.element.body.iter(qn("w:br"))
+            if br.get(qn("w:type")) == "page"
+        ]
+        self.assertEqual(breaks, [])
+        heading = next(
+            p for p in self.document.paragraphs if p.text == "Acquisition and decision frame"
+        )
+        self.assertTrue(heading.paragraph_format.page_break_before)
+
+    def test_execution_plan_cross_references_lead_actions(self):
+        lead_tables = [
+            table
+            for table in self.document.tables
+            if [cell.text for cell in table.rows[0].cells] == ["Owner", "Action", "Output or gate"]
+        ]
+        self.assertEqual(len(lead_tables), 1)
+        plan_tables = [
+            table
+            for table in self.document.tables
+            if [cell.text for cell in table.rows[0].cells] == ["When", "Action"]
+        ]
+        self.assertEqual(len(plan_tables), 1)
+        plan_text = "\n".join(
+            cell.text for row in plan_tables[0].rows for cell in row.cells
+        )
+        for item in self.record["validation"]["next_actions"]:
+            self.assertIn(item["when"], plan_text)
+            self.assertNotIn(item["action"], plan_text)
+            self.assertNotIn(item["output"], plan_text)
+        self.assertIn("consolidated in the Next practical actions table", self.text)
+
+
 class ReportValidatorTokenTests(unittest.TestCase):
     def test_report_validator_rejects_rendered_internal_class_token(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -388,6 +461,62 @@ class RecordLanguageValidationTests(unittest.TestCase):
         gap_result = self.validator.validate_record(gapped)
         self.assertEqual(gap_result["status"], "fail")
         self.assertTrue(any("contiguous starting at E001" in item for item in gap_result["failures"]))
+
+
+class DanglingCitationValidationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.validator = load_module(
+            SCRIPTS / "validate_research_record.py",
+            "market_record_validator_citations",
+        )
+
+    def test_record_with_resolving_citations_passes(self):
+        record = refresh_record()
+        record["validation"]["change_assessment"] += " Registrant contraction is documented [E003]."
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "pass", result["failures"])
+
+    def test_dangling_text_citation_fails_with_named_identifier(self):
+        record = refresh_record()
+        record["validation"]["change_assessment"] += " Registrant contraction is documented [E026]."
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "fail")
+        self.assertTrue(
+            any("dangling evidence citations" in item and "E026" in item for item in result["failures"]),
+            result["failures"],
+        )
+
+    def test_dangling_validation_evidence_ids_entry_fails(self):
+        record = refresh_record()
+        record["validation"]["refresh_comparison"][0]["evidence_ids"] = ["E026"]
+        result = self.validator.validate_record(record)
+        self.assertEqual(result["status"], "fail")
+        self.assertTrue(
+            any("dangling evidence citations" in item and "E026" in item for item in result["failures"]),
+            result["failures"],
+        )
+
+    def test_report_validator_rejects_dangling_rendered_citation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = build(refresh_record(), directory)
+            document = Document(output)
+            document.add_paragraph("Registrant contraction is documented [E026].")
+            document.save(output)
+            check = subprocess.run(
+                [
+                    PYTHON,
+                    str(SCRIPTS / "validate_market_research_report.py"),
+                    str(output),
+                    "--record",
+                    str(Path(directory) / "record.json"),
+                ],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(check.returncode, 0)
+            self.assertIn("dangling evidence citations", check.stdout + check.stderr)
+            self.assertIn("E026", check.stdout + check.stderr)
 
 
 if __name__ == "__main__":

@@ -209,6 +209,39 @@ def narrative_format_audit(workbook: Any) -> list[str]:
     return failures
 
 
+MAX_PORTRAIT_COLUMNS = 8
+
+
+def _used_column_count(sheet: Any) -> int:
+    widest = 0
+    for row in sheet.iter_rows():
+        for cell in row:
+            if cell.value is not None and cell.column > widest:
+                widest = cell.column
+    return widest
+
+
+def print_setup_audit(workbook: Any) -> list[str]:
+    """Every canonical sheet must print cleanly: print area, fitToPage, landscape when wide."""
+    failures: list[str] = []
+    for sheet_name in REQUIRED_SHEETS:
+        if sheet_name not in workbook.sheetnames:
+            continue
+        sheet = workbook[sheet_name]
+        if not sheet.print_area:
+            failures.append(f"{sheet_name} has no print area set over the populated range")
+        page_setup_properties = sheet.sheet_properties.pageSetUpPr
+        if page_setup_properties is None or not page_setup_properties.fitToPage:
+            failures.append(f"{sheet_name} does not enable fitToPage scaling")
+        used_columns = _used_column_count(sheet)
+        if used_columns > MAX_PORTRAIT_COLUMNS and sheet.page_setup.orientation != "landscape":
+            failures.append(
+                f"{sheet_name} uses {used_columns} columns in portrait orientation; sheets wider "
+                f"than {MAX_PORTRAIT_COLUMNS} used columns must print landscape"
+            )
+    return failures
+
+
 def is_recost_workbook(workbook: Any) -> bool:
     for sheet in workbook.worksheets:
         for row in sheet.iter_rows(min_row=1, max_row=3):
@@ -352,6 +385,7 @@ def structural_audit(workbook: Any, payload: dict[str, Any]) -> list[str]:
     failures.extend(labor_benchmark_audit(workbook))
     failures.extend(hours_reconciliation_audit(workbook))
     failures.extend(narrative_format_audit(workbook))
+    failures.extend(print_setup_audit(workbook))
     if is_recost_workbook(workbook):
         failures.extend(recost_audit(workbook, payload))
 

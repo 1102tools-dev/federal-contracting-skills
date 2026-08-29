@@ -96,6 +96,7 @@ class OtCachedErrorAuditTests(unittest.TestCase):
 
 
 from openpyxl.styles import Alignment
+from openpyxl.worksheet.properties import PageSetupProperties
 
 
 def _workbook_with_detail():
@@ -213,6 +214,59 @@ class OtNarrativeFormatAuditTests(unittest.TestCase):
         workbook = self._summary_with_description(width=32, wrap=True)
 
         self.assertEqual(self.validator.narrative_format_audit(workbook), [])
+
+
+class OtPrintSetupAuditTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.validator = load_validator()
+
+    def _canonical_workbook(self, *, print_ready):
+        workbook = Workbook()
+        workbook.active.title = "OT Cost Summary"
+        for sheet_name in self.validator.REQUIRED_SHEETS[1:]:
+            workbook.create_sheet(sheet_name)
+        for sheet_name in self.validator.REQUIRED_SHEETS:
+            sheet = workbook[sheet_name]
+            sheet["A1"] = f"{sheet_name} title"
+            sheet["F4"] = "content"
+            if print_ready:
+                sheet.print_area = "A1:F10"
+                sheet.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
+                sheet.page_setup.orientation = "landscape"
+        return workbook
+
+    def test_missing_print_area_and_fit_to_page_fails(self):
+        workbook = self._canonical_workbook(print_ready=False)
+
+        failures = self.validator.print_setup_audit(workbook)
+
+        self.assertIn("OT Cost Summary has no print area set over the populated range", failures)
+        self.assertIn("OT Cost Summary does not enable fitToPage scaling", failures)
+        self.assertEqual(len(failures), 2 * len(self.validator.REQUIRED_SHEETS))
+
+    def test_wide_sheet_in_portrait_fails(self):
+        workbook = self._canonical_workbook(print_ready=True)
+        detail = workbook["Milestone Detail"]
+        detail.page_setup.orientation = "portrait"
+        detail.cell(row=4, column=11, value="Rate")
+
+        failures = self.validator.print_setup_audit(workbook)
+
+        self.assertEqual(len(failures), 1)
+        self.assertIn("Milestone Detail uses 11 columns in portrait orientation", failures[0])
+        self.assertIn("must print landscape", failures[0])
+
+    def test_conforming_print_setup_passes(self):
+        workbook = self._canonical_workbook(print_ready=True)
+
+        self.assertEqual(self.validator.print_setup_audit(workbook), [])
+
+    def test_narrow_sheet_in_portrait_passes(self):
+        workbook = self._canonical_workbook(print_ready=True)
+        workbook["Methodology"].page_setup.orientation = "portrait"
+
+        self.assertEqual(self.validator.print_setup_audit(workbook), [])
 
 
 class OtRecostAuditTests(unittest.TestCase):

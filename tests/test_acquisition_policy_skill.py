@@ -364,6 +364,105 @@ class PolicyRenderingTests(unittest.TestCase):
         self.assertTrue(any("outside the documented-status vocabulary" in failure for failure in failures), failures)
 
 
+class PolicyFocusedRouteValidationTests(unittest.TestCase):
+    """Regression coverage for per-route validator structure: a focused-route
+    product must validate against its own route-native headings, not the full
+    Impact Brief section list, and the impact_brief route must keep requiring
+    the full twelve-section structure."""
+
+    ROUTE_HEADINGS = {
+        "current_rule": ["Current Rule Card"],
+        "agency_status": ["Agency Adoption Status"],
+        "three_layer": ["Three-Layer Comparison and Adoption Test"],
+        "rulemaking": ["Rulemaking Milestones and Next Trigger"],
+        "refresh": ["Refresh Change Register"],
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        cls.docx_validator = load_module(
+            SKILL / "scripts" / "validate_acquisition_policy_brief.py",
+            "policy_docx_validator_route_tests",
+        )
+
+    def route_record(self, mode: str) -> dict:
+        record = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        record["workflow_mode"] = mode
+        if mode == "refresh":
+            record["scope"]["prior_analysis"] = {"title": "FAR Part 10 status analysis", "date": "2026-05-01"}
+            record["validation"]["refresh_changes"] = [
+                {
+                    "issue": "GSA deviation status",
+                    "prior_conclusion": "Deviation posted and current",
+                    "current_evidence": "Deviation remains posted",
+                    "delta": "Unchanged",
+                    "planning_consequence": "Continue from the documented baseline",
+                    "evidence_ids": ["E003"],
+                }
+            ]
+        return record
+
+    def build_docx(self, record: dict, directory: str) -> tuple[Path, Path]:
+        record_path = Path(directory) / "record.json"
+        record_path.write_text(json.dumps(record), encoding="utf-8")
+        output = Path(directory) / "product.docx"
+        build = subprocess.run(
+            [PYTHON, str(SKILL / "scripts" / "build_acquisition_policy_brief.py"), str(record_path), str(output)],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+        return output, record_path
+
+    def test_focused_routes_validate_against_route_native_structure(self):
+        from docx import Document
+
+        for mode, payload_headings in self.ROUTE_HEADINGS.items():
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                output, record_path = self.build_docx(self.route_record(mode), directory)
+                result = self.docx_validator.validate(output, record_path)
+                self.assertEqual(result["status"], "pass", (mode, result["failures"]))
+                headings = [
+                    paragraph.text.strip()
+                    for paragraph in Document(str(output)).paragraphs
+                    if getattr(paragraph.style, "name", "") == "Heading 1"
+                ]
+                for heading in payload_headings:
+                    self.assertIn(heading, headings, mode)
+                self.assertNotIn("Question and Scope", headings, mode)
+                self.assertNotIn("Planning Scenarios", headings, mode)
+
+    def test_focused_route_cli_passes_current_rule_product(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output, record_path = self.build_docx(self.route_record("current_rule"), directory)
+            check = subprocess.run(
+                [
+                    PYTHON,
+                    str(SKILL / "scripts" / "validate_acquisition_policy_brief.py"),
+                    str(output),
+                    "--record",
+                    str(record_path),
+                ],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
+
+    def test_impact_brief_route_still_requires_full_structure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output, _ = self.build_docx(self.route_record("current_rule"), directory)
+            brief_record = json.loads(FIXTURE.read_text(encoding="utf-8"))
+            self.assertEqual(brief_record["workflow_mode"], "impact_brief")
+            brief_record_path = Path(directory) / "brief-record.json"
+            brief_record_path.write_text(json.dumps(brief_record), encoding="utf-8")
+            result = self.docx_validator.validate(output, brief_record_path)
+            self.assertEqual(result["status"], "fail")
+            self.assertTrue(
+                any("missing Heading 1 section: Question and Scope" in failure for failure in result["failures"]),
+                result["failures"],
+            )
+
+
 class PolicyArtifactTests(unittest.TestCase):
     def test_build_and_validate_brief(self):
         with tempfile.TemporaryDirectory() as directory:

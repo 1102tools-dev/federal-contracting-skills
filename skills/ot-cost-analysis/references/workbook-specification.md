@@ -10,6 +10,10 @@ Build one `.xlsx` with exactly these seven sheets:
 6. `Methodology`
 7. `Raw Data`
 
+This sheet set is the delivery contract. A bespoke sheet layout is not permitted
+even when its content is correct; `validate_workbook.py` rejects any workbook
+missing a canonical sheet, and a rejected workbook is not deliverable.
+
 ## 1. OT Cost Summary
 
 ### First-view decision dashboard
@@ -225,3 +229,10 @@ additionally MUST:
   `OT Cost Summary` title, decision dashboard, milestone totals, contribution
   treatment, and next action must remain on one page wide when printed or exported.
   Never split the dashboard horizontally.
+- Print setup is validated, not optional. Every canonical sheet must carry an
+  explicit print area over the populated range (`ws.print_area`) and enable
+  fit-to-page scaling (`ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)`
+  in openpyxl; the property object must exist with `fitToPage` true). Any sheet
+  wider than 8 used columns must set `ws.page_setup.orientation = "landscape"`.
+  `validate_workbook.py` fails the workbook when any canonical sheet misses any
+  of these.

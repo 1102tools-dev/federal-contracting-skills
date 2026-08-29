@@ -75,6 +75,45 @@ def multi_period_workbook(handling_value=0) -> Workbook:
     return workbook
 
 
+def scenario_period_workbook(
+    mid_values=(2500000.0, 2562500.0, 2626562.5), zeroed=False
+) -> Workbook:
+    """Multi-period fixture with a Scenario Analysis period-totals table.
+
+    The IGCE Summary per-period totals are always the nonzero mid_values; the
+    scenario table carries the same values unless zeroed is set, which models a
+    stale-formula workbook whose cached scenario results collapsed to zero.
+    """
+    workbook = multi_period_workbook()
+    scenario_values = (0.0, 0.0, 0.0) if zeroed else mid_values
+
+    summary = workbook["IGCE Summary"]
+    summary["B20"] = mid_values[0]
+    summary["B21"] = mid_values[1]
+    summary["B22"] = mid_values[2]
+    summary["A23"] = "TOTAL ALL PERIODS"
+    summary["B23"] = sum(mid_values)
+
+    register = workbook["Raw Data"]
+    register["A1"] = "Per-period labor totals"
+    for offset, amount in enumerate((*mid_values, sum(mid_values))):
+        register.cell(row=2 + offset, column=1, value=amount)
+
+    scenario = workbook["Scenario Analysis"]
+    scenario["A20"] = "PERIOD TOTALS FROM THE BURDENED RATES ABOVE"
+    scenario["A21"] = "Period"
+    scenario["B21"] = "Labor (Mid)"
+    scenario["A22"] = "Base Year"
+    scenario["B22"] = scenario_values[0]
+    scenario["A23"] = "Option Year 1"
+    scenario["B23"] = scenario_values[1]
+    scenario["A24"] = "Option Year 2"
+    scenario["B24"] = scenario_values[2]
+    scenario["A25"] = "TOTAL LABOR, ALL PERIODS"
+    scenario["B25"] = sum(scenario_values)
+    return workbook
+
+
 def multi_period_payload() -> dict:
     payload = fixture_payload()
     payload["assumptions"]["periods"] = 3
@@ -199,6 +238,44 @@ class LhTmMaterialHandlingValidatorTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(json.loads(result.stdout)["status"], "pass")
+
+    def test_scenario_period_totals_tied_to_summary_pass(self):
+        result = self._run(scenario_period_workbook(), multi_period_payload())
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)["status"], "pass")
+
+    def test_zeroed_scenario_period_totals_fail(self):
+        result = self._run(
+            scenario_period_workbook(zeroed=True), multi_period_payload()
+        )
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        failures = json.loads(result.stdout)["failures"]
+        self.assertTrue(
+            any(
+                "are all zero while IGCE Summary per-period totals are nonzero"
+                in failure
+                for failure in failures
+            ),
+            failures,
+        )
+
+    def test_scenario_period_total_off_by_more_than_one_dollar_fails(self):
+        workbook = scenario_period_workbook()
+        workbook["Scenario Analysis"]["B22"] = 2500005.0
+
+        result = self._run(workbook, multi_period_payload())
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        failures = json.loads(result.stdout)["failures"]
+        self.assertTrue(
+            any(
+                "no IGCE Summary amount for that period is within $1" in failure
+                for failure in failures
+            ),
+            failures,
+        )
 
     def _run(self, workbook: Workbook, payload: dict) -> subprocess.CompletedProcess[str]:
         with tempfile.TemporaryDirectory() as directory:

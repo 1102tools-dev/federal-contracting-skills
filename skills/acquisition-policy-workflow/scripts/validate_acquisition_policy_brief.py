@@ -29,11 +29,19 @@ REQUIRED_HEADINGS = [
     "Evidence Register",
     "Limitations and Reserved Determinations",
 ]
+# Route-native payload Heading 1 sections for each focused product; see
+# references/report-specification.md ("Per-route required payload and the
+# shared-framing cap"). The full twelve-section REQUIRED_HEADINGS structure is
+# reserved for the Acquisition Policy Impact Brief.
 FOCUSED_HEADINGS = {
-    "change_brief": "Before/After Change Map",
-    "watchlist": "Open Rulemaking Watchlist",
-    "comments": "Comment Sample and Theme Coverage",
-    "refresh": "Refresh Change Register",
+    "current_rule": ["Current Rule Card"],
+    "agency_status": ["Agency Adoption Status"],
+    "three_layer": ["Three-Layer Comparison and Adoption Test"],
+    "change_brief": ["Before/After Change Map"],
+    "rulemaking": ["Rulemaking Milestones and Next Trigger"],
+    "watchlist": ["Open Rulemaking Watchlist"],
+    "comments": ["Comment Sample and Theme Coverage", "Coded themes and acquisition implications"],
+    "refresh": ["Refresh Change Register"],
 }
 FORBIDDEN = [
     re.compile(r"\bmcp__|/mnt/|/Users/|[A-Za-z]:\\", re.I),
@@ -110,7 +118,22 @@ def focused_evidence_ids(record: dict) -> set[str]:
         "comments": ("focused_findings", "focused_impacts", "planning_posture", "decision_gates", "comment_themes"),
         "refresh": ("focused_findings", "focused_impacts", "planning_posture", "decision_gates", "refresh_changes", "carry_forward_decisions"),
     }
-    return collect_evidence_ids({field: validation.get(field) for field in route_fields.get(mode, ())})
+    ids = collect_evidence_ids({field: validation.get(field) for field in route_fields.get(mode, ())})
+    # Record-native routes render evidence from the approved record itself, not
+    # from validation payload rows; require that cited evidence in the product.
+    if mode == "current_rule":
+        ids |= collect_evidence_ids([
+            item
+            for item in record.get("policy_items", [])
+            if item.get("status") in {"codified_current", "model_deviation", "agency_class_deviation"}
+        ])
+    elif mode in {"agency_status", "three_layer"}:
+        ids |= collect_evidence_ids(record.get("policy_items", []))
+    elif mode == "rulemaking":
+        ids |= collect_evidence_ids(record.get("timeline", []))
+    if mode in {"current_rule", "agency_status", "three_layer", "rulemaking"}:
+        ids |= collect_evidence_ids({field: validation.get(field) for field in ("planning_posture", "decision_gates")})
+    return ids
 
 
 def status_vocabulary_failures(document: Document) -> list[str]:
@@ -191,7 +214,7 @@ def validate(document_path: Path, record_path: Path) -> dict:
         [
             "Planning Posture and Implications",
             "Owners and Decision Gates",
-            FOCUSED_HEADINGS[mode],
+            *FOCUSED_HEADINGS[mode],
             "Management Actions",
             "Evidence and Source Notes",
             "Limitations and Reserved Determinations",

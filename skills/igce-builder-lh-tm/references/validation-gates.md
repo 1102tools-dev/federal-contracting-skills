@@ -15,6 +15,7 @@ The bundled validator checks:
 - For a multi-period requirement (`assumptions.periods` greater than 1, reconciled with `IGCE Summary!B14`), the summary shows per-period totals for the base and each option period; a one-year headline total for a multi-period requirement fails.
 - In a multi-period estimate, the Escalation Rate input is referenced by at least one formula; a dead escalation input fails.
 - Every money constant of $1,000 or more on `IGCE Summary` has a matching entry in the `Raw Data` refresh register.
+- The Scenario Analysis period-totals table ties to the `IGCE Summary` per-period totals. Using the workbook's calculated values, money-labeled scenario cells that are all zero while the summary totals are nonzero fail (the signature of a stale SUMPRODUCT range), and every current-assumptions (mid) scenario figure must agree with a summary amount for the same period within $1.
 - Custom formula assertions from the JSON sidecar pass.
 
 ## Independent recomputation

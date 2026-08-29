@@ -10,6 +10,12 @@ Internal harness vocabulary is prohibited in every reader-visible field, includi
 
 Every evidence row sourced from federal data (`federal_mcp`, `official_web`, `other_web`) must carry a checkable locator a reader can independently verify: a SAM.gov notice ID, award PIID, UEI, docket number, or public URL, plus the retrieval date. Never state that locators "were not preserved"; if a locator was not captured, the evidence row is not usable in the deliverable. The brief validator errors on federal evidence rows with an empty locator.
 
+## Honest evidence basis and real retrieval times
+
+The page-one evidence-basis line must match the research record. If the record logs any live source call (federal MCP, official web, or public web), the line may not claim "Supplied evidence only", "No public research performed", or "No external query recorded"; declining public web research does not make federal data calls disappear, and the correct line in that case acknowledges live federal data research while noting that no public web research was performed. Conversely, a line that claims live or public-source research is prohibited when the record logs no source calls. The brief validator errors on either contradiction.
+
+Retrieval timestamps are the actual clock times of the source calls, never a placeholder. When the record carries three or more retrieval timestamps and every one of them is midnight-exact (T00:00:00Z or an equivalent), the brief validator errors and directs the author to record actual retrieval times. A single midnight value among real times is accepted.
+
 ## Design
 
 Use US Letter, 0.75 to 1 inch margins, Aptos or Arial body text, restrained color, accessible contrast, page numbers, and real Word heading styles. First pages are decision pages, not generic covers: the title, business question, one decisive insight, and next action must be visible without turning a page. Use an appropriate route accent and layout: shortlist (pipeline cards), screen (decision dashboard), competitor (positioning map), recompete (radar table), teaming (decision card), account plan (market thesis), pricing (rate band), and refresh (delta ledger). Repeat table headers where the renderer preserves the printable margin. Use landscape only for wide evidence tables.

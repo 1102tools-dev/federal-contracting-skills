@@ -54,6 +54,21 @@ MONEY_KEYWORDS = (
     "ESTIMATE",
 )
 NON_MONEY_KEYWORDS = ("HOUR", "FTE", "MONTH", "SOC", "PERIODS")
+PERIOD_TOTAL_LABEL = re.compile(
+    r"\bTOTAL\b.*\bALL\s+(?:PERIODS|YEARS)\b|\bALL\s+(?:PERIODS|YEARS)\b.*\bTOTAL\b"
+)
+SCENARIO_MONEY_KEYWORDS = MONEY_KEYWORDS + ("LABOR",)
+SCENARIO_NON_MONEY_HEADERS = (
+    "FACTOR",
+    "MULTIPLIER",
+    "RATE",
+    "HOUR",
+    "FTE",
+    "ESCALATION",
+    "PERCENT",
+)
+SUMMARY_PERIOD_SKIP = ("MONTH", "HOUR", "FTE", "SOC")
+PERIOD_TIE_TOLERANCE = 1.0
 
 
 def normalize_formula(value: Any) -> str:
@@ -273,6 +288,118 @@ def summary_constant_audit(workbook: Any) -> list[str]:
                 f"({str(label).strip() or 'unlabeled line'}) with no matching entry in "
                 "the Raw Data refresh register; every summary money line must trace to a "
                 "detail sheet or assumptions input and appear in the register"
+            )
+    return failures
+
+
+def _period_key(label: str) -> tuple[Any, ...] | None:
+    """Classify a row label as a period key: total, option N, or base."""
+    if PERIOD_TOTAL_LABEL.search(label):
+        return ("total",)
+    match = OPTION_PERIOD_LABEL.search(label)
+    if match:
+        return ("option", int(match.group(1) or match.group(2)))
+    if BASE_PERIOD_LABEL.search(label):
+        return ("base",)
+    return None
+
+
+def _period_name(key: tuple[Any, ...]) -> str:
+    if key[0] == "total":
+        return "the all-periods total"
+    if key[0] == "option":
+        return f"option period {key[1]}"
+    return "the base period"
+
+
+def _row_label(row: tuple[Any, ...]) -> str:
+    return next(
+        (c.value for c in row if isinstance(c.value, str) and c.value.strip()), ""
+    ).upper()
+
+
+def scenario_period_tie_audit(values_workbook: Any) -> list[str]:
+    """Require Scenario Analysis period money figures to tie to IGCE Summary.
+
+    Runs on calculated (data_only) values, so a stale formula whose text looks
+    plausible but whose result is zero is still caught. Money-labeled scenario
+    period cells that are all zero while the summary per-period totals are
+    nonzero fail outright; otherwise every current-assumptions (mid) scenario
+    figure must agree with an IGCE Summary amount for the same period within $1.
+    Cells with no calculated value available are skipped.
+    """
+    failures: list[str] = []
+    if (
+        "Scenario Analysis" not in values_workbook.sheetnames
+        or "IGCE Summary" not in values_workbook.sheetnames
+    ):
+        return failures
+
+    summary_periods: dict[tuple[Any, ...], list[tuple[str, float]]] = {}
+    for row in values_workbook["IGCE Summary"].iter_rows():
+        label = _row_label(row)
+        key = _period_key(label)
+        if key is None or any(word in label for word in SUMMARY_PERIOD_SKIP):
+            continue
+        for cell in row:
+            if _is_number(cell.value):
+                summary_periods.setdefault(key, []).append(
+                    (cell.coordinate, float(cell.value))
+                )
+
+    scenario = values_workbook["Scenario Analysis"]
+    money_cells: list[tuple[tuple[Any, ...], Any, str]] = []
+    for row in scenario.iter_rows():
+        key = _period_key(_row_label(row))
+        if key is None:
+            continue
+        for cell in row:
+            if not _is_number(cell.value):
+                continue
+            header = _nearest_header(scenario, cell.row, cell.column, limit=10)
+            if any(word in header for word in SCENARIO_NON_MONEY_HEADERS):
+                continue
+            if not any(word in header for word in SCENARIO_MONEY_KEYWORDS):
+                continue
+            money_cells.append((key, cell, header))
+    if not money_cells:
+        return failures
+
+    summary_nonzero = any(
+        abs(amount) > PERIOD_TIE_TOLERANCE
+        for entries in summary_periods.values()
+        for _, amount in entries
+    )
+    if summary_nonzero and all(
+        abs(float(cell.value)) < 0.005 for _, cell, _ in money_cells
+    ):
+        coordinates = ", ".join(cell.coordinate for _, cell, _ in money_cells)
+        failures.append(
+            f"Scenario Analysis period-totals money cells ({coordinates}) are all zero "
+            "while IGCE Summary per-period totals are nonzero; the scenario table is "
+            "disconnected from the live summary figures (check the formulas for stale "
+            "ranges that point at the wrong rows)"
+        )
+        return failures
+
+    has_mid = any("MID" in h or "POINT" in h for _, _, h in money_cells)
+    for key, cell, header in money_cells:
+        if has_mid and "MID" not in header and "POINT" not in header:
+            continue
+        entries = summary_periods.get(key)
+        if not entries:
+            continue
+        value = float(cell.value)
+        if not any(
+            abs(value - amount) <= PERIOD_TIE_TOLERANCE for _, amount in entries
+        ):
+            closest = min(entries, key=lambda item: abs(value - item[1]))
+            failures.append(
+                f"Scenario Analysis!{cell.coordinate} shows {value:,.2f} for "
+                f"{_period_name(key)} under current assumptions but no IGCE Summary "
+                f"amount for that period is within $1 (closest is IGCE Summary!"
+                f"{closest[0]} at {closest[1]:,.2f}); the scenario period totals must "
+                "tie to the IGCE Summary per-period totals"
             )
     return failures
 
@@ -681,6 +808,8 @@ def main() -> int:
         structural_failures.extend(escalation_input_audit(formula_workbook, periods))
         structural_failures.extend(summary_constant_audit(formula_workbook))
         failures = list(structural_failures)
+        values_workbook = load_workbook(args.workbook, data_only=True)
+        failures.extend(scenario_period_tie_audit(values_workbook))
     except (InputError, OSError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
@@ -704,6 +833,9 @@ def main() -> int:
                 calculated_workbook = load_workbook(recalculated, data_only=True)
                 failures.extend(cached_error_audit(calculated_workbook))
                 failures.extend(compare_results(calculated_workbook, expected, args.tolerance))
+                for failure in scenario_period_tie_audit(calculated_workbook):
+                    if failure not in failures:
+                        failures.append(failure)
                 engine_used = "LibreOffice"
                 engine_note = "LibreOffice formula execution and cached-value comparison ran."
     except (InputError, OSError, subprocess.SubprocessError, ValueError) as exc:

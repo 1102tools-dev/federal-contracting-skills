@@ -644,7 +644,13 @@ class ArtifactTests(unittest.TestCase):
             build = subprocess.run([PYTHON, str(builder), str(record_path), str(output)], capture_output=True, text=True)
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
             text = "\n".join(paragraph.text for paragraph in Document(output).paragraphs)
-            self.assertIn("Supplied evidence only | No public research performed", text)
+            # The fixture logs one federal source call, so declining public web
+            # research must not render a supplied-only claim.
+            self.assertIn(
+                "Live federal data research with supplied company context | No public web research performed",
+                text,
+            )
+            self.assertNotIn("Supplied evidence only | No public research performed", text)
             values = [cell.text for table in Document(output).tables for row in table.rows for cell in row.cells]
             self.assertIn("$18,000,000", values)
             self.assertNotIn("Estimated Total Value Usd", values)
@@ -742,6 +748,119 @@ class ArtifactTests(unittest.TestCase):
             )
             self.assertNotEqual(check.returncode, 0)
             self.assertIn("federal evidence E004 has no checkable locator", check.stdout + check.stderr)
+
+    def validate_growth(self, output: Path, record_path: Path) -> subprocess.CompletedProcess:
+        _, validator_path = self.growth_paths()
+        return subprocess.run(
+            [PYTHON, str(validator_path), str(output), "--record", str(record_path)],
+            capture_output=True,
+            text=True,
+        )
+
+    def mutate_growth_record(self, record_path: Path, mutate) -> None:
+        # Apply a post-build mutation so the brief validator sees a record the
+        # builder's own record validation would have rejected.
+        record = json.loads(record_path.read_text(encoding="utf-8"))
+        mutate(record)
+        record_path.write_text(json.dumps(record), encoding="utf-8")
+
+    def rewrite_growth_basis_line(self, output: Path, new_text: str) -> None:
+        document = Document(output)
+        basis = [
+            paragraph
+            for paragraph in document.paragraphs
+            if paragraph.text.startswith("As of ") and " | " in paragraph.text
+        ]
+        self.assertEqual(len(basis), 1)
+        for index, run in enumerate(basis[0].runs):
+            run.text = new_text if index == 0 else ""
+        document.save(output)
+
+    def test_growth_brief_rejects_supplied_only_claim_with_live_calls(self):
+        with tempfile.TemporaryDirectory() as directory:
+            record_path, output = self.build_growth_variant(directory, lambda record: None)
+            self.rewrite_growth_basis_line(
+                output, "As of 2026-08-21 | Supplied evidence only | No public research performed"
+            )
+            check = self.validate_growth(output, record_path)
+            self.assertNotEqual(check.returncode, 0)
+            self.assertIn(
+                "evidence-basis line claims 'Supplied evidence only'"
+                " but the research record logs 1 live source call(s)",
+                check.stdout + check.stderr,
+            )
+
+    def test_growth_brief_rejects_live_research_claim_with_empty_call_log(self):
+        with tempfile.TemporaryDirectory() as directory:
+            record_path, output = self.build_growth_variant(directory, lambda record: None)
+            self.mutate_growth_record(record_path, lambda record: record.update(queries=[]))
+            self.rewrite_growth_basis_line(
+                output, "As of 2026-08-21 | Public-source research with supplied company context"
+            )
+            check = self.validate_growth(output, record_path)
+            self.assertNotEqual(check.returncode, 0)
+            self.assertIn(
+                "evidence-basis line claims live research but the research record logs no source calls",
+                check.stdout + check.stderr,
+            )
+
+    def test_growth_brief_accepts_consistent_evidence_basis_lines(self):
+        with self.subTest(description="live calls with a live-research line"), \
+                tempfile.TemporaryDirectory() as directory:
+            record_path, output = self.build_growth_variant(directory, lambda record: None)
+            check = self.validate_growth(output, record_path)
+            self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
+        with self.subTest(description="no calls with a supplied-only line"), \
+                tempfile.TemporaryDirectory() as directory:
+            record_path, output = self.build_growth_variant(directory, lambda record: None)
+            self.mutate_growth_record(record_path, lambda record: record.update(queries=[]))
+            self.rewrite_growth_basis_line(
+                output, "As of 2026-08-21 | Supplied evidence only | No public research performed"
+            )
+            check = self.validate_growth(output, record_path)
+            self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
+
+    def test_growth_brief_rejects_all_midnight_retrieval_timestamps(self):
+        with tempfile.TemporaryDirectory() as directory:
+            record_path, output = self.build_growth_variant(directory, lambda record: None)
+
+            def mutate(record):
+                record["queries"][0]["retrieved_at"] = "2026-08-21T00:00:00Z"
+                for item in record["evidence"]:
+                    item["retrieved_at"] = "2026-08-21T00:00:00Z"
+            self.mutate_growth_record(record_path, mutate)
+            check = self.validate_growth(output, record_path)
+            self.assertNotEqual(check.returncode, 0)
+            self.assertIn(
+                "all 5 retrieval timestamps are midnight-exact placeholders;"
+                " record actual retrieval times for each source call",
+                check.stdout + check.stderr,
+            )
+
+    def test_growth_brief_accepts_single_midnight_timestamp_among_real_times(self):
+        with tempfile.TemporaryDirectory() as directory:
+            record_path, output = self.build_growth_variant(directory, lambda record: None)
+            self.mutate_growth_record(
+                record_path,
+                lambda record: record["queries"][0].update(retrieved_at="2026-08-21T00:00:00Z"),
+            )
+            check = self.validate_growth(output, record_path)
+            self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
+
+    def test_growth_brief_accepts_two_midnight_timestamps_below_row_threshold(self):
+        with tempfile.TemporaryDirectory() as directory:
+            record_path, output = self.build_growth_variant(directory, lambda record: None)
+
+            def mutate(record):
+                record["queries"][0]["retrieved_at"] = "2026-08-21T00:00:00Z"
+                for item in record["evidence"]:
+                    if item["source_class"] == "federal_mcp":
+                        item["retrieved_at"] = "2026-08-21T00:00:00Z"
+                    else:
+                        item["retrieved_at"] = ""
+            self.mutate_growth_record(record_path, mutate)
+            check = self.validate_growth(output, record_path)
+            self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
 
     def test_growth_brief_later_sections_do_not_restate_page_one_lists(self):
         with tempfile.TemporaryDirectory() as directory:

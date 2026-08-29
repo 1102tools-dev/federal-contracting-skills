@@ -101,6 +101,8 @@ In the first block, Direct Labor Rate Hourly is row 5. Cross-sheet formulas must
 
 Below the blocks, show period totals using the Summary productive-hours and month assumptions. Add travel and materials after labor, never inside burden multiplication.
 
+The current-assumptions (mid) figures in the scenario period-totals table must tie to the `IGCE Summary` per-period totals within $1: the Base Year, each Option Year, and the all-periods labor total must each match the corresponding summary amount. Keep the table's SUMPRODUCT ranges pointed at the live summary rows; if summary rows move, update the ranges. The validator reads the calculated values and rejects a scenario table whose money cells are all zero while the summary totals are nonzero, and rejects any current-assumptions figure that disagrees with the summary by more than $1.
+
 ## 3. Rate Validation
 
 Use columns for labor category, BLS direct rate, multiplier, BLS burdened low/mid/high, CALC+ P25/P50/P75/P90, sample size, divergence from P50, and neutral note. Add title-match and experience-match columns when pools are thin or ambiguous.

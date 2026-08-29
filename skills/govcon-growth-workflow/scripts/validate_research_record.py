@@ -161,6 +161,19 @@ def walk_strings(value: Any, path: str):
         yield path, value
 
 
+def walk_evidence_id_lists(value: Any, path: str):
+    """Yield every evidence_ids list nested anywhere in the given value."""
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key == "evidence_ids" and isinstance(item, list):
+                yield f"{path}.{key}", item
+            else:
+                yield from walk_evidence_id_lists(item, f"{path}.{key}")
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            yield from walk_evidence_id_lists(item, f"{path}[{index}]")
+
+
 def reader_visible_strings(record: dict):
     """Fields a focused-route report renders directly to the paying reader."""
     for index, item in enumerate(record.get("findings", []) or []):
@@ -416,6 +429,27 @@ def validate_record(record: Any, *, purpose: str = "artifact") -> dict[str, Any]
         if parsable and evidence_numbers and sorted(evidence_numbers) != list(range(1, len(evidence_numbers) + 1)):
             failures.append(
                 "evidence IDs must be contiguous starting at E001 with no gaps; renumber the evidence register and update every citation"
+            )
+        # Every [E###] identifier cited in reader-visible text, and every
+        # evidence_ids entry inside the validation block, must resolve to a
+        # register entry; a dangling citation renders a reference the reader
+        # cannot follow.
+        dangling_citations: set[str] = set()
+        for _, value in reader_visible_strings(record):
+            for group in re.findall(r"\[([^\[\]]+)\]", value):
+                for cited in re.findall(r"\bE\d{3,}\b", group):
+                    if cited not in ids["evidence"]:
+                        dangling_citations.add(cited)
+        for _, refs in walk_evidence_id_lists(record.get("validation", {}), "validation"):
+            for cited in refs:
+                if isinstance(cited, str) and ID_PATTERNS["evidence"].fullmatch(cited) and cited not in ids["evidence"]:
+                    dangling_citations.add(cited)
+        if dangling_citations:
+            failures.append(
+                "dangling evidence citations: "
+                + ", ".join(sorted(dangling_citations))
+                + " are cited in reader-visible text but do not exist in the evidence register; "
+                "add the missing evidence entries or correct the citations"
             )
         if record.get("workflow_mode") != "complete_report":
             for path, value in reader_visible_strings(record):

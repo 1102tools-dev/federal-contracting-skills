@@ -270,10 +270,14 @@ def research_basis(record: dict) -> str:
     """Return a reader-facing evidence basis without overstating research performed."""
     web_mode = record.get("web_research", {}).get("mode")
     queries = record.get("queries", [])
+    if queries:
+        # Logged source calls are live research even when public web research
+        # was declined; a supplied-only claim would contradict the record.
+        if web_mode == "no_public_web":
+            return "Live federal data research with supplied company context | No public web research performed"
+        return "Public-source research with supplied company context"
     if web_mode == "no_public_web":
         return "Supplied evidence only | No public research performed"
-    if queries:
-        return "Public-source research with supplied company context"
     return "Supplied company and planning evidence | No external query recorded"
 
 

@@ -169,6 +169,25 @@ def validate(document_path: Path, record_path: Path) -> dict:
     if route == "complete_report" and not complete and "FAR Part 10 Market Research Report" in text:
         failures.append("incomplete evidence is mislabeled as a FAR Part 10 Market Research Report")
     evidence = [item for item in record.get("evidence", []) if isinstance(item, dict)]
+    # Every [E###] identifier rendered in the document must resolve to a row
+    # of the rendered evidence register (the record's own IDs for the complete
+    # report, the renumbered IDs for focused routes).
+    if route == "complete_report":
+        rendered_register_ids = {str(item.get("id")) for item in evidence}
+    else:
+        rendered_register_ids = set(id_map.values())
+    cited_in_document = {
+        cited
+        for group in re.findall(r"\[([^\[\]]+)\]", text)
+        for cited in re.findall(r"\bE\d{3,}\b", group)
+    }
+    dangling = sorted(cited_in_document - rendered_register_ids)
+    if dangling:
+        failures.append(
+            "dangling evidence citations in the document: "
+            + ", ".join(dangling)
+            + " do not appear in the evidence register"
+        )
     numeric_checks = record.get("validation", {}).get("numeric_checks", []) if route == "complete_report" else []
     for index, check in enumerate(numeric_checks):
         expected = sum(float(value) for value in check.get("components", []))

@@ -233,6 +233,8 @@ Read [validation-gates.md](references/validation-gates.md).
 5. Verify the workbook as a ZIP and, when practical, open or render it in a real spreadsheet application.
 6. Fix failures and repeat all layers.
 
+Delivery gate: the workbook must pass the `validate_workbook.py` structural audit with the canonical seven-sheet layout before delivery. Bespoke sheet layouts are not permitted even when the content is correct. A failing validator blocks delivery; never deliver a rejected workbook.
+
 If no spreadsheet engine is available, state exactly:
 
 > Formula structure and independent calculations passed. Formula execution was not independently verified in Excel or LibreOffice.

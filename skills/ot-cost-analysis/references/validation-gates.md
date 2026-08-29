@@ -2,6 +2,12 @@
 
 Run all available layers against the final workbook and rerun after any change.
 
+Delivery gate: the workbook must pass the `validate_workbook.py` structural
+audit with the canonical seven-sheet layout before delivery. A bespoke sheet
+set is not permitted even when its content is correct. A validator failure of
+any kind, including missing canonical sheets or missing print setup, blocks
+delivery; fix and revalidate instead of delivering with caveats.
+
 ## 1. Validation input
 
 Create temporary JSON from the same raw objects used to build the workbook. Minimal shape:
@@ -71,6 +77,7 @@ The audit checks:
 - Every Milestone Detail labor line priced from `Labor Benchmarking` matches its own benchmark row or carries a Basis naming the proxy source
 - No category repeats identical hours across milestones without an `Hours basis:` reconciliation note
 - Narrative columns (Description, Basis, Source note) wrap text and meet the 28-character width floor
+- Every canonical sheet has an explicit print area, enables fitToPage scaling (`ws.sheet_properties.pageSetUpPr.fitToPage`), and uses landscape orientation when it spans more than 8 used columns
 - For recost workbooks: no benchmark rows for roles absent from Milestone Detail, no lump-sum labor deltas without Hours and Rate cells, and a delta row for every element listed in the optional `recost_register_elements` payload array (list every cost element the change register names; a $0 delta needs a one-line justification)
 - A readable first-view dashboard states the prototype, analysis purpose, milestone basis, funding planning range, contribution treatment, key drivers, source limitations, and next action without horizontal scrolling
 
