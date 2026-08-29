@@ -885,6 +885,40 @@ class ArtifactTests(unittest.TestCase):
             header_properties = evidence_table.rows[0]._tr.get_or_add_trPr()
             self.assertEqual(len(header_properties.findall(qn("w:tblHeader"))), 0)
 
+    def test_growth_brief_renders_evidence_class_labels_not_internal_tokens(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, output = self.build_growth_variant(directory, lambda record: None)
+            document = Document(output)
+            parts = [paragraph.text for paragraph in document.paragraphs]
+            for table in document.tables:
+                for row in table.rows:
+                    parts.extend(cell.text for cell in row.cells)
+            for section in document.sections:
+                for part in (section.header, section.footer):
+                    parts.extend(paragraph.text for paragraph in part.paragraphs)
+            text = "\n".join(parts)
+            for token in ("federal_mcp", "official_web", "other_web", "user_statement", "source_class"):
+                self.assertNotIn(token, text)
+            # The fixture carries document, user_statement, calculation, and
+            # federal_mcp evidence; each renders as its reader label.
+            for label in (
+                "Supplied document",
+                "Customer statement",
+                "Recorded calculation",
+                "Federal data service",
+            ):
+                self.assertIn(label, text)
+
+    def test_growth_brief_validator_rejects_rendered_internal_class_token(self):
+        with tempfile.TemporaryDirectory() as directory:
+            record_path, output = self.build_growth_variant(directory, lambda record: None)
+            document = Document(output)
+            document.add_paragraph("federal_mcp")
+            document.save(output)
+            check = self.validate_growth(output, record_path)
+            self.assertNotEqual(check.returncode, 0)
+            self.assertIn("internal evidence-class token", check.stdout + check.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

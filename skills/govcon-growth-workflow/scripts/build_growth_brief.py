@@ -296,6 +296,24 @@ def pretty_label(key: object) -> str:
     return label
 
 
+# Internal evidence-class vocabulary is plumbing, not capture language. Records
+# and validators keep the internal tokens; every reader-visible rendering uses
+# these labels, which match the market research product word for word.
+SOURCE_CLASS_LABELS = {
+    "document": "Supplied document",
+    "federal_mcp": "Federal data service",
+    "official_web": "Official website",
+    "other_web": "Public web source",
+    "user_statement": "Customer statement",
+    "calculation": "Recorded calculation",
+}
+
+
+def source_class_label(value: object) -> str:
+    token = str(value or "")
+    return SOURCE_CLASS_LABELS.get(token, pretty_label(token)) if token else ""
+
+
 def display_value(value: object) -> str:
     """Render structured scope values as concise reader-facing text."""
     if value in (None, "", [], {}):
@@ -475,12 +493,12 @@ def build(record: dict, output: Path) -> None:
         ["ID", "Class", "Source", "Fact", "Limitations"],
         [[
             e.get("id", ""),
-            e.get("source_class", ""),
+            source_class_label(e.get("source_class")),
             f"{e.get('title', '')}\n{e.get('locator', '')}",
             e.get("fact", ""),
             e.get("limitations", ""),
         ] for e in record.get("evidence", [])],
-        [0.55, 0.85, 1.55, 2.5, 1.65],
+        [0.55, 1.15, 1.45, 2.35, 1.60],
         repeat_header=False,
     )
 

@@ -41,6 +41,9 @@ BANNED_HARNESS_VOCABULARY = [
     re.compile(r"\barchived record\b", re.I),
 ]
 FEDERAL_SOURCE_CLASSES = {"federal_mcp", "official_web", "other_web"}
+# Internal evidence-class vocabulary must never render into a reader-visible
+# document; the builder maps these tokens to reader labels.
+INTERNAL_CLASS_TOKENS = ("federal_mcp", "official_web", "other_web", "user_statement", "source_class")
 MONEY_TERMS = ("value", "obligation", "cost", "price", "funding", "fee", "amount")
 # Reader-facing evidence-basis claims that assert no live research happened.
 SUPPLIED_ONLY_CLAIMS = (
@@ -116,6 +119,9 @@ def validate(document_path: Path, record_path: Path) -> dict:
         match = pattern.search(text)
         if match:
             failures.append(f"reader-visible harness vocabulary is prohibited: {match.group(0)}")
+    for token in INTERNAL_CLASS_TOKENS:
+        if token in text:
+            failures.append(f"internal evidence-class token rendered in the document: {token}")
     for item in record.get("findings", []):
         for evidence_id in item.get("evidence_ids", []):
             if evidence_id not in text:

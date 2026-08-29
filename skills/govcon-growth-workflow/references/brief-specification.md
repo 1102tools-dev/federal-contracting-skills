@@ -6,6 +6,10 @@ The customer organization name, size posture, and constraints used anywhere in t
 
 Internal harness vocabulary is prohibited in every reader-visible field, including headers, footers, titles, body text, tables, and the evidence appendix: never write "fictional", "test", "synthetic", "fixture", "bounded sample", or "archived record" where a reader can see it. When the user has not approved live research, honest illustrative labeling uses exactly one standard reader-facing line, placed in the limitations block only: "Illustrative analysis prepared without live-data confirmation". The brief validator rejects documents containing the banned tokens.
 
+## Evidence classes render as reader labels
+
+Evidence source classes are internal record vocabulary, not capture vocabulary. The research record, the record validator, and the evidence contract keep the internal tokens (`document`, `federal_mcp`, `official_web`, `other_web`, `user_statement`, `calculation`), but the builder renders each one as a reader-facing label wherever it reaches the page, including the evidence appendix Class column: Supplied document, Federal data service, Official website, Public web source, Customer statement, Recorded calculation. These are the same labels the market research product uses, so the two deliverables speak one vocabulary. A raw class token must never appear anywhere in the document text, and the brief validator errors when one does.
+
 ## Verifiable locators
 
 Every evidence row sourced from federal data (`federal_mcp`, `official_web`, `other_web`) must carry a checkable locator a reader can independently verify: a SAM.gov notice ID, award PIID, UEI, docket number, or public URL, plus the retrieval date. Never state that locators "were not preserved"; if a locator was not captured, the evidence row is not usable in the deliverable. The brief validator errors on federal evidence rows with an empty locator.
