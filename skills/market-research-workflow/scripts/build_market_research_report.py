@@ -17,6 +17,7 @@ from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
 from docx.shared import Inches, Pt, RGBColor
 
 
@@ -362,21 +363,74 @@ def map_evidence_id(value: object, id_map: dict[str, str] | None) -> str:
 
 
 def evidence_id_map(record: dict) -> dict[str, str]:
-    """Renumber the evidence rows a focused route will render so reader-visible
-    IDs are sequential (E001, E002, ...) even when the record cites a
-    non-contiguous subset. The complete report renders the full register and
-    keeps the record's own IDs."""
+    """Map internal evidence rows to reader-facing source IDs by first use.
+
+    Multiple facts from the same source share one S number. Internal E-style
+    identifiers remain available to validators and sidecars only.
+    """
+    ordered: list[str] = []
+
+    def visit(value: object) -> None:
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if key == "evidence_ids" and isinstance(item, list):
+                    ordered.extend(str(candidate) for candidate in item)
+                else:
+                    visit(item)
+        elif isinstance(value, list):
+            for item in value:
+                visit(item)
+
+    visit(record.get("validation", {}))
+    route = record.get("workflow_mode")
+    if route in {"complete_report", "one_question", "pre_award_handoff"} or not record.get("validation", {}).get("decision_implications"):
+        visit(record.get("findings", []))
     if record.get("workflow_mode") == "complete_report":
-        return {}
-    cited = collect_evidence_ids(record.get("validation", {}))
-    for item in record.get("findings", []):
-        if isinstance(item, dict):
-            cited.update(str(value) for value in item.get("evidence_ids", []))
+        ordered.extend(str(item.get("id", "")) for item in record.get("evidence", []) if isinstance(item, dict))
+
+    by_id = {
+        str(item.get("id")): item
+        for item in record.get("evidence", [])
+        if isinstance(item, dict) and item.get("id")
+    }
     mapping: dict[str, str] = {}
-    for item in record.get("evidence", []):
-        if isinstance(item, dict) and item.get("id") in cited:
-            mapping[str(item["id"])] = f"E{len(mapping) + 1:03d}"
+    key_to_source: dict[tuple[str, str, str], str] = {}
+    for evidence_id in ordered:
+        if evidence_id in mapping or evidence_id not in by_id:
+            continue
+        item = by_id[evidence_id]
+        key = (
+            str(item.get("source_class", "")),
+            str(item.get("locator", "")).strip(),
+            str(item.get("title", "")).strip(),
+        )
+        source_id = key_to_source.get(key)
+        if source_id is None:
+            source_id = f"S{len(key_to_source) + 1}"
+            key_to_source[key] = source_id
+        mapping[evidence_id] = source_id
     return mapping
+
+
+def source_register_rows(record: dict, id_map: dict[str, str]) -> list[list[str]]:
+    rows: dict[str, list[str]] = {}
+    for item in record.get("evidence", []):
+        if not isinstance(item, dict) or item.get("id") not in id_map:
+            continue
+        source_id = id_map[str(item["id"])]
+        row = rows.setdefault(
+            source_id,
+            [
+                source_id,
+                source_class_label(item.get("source_class")),
+                f"{item.get('title', '')}\n{item.get('locator', '')}",
+                "",
+            ],
+        )
+        fact = str(item.get("fact", "")).strip()
+        if fact and fact not in row[3].split(" | "):
+            row[3] = " | ".join(value for value in (row[3], fact) if value)
+    return [rows[key] for key in sorted(rows, key=lambda value: int(value[1:]))]
 
 
 def enforce_route_content(record: dict) -> None:
@@ -480,8 +534,8 @@ def configure(document: Document) -> None:
         style.paragraph_format.space_before = Pt(10)
         style.paragraph_format.space_after = Pt(5)
 
-    if "Evidence ID" not in document.styles:
-        style = document.styles.add_style("Evidence ID", WD_STYLE_TYPE.CHARACTER)
+    if "Source Citation" not in document.styles:
+        style = document.styles.add_style("Source Citation", WD_STYLE_TYPE.CHARACTER)
         style.font.name = "Aptos"
         style.font.size = Pt(8.5)
         style.font.bold = True
@@ -526,6 +580,24 @@ def add_table(document: Document, headers: list[str], rows: list[list[object]], 
     return table
 
 
+def add_hyperlink(paragraph, text: str, url: str) -> None:
+    relationship = paragraph.part.relate_to(url, RT.HYPERLINK, is_external=True)
+    hyperlink = OxmlElement("w:hyperlink")
+    hyperlink.set(qn("r:id"), relationship)
+    run = OxmlElement("w:r")
+    properties = OxmlElement("w:rPr")
+    color = OxmlElement("w:color")
+    color.set(qn("w:val"), "0563C1")
+    underline = OxmlElement("w:u")
+    underline.set(qn("w:val"), "single")
+    properties.extend((color, underline))
+    text_node = OxmlElement("w:t")
+    text_node.text = text
+    run.extend((properties, text_node))
+    hyperlink.append(run)
+    paragraph._p.append(hyperlink)
+
+
 def add_bullets(document: Document, items: list[object], empty: str = "None recorded") -> None:
     if not items:
         document.add_paragraph(empty)
@@ -546,7 +618,8 @@ def cite_ids(paragraph, ids: list[str], id_map: dict[str, str] | None = None) ->
     if not ids:
         return
     paragraph.add_run(" [")
-    run = paragraph.add_run(", ".join(map_evidence_id(value, id_map) for value in ids), style="Evidence ID")
+    markers = list(dict.fromkeys(map_evidence_id(value, id_map) for value in ids))
+    run = paragraph.add_run(", ".join(markers), style="Source Citation")
     run.bold = True
     paragraph.add_run("]")
 
@@ -661,6 +734,17 @@ def build(record: dict, output: Path) -> None:
             [0.55, 1.15, 2.25, 1.35, 1.6],
         )
 
+    def add_decisions_to_close() -> None:
+        decisions = record.get("user_decisions", [])
+        unknowns = record.get("unresolved_questions", [])
+        if not decisions and not unknowns:
+            return
+        document.add_heading("Decisions to close", level=1)
+        if decisions:
+            add_bullets(document, decisions)
+        if unknowns:
+            add_unknowns()
+
     scope = record.get("scope", {})
     if route == "complete_report":
         # Start the report body on a fresh page without an explicit break
@@ -714,32 +798,7 @@ def build(record: dict, output: Path) -> None:
             [0.85, 1.25, 2.3, 2.5],
         )
 
-        # The lead Next practical actions table already carries the full
-        # Owner/Action/Output text for these same actions, so the execution
-        # plan adds only the timing and a short action name plus a
-        # cross-reference instead of repeating the action text verbatim.
-        document.add_heading("Research execution plan", level=1)
-        plan_items = validation.get("next_actions", []) or fallbacks["next_actions"]
-        add_table(
-            document,
-            ["When", "Action"],
-            [
-                [
-                    str(item.get("when") or "Next") if isinstance(item, dict) else "Next",
-                    action_name(item),
-                ]
-                for item in plan_items
-            ],
-            [1.6, 5.3],
-        )
-        document.add_paragraph(
-            "Full owner, action, and output text for each row is consolidated in the "
-            "Next practical actions table at the start of this document."
-        )
-
-        document.add_heading("Human-owned decisions and unknowns", level=1)
-        add_bullets(document, record.get("user_decisions", []), "No acquisition decision is recorded as approved.")
-        add_unknowns()
+        add_decisions_to_close()
 
     elif route == "refresh":
         document.add_heading("Refresh assessment", level=1)
@@ -765,8 +824,7 @@ def build(record: dict, output: Path) -> None:
             [3.45, 3.45],
         )
         add_closing_actions("Refresh action plan", "Acquisition team")
-        document.add_heading("Human-owned decisions and unknowns", level=1)
-        add_unknowns()
+        add_decisions_to_close()
 
     elif route == "one_question":
         document.add_heading("Bounded answer", level=1)
@@ -810,8 +868,7 @@ def build(record: dict, output: Path) -> None:
             )
         else:
             add_bullets(document, [])
-        document.add_heading("Human-owned decisions and unknowns", level=1)
-        add_unknowns()
+        add_decisions_to_close()
 
     elif route == "pre_award_handoff":
         document.add_heading("Handoff summary", level=1)
@@ -849,57 +906,43 @@ def build(record: dict, output: Path) -> None:
             [1.3, 2.0, 2.6, 1.0],
         )
         add_closing_actions("Pre-Award intake and next actions", "Pre-Award lead")
-        document.add_heading("Human-owned decisions and unknowns", level=1)
-        add_unknowns()
+        add_decisions_to_close()
 
     else:
         raise ValueError(f"unsupported workflow_mode: {route}")
 
-    document.add_heading("Method, limitations, and evidence", level=1)
-    document.add_paragraph(validation.get("methodology", "Sources, scope, and limitations are recorded in the query and evidence registers."))
-    add_bullets(document, record.get("conflicts", []), "No unresolved source conflict was recorded.")
+    methodology = str(validation.get("methodology") or "").strip()
+    conflicts = record.get("conflicts", [])
+    if methodology or conflicts:
+        document.add_heading("Method and material limitations", level=1)
+        if methodology:
+            document.add_paragraph(methodology)
+        if conflicts:
+            add_bullets(document, conflicts)
 
-    if route == "complete_report":
-        document.add_heading("Documents reviewed", level=2)
-        docs = record.get("document_register", [])
-        add_table(
-            document,
-            ["File", "Type and status", "Role", "Gaps or conflicts"],
-            [[d.get("file", ""), f"{d.get('document_type', '')} / {d.get('status', 'unclear')}", d.get("role", ""), d.get("gaps_or_conflicts", "")] for d in docs],
-            [1.5, 1.55, 2.0, 1.85],
-        ) if docs else document.add_paragraph("No acquisition documents were available for this research record.")
-
-        document.add_heading("Reproducible search log", level=2)
-        queries = record.get("queries", [])
-        add_table(
-            document,
-            ["Source / operation", "Sanitized parameters", "Retrieved", "Coverage and limits"],
-            [[q.get("operation", q.get("source", "")), json.dumps(q.get("parameters", {}), sort_keys=True), q.get("retrieved_at", ""), f"{q.get('count', 'n/a')}; {q.get('limitations', '')}"] for q in queries],
-            [1.5, 2.35, 1.25, 1.8],
-        ) if queries else document.add_paragraph("No external query was made.")
-    else:
-        document.add_paragraph(
-            "The evidence register below contains the sources used for this focused decision product. "
-            "Detailed retrieval records remain in the approved research record."
+    document.add_heading("Source Register", level=1)
+    for row in source_register_rows(record, id_map):
+        item = next(
+            (
+                value
+                for value in record.get("evidence", [])
+                if isinstance(value, dict) and id_map.get(value.get("id")) == row[0]
+            ),
+            {},
         )
-
-    document.add_heading("Evidence register", level=2)
-    report_evidence = record.get("evidence", [])
-    if route != "complete_report":
-        report_evidence = [item for item in report_evidence if item.get("id") in id_map]
-    evidence_table = add_table(
-        document,
-        ["ID / source type", "Source", "Decision-useful fact", "Limit"],
-        [[f"{map_evidence_id(e.get('id', ''), id_map)}\n{source_class_label(e.get('source_class'))}", f"{e.get('title', '')}\n{e.get('locator', '')}", e.get("fact", ""), e.get("limitations", "")] for e in report_evidence],
-        [0.75, 1.85, 2.75, 1.55],
-    )
-    for row in evidence_table.rows:
-        for cell in row.cells:
-            for paragraph in cell.paragraphs:
-                paragraph.paragraph_format.space_after = Pt(0)
-                paragraph.paragraph_format.line_spacing = 1.0
-                for run in paragraph.runs:
-                    run.font.size = Pt(7.5)
+        paragraph = document.add_paragraph()
+        paragraph.paragraph_format.space_after = Pt(3)
+        paragraph.add_run(f"[{row[0]}] ").bold = True
+        paragraph.add_run(f"{row[1]}. {item.get('title', '')}. ")
+        locator = str(item.get("locator", ""))
+        url = str(item.get("canonical_url") or (locator if locator.startswith("http") else ""))
+        if url:
+            add_hyperlink(paragraph, url, url)
+        elif locator:
+            paragraph.add_run(locator)
+        date = item.get("as_of_date") or item.get("retrieved_at")
+        if date:
+            paragraph.add_run(f". {date}")
 
     numeric_checks = record.get("validation", {}).get("numeric_checks", []) if route == "complete_report" else []
     for index, check in enumerate(numeric_checks):
@@ -917,7 +960,7 @@ def build(record: dict, output: Path) -> None:
                 f"numeric check {index} requires exactly one calculation evidence item whose locator is {locator}"
             )
         paragraph = document.add_paragraph(format_calculated_total(check.get("label", "Calculated total"), sum(components)))
-        cite_ids(paragraph, calculation_ids)
+        cite_ids(paragraph, calculation_ids, id_map)
 
     report_inferences = record.get("inferences", []) if route == "complete_report" else validation.get("inferences", [])
     for item in report_inferences:

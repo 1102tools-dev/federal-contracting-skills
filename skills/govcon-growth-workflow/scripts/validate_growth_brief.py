@@ -12,6 +12,8 @@ from pathlib import Path
 
 from docx import Document
 
+from build_growth_brief import source_map
+
 
 ROUTE_STRUCTURE = {
     "opportunity": ("Pipeline decision", "48-hour shortlist moves", "Priority opportunities", "Pipeline prioritization", "Qualification gaps", "Capture action plan", "PORTFOLIO POSTURE"),
@@ -82,26 +84,24 @@ def validate(document_path: Path, record_path: Path) -> dict:
     document = Document(document_path)
     record = json.loads(record_path.read_text(encoding="utf-8"))
     text = all_text(document)
+    cited_source_ids = {
+        source_id
+        for group in re.findall(r"\[([^\[\]]+)\]", text)
+        for source_id in re.findall(r"\bS\d+\b", group)
+    }
     headings = [p.text.strip() for p in document.paragraphs if getattr(p.style, "name", "") == "Heading 1"]
-    posture_heading, immediate_heading, analysis_heading, assessment_heading, unknowns_heading, action_heading, decision_label = ROUTE_STRUCTURE.get(
+    posture_heading, immediate_heading, analysis_heading, assessment_heading, unknowns_heading, _action_heading, decision_label = ROUTE_STRUCTURE.get(
         record.get("workflow_mode", ""), DEFAULT_STRUCTURE
     )
-    required_headings = [
-        posture_heading, immediate_heading, analysis_heading, assessment_heading,
-        "Business question and scope", "Company context and assumptions", unknowns_heading,
-        "Risks, contrary evidence, and limitations", action_heading,
-        "Research record", "Evidence appendix",
-    ]
-    for heading in required_headings:
-        if heading not in headings:
-            failures.append(f"missing Heading 1 section: {heading}")
-    if [h for h in headings if h in required_headings] != required_headings:
-        failures.append("required Heading 1 sections are out of order")
     if decision_label not in text:
         failures.append(f"first-page decision label is missing: {decision_label}")
-    for label in (posture_heading, immediate_heading, analysis_heading):
+    for label in (posture_heading, immediate_heading, analysis_heading, assessment_heading):
         if label not in text:
             failures.append(f"route-native paid-value content is missing: {label}")
+    if "Source Register" not in headings:
+        failures.append("reader-facing Source Register is missing")
+    if re.search(r"\bE\d{3,}\b", text):
+        failures.append("internal E-style evidence identifiers are reader-visible")
     if record.get("findings") and "Decision signal" not in text:
         failures.append("first-page decision dashboard is missing")
     unknown_items = list(record.get("validation", {}).get("missing_bid_context", [])) + list(record.get("unresolved_questions", []))
@@ -122,10 +122,15 @@ def validate(document_path: Path, record_path: Path) -> dict:
     for token in INTERNAL_CLASS_TOKENS:
         if token in text:
             failures.append(f"internal evidence-class token rendered in the document: {token}")
+    id_to_source, source_entries = source_map(record)
     for item in record.get("findings", []):
         for evidence_id in item.get("evidence_ids", []):
-            if evidence_id not in text:
-                failures.append(f"finding evidence ID not present in brief: {evidence_id}")
+            source_id = id_to_source.get(evidence_id)
+            if not source_id or source_id not in cited_source_ids:
+                failures.append(f"finding source marker not present in brief for internal evidence {evidence_id}")
+    for entry in source_entries:
+        if entry["source_id"] not in text:
+            failures.append(f"source is missing from Source Register: {entry['source_id']}")
     if not record.get("validation", {}).get("bid_context_complete"):
         if "conditional pursuit posture" not in text:
             failures.append("incomplete internal context is not labeled as a conditional pursuit posture")
@@ -200,9 +205,10 @@ def validate(document_path: Path, record_path: Path) -> dict:
             )
             continue
         for evidence_id in calculation_ids:
-            if not any(f"[{evidence_id}]" in line for line in calculation_lines):
+            source_id = id_to_source.get(evidence_id)
+            if not source_id or not any(f"[{source_id}]" in line for line in calculation_lines):
                 failures.append(
-                    f"numeric check {label} does not cite its calculation evidence ID: {evidence_id}"
+                    f"numeric check {label} does not cite its source marker for internal evidence: {evidence_id}"
                 )
     return {"status": "pass" if not failures else "fail", "heading_count": len(headings), "failures": failures}
 

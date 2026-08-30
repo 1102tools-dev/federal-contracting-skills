@@ -264,7 +264,7 @@ class PolicyRenderingTests(unittest.TestCase):
         self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
         return output
 
-    def test_focused_product_does_not_duplicate_gate_rows(self):
+    def test_focused_product_does_not_invent_gate_rows(self):
         from docx import Document
         from docx.oxml.ns import qn
 
@@ -278,11 +278,10 @@ class PolicyRenderingTests(unittest.TestCase):
                 for table in document.tables
                 if table.rows and "Decision-ready evidence" in [cell.text.strip() for cell in table.rows[0].cells]
             ]
-            self.assertEqual(len(gate_tables), 1, "gate/action rows must render exactly once")
+            self.assertEqual(len(gate_tables), 0, "unsupported generic gates must not be manufactured")
             text = "\n".join(paragraph.text for paragraph in document.paragraphs)
-            self.assertIn("stated once in the Owners and Decision Gates table above", text)
-            widths = [int(col.get(qn("w:w"))) for col in gate_tables[0]._tbl.tblGrid]
-            self.assertGreaterEqual(widths[0], 1700, "gate label column must not force mid-word breaks")
+            self.assertNotIn("Owners and Decision Gates", text)
+            self.assertNotIn("Management Actions", text)
 
     def test_scope_header_carries_customer_organization_and_decision_date(self):
         from docx import Document
@@ -366,9 +365,8 @@ class PolicyRenderingTests(unittest.TestCase):
 
 class PolicyFocusedRouteValidationTests(unittest.TestCase):
     """Regression coverage for per-route validator structure: a focused-route
-    product must validate against its own route-native headings, not the full
-    Impact Brief section list, and the impact_brief route must keep requiring
-    the full twelve-section structure."""
+    product must validate against its own route-native outcomes, and the
+    impact-brief route must still require its distinct substantive functions."""
 
     ROUTE_HEADINGS = {
         "current_rule": ["Current Rule Card"],
@@ -448,7 +446,7 @@ class PolicyFocusedRouteValidationTests(unittest.TestCase):
             )
             self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
 
-    def test_impact_brief_route_still_requires_full_structure(self):
+    def test_impact_brief_route_still_requires_impact_brief_outcomes(self):
         with tempfile.TemporaryDirectory() as directory:
             output, _ = self.build_docx(self.route_record("current_rule"), directory)
             brief_record = json.loads(FIXTURE.read_text(encoding="utf-8"))
@@ -458,7 +456,7 @@ class PolicyFocusedRouteValidationTests(unittest.TestCase):
             result = self.docx_validator.validate(output, brief_record_path)
             self.assertEqual(result["status"], "fail")
             self.assertTrue(
-                any("missing Heading 1 section: Question and Scope" in failure for failure in result["failures"]),
+                any("route-native outcome is missing: Question and Scope" in failure for failure in result["failures"]),
                 result["failures"],
             )
 

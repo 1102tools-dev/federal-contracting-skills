@@ -15,6 +15,7 @@ from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
 from docx.shared import Inches, Pt, RGBColor
 
 
@@ -154,8 +155,8 @@ def configure(document: Document) -> None:
         style.font.color.rgb = RGBColor.from_string(color)
         style.paragraph_format.space_before = Pt(10)
         style.paragraph_format.space_after = Pt(5)
-    if "Evidence ID" not in document.styles:
-        style = document.styles.add_style("Evidence ID", WD_STYLE_TYPE.CHARACTER)
+    if "Source Citation" not in document.styles:
+        style = document.styles.add_style("Source Citation", WD_STYLE_TYPE.CHARACTER)
         style.font.name = "Aptos"
         style.font.size = Pt(8.5)
         style.font.bold = True
@@ -203,6 +204,24 @@ def add_table(
     return table
 
 
+def add_hyperlink(paragraph, text: str, url: str) -> None:
+    relationship = paragraph.part.relate_to(url, RT.HYPERLINK, is_external=True)
+    hyperlink = OxmlElement("w:hyperlink")
+    hyperlink.set(qn("r:id"), relationship)
+    run = OxmlElement("w:r")
+    properties = OxmlElement("w:rPr")
+    color = OxmlElement("w:color")
+    color.set(qn("w:val"), "0563C1")
+    underline = OxmlElement("w:u")
+    underline.set(qn("w:val"), "single")
+    properties.extend((color, underline))
+    text_node = OxmlElement("w:t")
+    text_node.text = text
+    run.extend((properties, text_node))
+    hyperlink.append(run)
+    paragraph._p.append(hyperlink)
+
+
 def add_bullets(document: Document, items: list[object], empty: str) -> None:
     if not items:
         document.add_paragraph(empty)
@@ -246,24 +265,65 @@ def operational_unknowns(record: dict) -> list[object]:
     return result
 
 
-def add_page_one_signals(document: Document, findings: list[dict]) -> None:
+def source_map(record: dict) -> tuple[dict[str, str], list[dict]]:
+    """Map internal evidence IDs to reader-facing sources ordered by first use."""
+    evidence = [item for item in record.get("evidence", []) if isinstance(item, dict)]
+    by_id = {str(item.get("id")): item for item in evidence if item.get("id")}
+    first_use: list[str] = []
+    for collection in (record.get("findings", []), record.get("inferences", [])):
+        for item in collection:
+            if isinstance(item, dict):
+                first_use.extend(str(value) for value in item.get("evidence_ids", []))
+    first_use.extend(str(item.get("id", "")) for item in evidence)
+
+    id_to_source: dict[str, str] = {}
+    key_to_source: dict[tuple[str, str, str], str] = {}
+    entries: list[dict] = []
+    for evidence_id in first_use:
+        if not evidence_id or evidence_id in id_to_source or evidence_id not in by_id:
+            continue
+        item = by_id[evidence_id]
+        key = (
+            str(item.get("source_class", "")),
+            str(item.get("locator", "")).strip(),
+            str(item.get("title", "")).strip(),
+        )
+        source_id = key_to_source.get(key)
+        if source_id is None:
+            source_id = f"S{len(entries) + 1}"
+            key_to_source[key] = source_id
+            entries.append({**item, "source_id": source_id, "facts": [str(item.get("fact", "")).strip()]})
+        else:
+            entry = next(value for value in entries if value["source_id"] == source_id)
+            fact = str(item.get("fact", "")).strip()
+            if fact and fact not in entry["facts"]:
+                entry["facts"].append(fact)
+        id_to_source[evidence_id] = source_id
+    return id_to_source, entries
+
+
+def source_markers(ids: list[str], mapping: dict[str, str]) -> list[str]:
+    return list(dict.fromkeys(mapping[value] for value in ids if value in mapping))
+
+
+def add_page_one_signals(document: Document, findings: list[dict], mapping: dict[str, str]) -> None:
     """Add a compact decision dashboard from approved findings."""
     rows: list[list[object]] = []
     for finding in findings[:3]:
-        evidence_ids = finding.get("evidence_ids", [])
+        markers = source_markers(finding.get("evidence_ids", []), mapping)
         rows.append([
             finding.get("text", "No finding text was recorded."),
-            ", ".join(evidence_ids) if evidence_ids else "No linked evidence ID",
+            f"[{', '.join(markers)}]" if markers else "Uncited",
         ])
     if rows:
         add_table(document, ["Decision signal", "Evidence"], rows, [5.55, 1.35])
 
 
-def cite_ids(paragraph, ids: list[str]) -> None:
-    if ids:
-        paragraph.add_run(" [")
-        paragraph.add_run(", ".join(ids), style="Evidence ID")
-        paragraph.add_run("]")
+def cite_ids(paragraph, ids: list[str], mapping: dict[str, str]) -> None:
+    markers = source_markers(ids, mapping)
+    if markers:
+        paragraph.add_run(" ")
+        paragraph.add_run(f"[{', '.join(markers)}]", style="Source Citation")
 
 
 def research_basis(record: dict) -> str:
@@ -367,6 +427,7 @@ def build(record: dict, output: Path) -> None:
     findings = record.get("findings", [])
     unknowns = operational_unknowns(record)
     next_actions = validation.get("next_actions", [])
+    id_to_source, source_entries = source_map(record)
 
     brand = document.add_paragraph("GOVCON GROWTH | DECISION PRODUCT")
     brand.runs[0].bold = True
@@ -386,7 +447,7 @@ def build(record: dict, output: Path) -> None:
 
     document.add_heading(product["posture"], level=1)
     document.add_paragraph(reader_summary(record, opening_insight))
-    add_page_one_signals(document, findings)
+    add_page_one_signals(document, findings, id_to_source)
     if not has_bid_decision:
         quote = document.add_paragraph(style="Intense Quote")
         quote.add_run("Decision boundary: ").bold = True
@@ -402,24 +463,11 @@ def build(record: dict, output: Path) -> None:
         quote.add_run("Decision rule: ").bold = True
         quote.add_run(str(decision_rule))
 
-    headings = [
-        product["posture"],
-        product["immediate"],
-        product["analysis"],
-        product["assessment"],
-        "Business question and scope",
-        "Company context and assumptions",
-        product["unknowns"],
-        "Risks, contrary evidence, and limitations",
-        product["actions"],
-        "Research record",
-        "Evidence appendix",
-    ]
-    analysis_heading = document.add_heading(headings[2], level=1)
+    analysis_heading = document.add_heading(product["analysis"], level=1)
     analysis_heading.paragraph_format.page_break_before = True
     for finding in findings:
         p = document.add_paragraph(finding.get("text", ""), style="List Bullet")
-        cite_ids(p, finding.get("evidence_ids", []))
+        cite_ids(p, finding.get("evidence_ids", []), id_to_source)
     if not findings:
         document.add_paragraph("No approved finding was recorded.")
     for index, check in enumerate(record.get("validation", {}).get("numeric_checks", [])):
@@ -437,70 +485,62 @@ def build(record: dict, output: Path) -> None:
                 f"numeric check {index} requires exactly one calculation evidence item whose locator is {locator}"
             )
         paragraph = document.add_paragraph(format_calculated_total(check.get("label", "Calculated total"), total))
-        cite_ids(paragraph, calculation_ids)
+        cite_ids(paragraph, calculation_ids, id_to_source)
 
-    document.add_heading(headings[3], level=1)
+    document.add_heading(product["assessment"], level=1)
     document.add_paragraph(validation.get("assessment", "No final assessment was approved."))
     pipeline = validation.get("pipeline", [])
     if pipeline:
         add_table(document, ["Candidate", "Signal", "Timing", "Confidence", "Next validation"], [[p.get("candidate", ""), p.get("signal", ""), p.get("timing", ""), p.get("confidence", ""), p.get("next_validation", "")] for p in pipeline], [1.5, 1.8, 1.1, 0.8, 1.7])
 
-    document.add_heading(headings[4], level=1)
-    document.add_paragraph(record.get("question", "Not provided"))
-    add_table(document, ["Scope field", "Value"], scope_rows(record.get("scope", {})), [2.1, 4.8])
+    context = record.get("user_context", [])
+    assumptions = record.get("assumptions", [])
+    scope = record.get("scope", {})
+    context_scope = {key: value for key, value in scope.items() if key != "as_of_date" and value not in (None, "", [], {})}
+    if context_scope or context or assumptions:
+        document.add_heading("Key context", level=1)
+        if context_scope:
+            add_table(document, ["Context", "Working value"], scope_rows(context_scope), [2.1, 4.8])
+        if context:
+            add_bullets(document, context, "")
+        if assumptions:
+            add_bullets(document, assumptions, "")
 
-    document.add_heading(headings[5], level=1)
-    add_bullets(document, record.get("user_context", []), "No internal company context was supplied.")
-    document.add_heading("Assumptions", level=2)
-    add_bullets(document, record.get("assumptions", []), "No working assumption was recorded.")
+    if unknowns[3:]:
+        document.add_heading("Additional open items", level=1)
+        add_bullets(document, unknowns[3:], "")
 
-    document.add_heading(headings[6], level=1)
-    # Page one already lists the controlling unknowns; do not restate them here.
-    if unknowns:
-        document.add_paragraph("The controlling unknowns appear on page one.")
-    add_bullets(document, unknowns[3:], "No additional operational unknown was recorded.")
-
-    document.add_heading(headings[7], level=1)
-    add_bullets(document, record.get("conflicts", []), "No source conflict was recorded.")
-    for inference in record.get("inferences", []):
+    conflicts = record.get("conflicts", [])
+    inferences = record.get("inferences", [])
+    if conflicts or inferences:
+        document.add_heading("Risks and evidence limits", level=1)
+        add_bullets(document, conflicts, "")
+    for inference in inferences:
         p = document.add_paragraph("Inference: " + inference.get("text", inference.get("reasoning", "")), style="List Bullet")
-        cite_ids(p, inference.get("evidence_ids", []))
+        cite_ids(p, inference.get("evidence_ids", []), id_to_source)
 
-    document.add_heading(headings[8], level=1)
-    add_bullets(document, record.get("user_decisions", []), "No user decision was recorded.")
-    # The first three actions are the page-one immediate moves; render only the
-    # remainder here instead of restating that list.
-    if next_actions:
+    user_decisions = record.get("user_decisions", [])
+    if user_decisions or next_actions[3:]:
+        document.add_heading(product["actions"], level=1)
+        add_bullets(document, user_decisions, "")
         document.add_paragraph("The immediate moves on page one lead this plan.")
-        add_bullets(document, next_actions[3:], "No further action beyond the immediate moves was recorded.")
-    else:
-        document.add_paragraph("No next action was recorded.")
+        add_bullets(document, next_actions[3:], "")
 
-    document.add_heading(headings[9], level=1)
-    queries = record.get("queries", [])
-    if queries:
-        add_table(document, ["Source / operation", "Sanitized parameters", "Retrieved", "Coverage and limits"], [[q.get("operation", q.get("source", "")), json.dumps(q.get("parameters", {}), sort_keys=True), q.get("retrieved_at", ""), f"{q.get('count', 'n/a')}; {q.get('limitations', '')}"] for q in queries], [1.5, 2.35, 1.25, 2.0])
-    else:
-        document.add_paragraph("No external query was made.")
-
-    document.add_heading(headings[10], level=1)
-    # LibreOffice can position a repeated header above the printable area on a
-    # later page of a long fixed-width table. Keep the header on the first page
-    # only so every continued evidence row remains fully visible after PDF
-    # conversion.
-    add_table(
-        document,
-        ["ID", "Class", "Source", "Fact", "Limitations"],
-        [[
-            e.get("id", ""),
-            source_class_label(e.get("source_class")),
-            f"{e.get('title', '')}\n{e.get('locator', '')}",
-            e.get("fact", ""),
-            e.get("limitations", ""),
-        ] for e in record.get("evidence", [])],
-        [0.55, 1.15, 1.45, 2.35, 1.60],
-        repeat_header=False,
-    )
+    document.add_heading("Source Register", level=1)
+    for entry in source_entries:
+        paragraph = document.add_paragraph()
+        paragraph.paragraph_format.space_after = Pt(3)
+        paragraph.add_run(f"[{entry.get('source_id', '')}] ").bold = True
+        paragraph.add_run(f"{source_class_label(entry.get('source_class'))}. {entry.get('title', '')}. ")
+        locator = str(entry.get("locator", ""))
+        url = str(entry.get("canonical_url") or (locator if locator.startswith("http") else ""))
+        if url:
+            add_hyperlink(paragraph, url, url)
+        elif locator:
+            paragraph.add_run(locator)
+        date = entry.get("as_of_date") or entry.get("retrieved_at")
+        if date:
+            paragraph.add_run(f". {date}")
 
     output.parent.mkdir(parents=True, exist_ok=True)
     document.save(output)

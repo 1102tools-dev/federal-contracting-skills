@@ -33,6 +33,7 @@ Load supporting files only when needed:
 
 - [question-blocks.md](references/question-blocks.md) for intake and scope questions.
 - [document-specification.md](references/document-specification.md) before authoring the `.docx`.
+- [professional-product-standard.md](references/professional-product-standard.md) before authoring the `.docx`.
 - [regulatory-and-content-rules.md](references/regulatory-and-content-rules.md) for contract-type, security, QASP, and language rules.
 - [handoff-specification.md](references/handoff-specification.md) before final chat output.
 - [runtime-adaptation.md](references/runtime-adaptation.md) for questions, document tools, TOC handling, and delivery.
@@ -159,7 +160,7 @@ The final sentence must ask the user to proceed or correct the summary. Stop imm
 
 After explicit approval:
 
-1. Read [document-specification.md](references/document-specification.md) and [regulatory-and-content-rules.md](references/regulatory-and-content-rules.md).
+1. Read [professional-product-standard.md](references/professional-product-standard.md), [document-specification.md](references/document-specification.md), and [regulatory-and-content-rules.md](references/regulatory-and-content-rules.md). Formal requirement controls remain binding, but the document should still read as deliberate professional work rather than a generated template.
 2. Use the host's document-authoring workflow and a formal business-document design system. Preserve a supplied agency template when one exists.
 3. Use real `Heading 1`, `Heading 2`, and `Heading 3` styles, real numbered or bulleted lists, explicit table geometry, page numbers, and accessible repeating table headers.
 4. For more than eight main sections, include a dynamic TOC field. Set the document to update fields on open. If Word is available, update and save the field before delivery. Otherwise disclose the exact refresh step in chat. Do not put the refresh instruction inside the document.

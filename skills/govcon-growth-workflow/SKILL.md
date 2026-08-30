@@ -56,6 +56,7 @@ Read supporting files only when their mode is reached:
 - [recompete-radar.md](references/recompete-radar.md) for pipeline construction.
 - [teaming-due-diligence.md](references/teaming-due-diligence.md) for partner work.
 - [market-and-agency-intelligence.md](references/market-and-agency-intelligence.md) for customer and market work.
+- [professional-product-standard.md](references/professional-product-standard.md) before drafting any reader-facing response or file.
 - [pricing-context.md](references/pricing-context.md) for CALC+ and labor-rate context.
 - [evidence-limitations.md](references/evidence-limitations.md) before interpreting public data.
 - [web-provider-policy.md](references/web-provider-policy.md) before asking the user to approve any public web provider or query.
@@ -232,7 +233,7 @@ Ask the user to confirm internal facts and make the business decision. If comple
 
 For a reader-facing report:
 
-1. Read [brief-specification.md](references/brief-specification.md).
+1. Read [professional-product-standard.md](references/professional-product-standard.md) and [brief-specification.md](references/brief-specification.md). Choose the form and length around the buyer's decision, not a fixed report outline.
 2. Validate the JSON record with `scripts/validate_research_record.py`.
 3. Run `scripts/build_growth_brief.py <record.json> <output.docx>`. The builder selects the route product, page-one management posture, route-native analysis, immediate moves, and operational-unknown section from `workflow_mode`; do not force every route through one generic brief template.
 4. Run `scripts/validate_growth_brief.py <output.docx> --record <record.json>`.
@@ -241,7 +242,7 @@ For a reader-facing report:
 7. Extract text and citations.
 8. Render and inspect every page; fix all layout or citation defects, including blank artifact pages, crowded tables, weak page-one hierarchy, and appendix-first presentation.
 
-Design for the executive who must act. Brand the document for the customer organization the user named in intake, with that organization's stated size posture and constraints; never carry over harness or sample identities. If the route's management question cannot be answered from the approved evidence, page one leads with the shortfall statement and follow-up query plan required by the brief specification instead of padded or out-of-scope content. Page one must state the specific decision or commercial question, a plain-language management posture, up to three evidence-backed signals, the immediate moves, and the operational unknowns that control commitment. The body must deliver the route-native work product defined in the brief specification, not repeat the same findings under generic headings. State owners, proof obligations, timing, and stop conditions when the approved record supports them. Place query details, source register, and methodological limits in a compact evidence appendix. Reuse company context already collected in the run; ask only for information that could change the route decision. Do not expose internal prompt or tool plumbing.
+Design for the executive who must act. Brand the document for the customer organization the user named in intake, with that organization's stated size posture and constraints; never carry over harness or sample identities. If the route's management question cannot be answered from the approved evidence, page one leads with the shortfall statement and follow-up query plan required by the brief specification instead of padded or out-of-scope content. Page one must state the specific decision or commercial question, a plain-language management posture, up to three evidence-backed signals, the immediate moves, and the operational unknowns that control commitment. The body must deliver the route-native work product defined in the brief specification, not repeat the same findings under generic headings. State owners, proof obligations, timing, and stop conditions when the approved record supports them. End with a concise reader-facing Source Register; keep query logs and raw research mechanics in the sidecar. Reuse company context already collected in the run; ask only for information that could change the route decision. Do not expose internal prompt or tool plumbing.
 
 The rendered report, not validator output, is the final quality authority. Structural and citation checks are necessary but cannot qualify a product that is generic, repetitive, difficult to read, or not operationally useful.
 

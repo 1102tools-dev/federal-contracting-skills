@@ -34,6 +34,7 @@ Load only what the active workflow needs:
 - [authority-and-scope-rules.md](references/authority-and-scope-rules.md) before stating authority, participant status, contribution treatment, prototype scope, or follow-on provisions.
 - [question-blocks.md](references/question-blocks.md) when collecting or confirming inputs.
 - [document-specification.md](references/document-specification.md) in full before building the `.docx`.
+- [professional-product-standard.md](references/professional-product-standard.md) before building the `.docx`.
 - [handoff-specification.md](references/handoff-specification.md) before presenting the chat-only milestone handoff.
 - [validation-gates.md](references/validation-gates.md) before generation and again before delivery.
 - [runtime-adaptation.md](references/runtime-adaptation.md) when selecting input, document-generation, rendering, validation, or delivery capabilities.
@@ -145,7 +146,7 @@ Ask the user to confirm, amend, or reject the structure. End immediately after t
 
 After approval:
 
-1. Read [document-specification.md](references/document-specification.md) and [validation-gates.md](references/validation-gates.md) in full.
+1. Read [professional-product-standard.md](references/professional-product-standard.md), [document-specification.md](references/document-specification.md), and [validation-gates.md](references/validation-gates.md) in full. Preserve the formal OT controls while exercising editorial judgment about emphasis, sequence, and page economy.
 2. Apply the supplied template or the formal baseline. Use real Word heading styles, lists, tables, page-number fields, and a dynamic TOC when required.
 3. Preserve approved milestone IDs, phase relationships, deliverables, completion evidence, timing, payment-type status, and user overrides.
 4. Carry each phase-exit criterion into both the Technical Approach by Phase section and the corresponding Milestone Schedule row.

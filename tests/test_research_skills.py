@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import copy
+import re
 import shutil
 import subprocess
 import sys
@@ -27,6 +28,35 @@ def load_module(path: Path, name: str):
 
 
 class SkillStaticTests(unittest.TestCase):
+    def test_shared_professional_product_standard_is_synchronized(self):
+        targets = (
+            "acquisition-policy-workflow",
+            "govcon-growth-workflow",
+            "market-research-workflow",
+            "sow-pws-builder",
+            "igce-builder-ffp",
+            "igce-builder-lh-tm",
+            "igce-builder-cr",
+            "ot-project-description-builder",
+            "ot-cost-analysis",
+        )
+        canonical = (ROOT / "professional-product-standard.md").read_bytes()
+        for target in targets:
+            with self.subTest(target=target):
+                skill = ROOT / "skills" / target
+                self.assertEqual(
+                    (skill / "references" / "professional-product-standard.md").read_bytes(),
+                    canonical,
+                )
+                self.assertIn(
+                    "professional-product-standard.md",
+                    (skill / "SKILL.md").read_text(encoding="utf-8"),
+                )
+        text = canonical.decode("utf-8")
+        self.assertIn("finished professional work product", text)
+        self.assertIn("[S1]", text)
+        self.assertIn("Internal evidence identifiers such as `E001`", text)
+
     def test_catalog_and_shared_files(self):
         result = subprocess.run([PYTHON, str(ROOT / "scripts" / "validate_skills.py")], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -593,10 +623,10 @@ class ArtifactTests(unittest.TestCase):
                 if "Complete-year fixture obligations" in paragraph.text
             ]
             self.assertEqual(len(calculation_lines), 1)
-            self.assertIn("[E004]", calculation_lines[0].text)
+            self.assertRegex(calculation_lines[0].text, r"\[S\d+\]")
             for run in calculation_lines[0].runs:
-                if "E004" in run.text:
-                    run.text = run.text.replace("E004", "calculation")
+                if re.search(r"S\d+", run.text):
+                    run.text = re.sub(r"S\d+", "calculation", run.text)
             document.save(output)
 
             check = subprocess.run(
@@ -605,7 +635,7 @@ class ArtifactTests(unittest.TestCase):
                 text=True,
             )
             self.assertNotEqual(check.returncode, 0)
-            self.assertIn("does not cite its calculation evidence ID: E004", check.stdout + check.stderr)
+            self.assertIn("does not cite its source marker for internal evidence: E004", check.stdout + check.stderr)
 
     def test_market_report_builder_rejects_unlinked_numeric_check(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -671,10 +701,10 @@ class ArtifactTests(unittest.TestCase):
                 if "Sample pipeline value" in paragraph.text
             ]
             self.assertEqual(len(calculation_lines), 1)
-            self.assertIn("[E003]", calculation_lines[0].text)
+            self.assertRegex(calculation_lines[0].text, r"\[S\d+\]")
             for run in calculation_lines[0].runs:
-                if "E003" in run.text:
-                    run.text = run.text.replace("E003", "calculation")
+                if re.search(r"S\d+", run.text):
+                    run.text = re.sub(r"S\d+", "calculation", run.text)
             document.save(output)
 
             check = subprocess.run(
@@ -683,7 +713,7 @@ class ArtifactTests(unittest.TestCase):
                 text=True,
             )
             self.assertNotEqual(check.returncode, 0)
-            self.assertIn("does not cite its calculation evidence ID: E003", check.stdout + check.stderr)
+            self.assertIn("does not cite its source marker for internal evidence: E003", check.stdout + check.stderr)
 
     def test_growth_brief_builder_rejects_unlinked_numeric_check(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -872,7 +902,7 @@ class ArtifactTests(unittest.TestCase):
             self.assertEqual(sum(1 for text in paragraphs if first_action in text), 1)
             self.assertEqual(sum(1 for text in paragraphs if first_unknown in text), 1)
 
-    def test_growth_brief_long_evidence_table_does_not_repeat_header(self):
+    def test_growth_brief_source_register_is_a_compact_list(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "growth-brief.docx"
             record = ROOT / "tests/fixtures/govcon-growth-record.json"
@@ -881,9 +911,15 @@ class ArtifactTests(unittest.TestCase):
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
 
             document = Document(output)
-            evidence_table = document.tables[-1]
-            header_properties = evidence_table.rows[0]._tr.get_or_add_trPr()
-            self.assertEqual(len(header_properties.findall(qn("w:tblHeader"))), 0)
+            entries = [paragraph.text for paragraph in document.paragraphs if re.match(r"\[S\d+\]", paragraph.text)]
+            self.assertEqual(entries, [
+                entry for entry in entries if not re.search(r"\bE\d{3,}\b", entry)
+            ])
+            self.assertGreaterEqual(len(entries), 4)
+            self.assertFalse(any(
+                [cell.text for cell in table.rows[0].cells] == ["Source", "Source and locator", "Date or note"]
+                for table in document.tables
+            ))
 
     def test_growth_brief_renders_evidence_class_labels_not_internal_tokens(self):
         with tempfile.TemporaryDirectory() as directory:

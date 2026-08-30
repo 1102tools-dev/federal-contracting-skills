@@ -40,6 +40,7 @@ Read only the references needed for the active workflow:
 - Read [wrap-rate-presets.md](references/wrap-rate-presets.md) before selecting or testing indirect-rate assumptions.
 - Read [data-source-operations.md](references/data-source-operations.md) before mapping SOCs or calling BLS, CALC+, or Per Diem operations.
 - Read [workbook-specification.md](references/workbook-specification.md) in full before generating the workbook.
+- Read [professional-product-standard.md](references/professional-product-standard.md) before generating the workbook.
 - Read [validation-gates.md](references/validation-gates.md) before building and again before delivering the workbook.
 - Read [runtime-adaptation.md](references/runtime-adaptation.md) when collecting structured answers, locating tools, selecting a calculation engine, or delivering files.
 
@@ -259,7 +260,7 @@ Require deliverable percentages to total 100%, or ask whether to normalize, reje
 
 ### Step 8: Build the workbook
 
-Read [workbook-specification.md](references/workbook-specification.md) in full before writing code. Build the seven required sheets with formulas, source notes, assumption cells, and editable inputs. Preserve these structural rules:
+Read [professional-product-standard.md](references/professional-product-standard.md) and [workbook-specification.md](references/workbook-specification.md) in full before writing code. Build the seven required sheets with formulas, source notes, assumption cells, and editable inputs. Keep formal calculation controls intact while making the default summary and print experience concise and decision-centered. Preserve these structural rules:
 
 - Use `YYYY-MM` text for BLS Vintage and Contract Start.
 - Compute Months Gap with the tested `VALUE(LEFT(...))` and `VALUE(MID(...))` formula.

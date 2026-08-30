@@ -52,6 +52,7 @@ Read supporting files only when their stage is reached:
 - [source-routing.md](references/source-routing.md) before planning or retrieving evidence.
 - [status-and-decision-boundaries.md](references/status-and-decision-boundaries.md) before classifying policy status or presenting findings.
 - [evidence-contract.md](references/evidence-contract.md) whenever creating or updating the policy-research record.
+- [professional-product-standard.md](references/professional-product-standard.md) before drafting any reader-facing response or file.
 - [report-specification.md](references/report-specification.md) before generating a brief.
 - [runtime-adaptation.md](references/runtime-adaptation.md) when capabilities, files, or document tooling differ by host.
 
@@ -204,7 +205,7 @@ For chat, provide the approved findings, citations, reproducible source summary,
 
 For a formal brief:
 
-1. Read [report-specification.md](references/report-specification.md).
+1. Read [professional-product-standard.md](references/professional-product-standard.md) and [report-specification.md](references/report-specification.md). Choose the lightest route-native form that delivers the requested outcome. The specification is a control set, not a mandatory generic outline.
 2. Apply the route-content minimums in the specification. Do not generate a Regulatory Change Briefing without matched text, a Watchlist without live matters and timing, a Public Comment Position Analysis without an approved comment sample and coded themes, or a Refresh without a dated prior/current comparison. A Refresh must also identify the prior analysis by title and date in the scope header. Return a short evidence-acquisition note in chat when the product has not been earned by the evidence.
 3. Every product's scope header states the customer organization and decision date from intake verbatim. The route-specific analysis must be the majority of the document body; shared framing is limited to the scope header, evidence register, and limitations, and no table's rows are repeated in a second section.
 4. When the record is illustrative rather than live-sourced, use the standard reader-facing label "Illustrative example (not live data)" in the limitations or evidence-status block only. Never place test-harness vocabulary such as "test record", "test fixture", "synthetic", or "fixture" in reader-visible content or payload tables.

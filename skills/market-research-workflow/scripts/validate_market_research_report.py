@@ -12,17 +12,13 @@ from pathlib import Path
 
 from docx import Document
 
-
-ROUTE_HEADINGS = {
+ROUTE_OUTCOMES = {
     "complete_report": [
         "Acquisition and decision frame",
         "What the evidence establishes",
         "Market capability and packaging",
         "Market engagement instrument",
         "Evidence-to-decision gates",
-        "Research execution plan",
-        "Human-owned decisions and unknowns",
-        "Method, limitations, and evidence",
     ],
     "refresh": [
         "Refresh assessment",
@@ -31,16 +27,12 @@ ROUTE_HEADINGS = {
         "Strategy changes to make now",
         "What remains usable and what must be rechecked",
         "Refresh action plan",
-        "Human-owned decisions and unknowns",
-        "Method, limitations, and evidence",
     ],
     "one_question": [
         "Bounded answer",
         "Evidence for and against",
         "Decision implications",
         "Further research options",
-        "Human-owned decisions and unknowns",
-        "Method, limitations, and evidence",
     ],
     "pre_award_handoff": [
         "Handoff summary",
@@ -49,8 +41,6 @@ ROUTE_HEADINGS = {
         "Pricing inputs and boundaries",
         "Pre-Award risk register",
         "Pre-Award intake and next actions",
-        "Human-owned decisions and unknowns",
-        "Method, limitations, and evidence",
     ],
 }
 FORBIDDEN = [
@@ -68,6 +58,44 @@ MIDNIGHT_TIMESTAMP = re.compile(r"T00:00(?::00(?:\.0+)?)?(?:Z|[+-]00:00)?$")
 # the recorded time of each source call.
 MIDNIGHT_PLACEHOLDER_LIMIT = 3
 IDENTICAL_PLACEHOLDER_LIMIT = 5
+
+
+def evidence_id_map(record: dict) -> dict[str, str]:
+    """Mirror the builder's internal-evidence to reader-source mapping."""
+    ordered: list[str] = []
+
+    def visit(value: object) -> None:
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if key == "evidence_ids" and isinstance(item, list):
+                    ordered.extend(str(candidate) for candidate in item)
+                else:
+                    visit(item)
+        elif isinstance(value, list):
+            for item in value:
+                visit(item)
+
+    visit(record.get("validation", {}))
+    route = record.get("workflow_mode")
+    if route in {"complete_report", "one_question", "pre_award_handoff"} or not record.get("validation", {}).get("decision_implications"):
+        visit(record.get("findings", []))
+    if route == "complete_report":
+        ordered.extend(str(item.get("id", "")) for item in record.get("evidence", []) if isinstance(item, dict))
+    by_id = {
+        str(item.get("id")): item
+        for item in record.get("evidence", [])
+        if isinstance(item, dict) and item.get("id")
+    }
+    mapping: dict[str, str] = {}
+    keys: dict[tuple[str, str, str], str] = {}
+    for evidence_id in ordered:
+        if evidence_id in mapping or evidence_id not in by_id:
+            continue
+        item = by_id[evidence_id]
+        key = (str(item.get("source_class", "")), str(item.get("locator", "")).strip(), str(item.get("title", "")).strip())
+        source_id = keys.setdefault(key, f"S{len(keys) + 1}")
+        mapping[evidence_id] = source_id
+    return mapping
 
 
 def retrieval_timestamps(record: dict) -> list[str]:
@@ -97,35 +125,6 @@ def placeholder_timestamp_failures(record: dict) -> list[str]:
             " record the actual retrieval time of each source call"
         )
     return failures
-
-
-def collect_evidence_ids(value) -> set[str]:
-    ids: set[str] = set()
-    if isinstance(value, dict):
-        for key, item in value.items():
-            if key == "evidence_ids" and isinstance(item, list):
-                ids.update(str(candidate) for candidate in item)
-            else:
-                ids.update(collect_evidence_ids(item))
-    elif isinstance(value, list):
-        for item in value:
-            ids.update(collect_evidence_ids(item))
-    return ids
-
-
-def evidence_id_map(record: dict) -> dict[str, str]:
-    """Mirror the builder's focused-route renumbering of reader-visible evidence IDs."""
-    if record.get("workflow_mode") == "complete_report":
-        return {}
-    cited = collect_evidence_ids(record.get("validation", {}))
-    for item in record.get("findings", []):
-        if isinstance(item, dict):
-            cited.update(str(value) for value in item.get("evidence_ids", []))
-    mapping: dict[str, str] = {}
-    for item in record.get("evidence", []):
-        if isinstance(item, dict) and item.get("id") in cited:
-            mapping[str(item["id"])] = f"E{len(mapping) + 1:03d}"
-    return mapping
 
 
 def all_text(document: Document) -> str:
@@ -162,11 +161,16 @@ def validate(document_path: Path, record_path: Path) -> dict:
     document = Document(document_path)
     record = json.loads(record_path.read_text(encoding="utf-8"))
     text = all_text(document)
+    cited_source_ids = {
+        source_id
+        for group in re.findall(r"\[([^\[\]]+)\]", text)
+        for source_id in re.findall(r"\bS\d+\b", group)
+    }
     headings = [p.text.strip() for p in document.paragraphs if getattr(p.style, "name", "") == "Heading 1"]
     route = record.get("workflow_mode")
-    required_headings = list(ROUTE_HEADINGS.get(route, []))
+    required_outcomes = list(ROUTE_OUTCOMES.get(route, []))
     if route == "one_question" and record.get("validation", {}).get("analysis_focus") == "small_business":
-        required_headings = [
+        required_outcomes = [
             "Bounded answer",
             "Candidate small-business market",
             "Rule of Two evidence assessment",
@@ -174,16 +178,12 @@ def validate(document_path: Path, record_path: Path) -> dict:
             "Targeted outreach plan",
             "Decision implications",
             "Further research options",
-            "Human-owned decisions and unknowns",
-            "Method, limitations, and evidence",
         ]
-    if not required_headings:
+    if not required_outcomes:
         failures.append(f"unsupported workflow_mode for report validation: {route}")
-    for heading in required_headings:
-        if heading not in headings:
-            failures.append(f"missing Heading 1 section: {heading}")
-    if [h for h in headings if h in required_headings] != required_headings:
-        failures.append("required Heading 1 sections are out of order")
+    for outcome in required_outcomes:
+        if outcome not in text:
+            failures.append(f"route-native outcome is missing: {outcome}")
     for label in ("BOTTOM LINE", "Decision implications", "Next practical actions"):
         if label not in text:
             failures.append(f"first-page decision product element is missing: {label}")
@@ -193,11 +193,17 @@ def validate(document_path: Path, record_path: Path) -> dict:
     for token in INTERNAL_CLASS_TOKENS:
         if token in text:
             failures.append(f"internal evidence-class token rendered in the document: {token}")
+    if re.search(r"\bE\d{3,}\b", text):
+        failures.append("internal E-style evidence identifiers are reader-visible")
+    if "Source Register" not in headings:
+        failures.append("reader-facing Source Register is missing")
     id_map = evidence_id_map(record)
-    for item in record.get("findings", []):
+    findings_to_check = record.get("findings", []) if route == "complete_report" else []
+    for item in findings_to_check:
         for evidence_id in item.get("evidence_ids", []):
-            if id_map.get(evidence_id, evidence_id) not in text:
-                failures.append(f"finding evidence ID not present in report: {evidence_id}")
+            source_id = id_map.get(evidence_id)
+            if not source_id or source_id not in cited_source_ids:
+                failures.append(f"finding source marker not present in report for internal evidence: {evidence_id}")
     complete = evidence_supports_complete_label(record)
     if route == "complete_report" and not complete and "Federal-Data Desk-Research Draft" not in text:
         failures.append("incomplete commercial evidence is not labeled as a desk-research draft")
@@ -205,24 +211,19 @@ def validate(document_path: Path, record_path: Path) -> dict:
         failures.append("incomplete evidence is mislabeled as a FAR Part 10 Market Research Report")
     failures.extend(placeholder_timestamp_failures(record))
     evidence = [item for item in record.get("evidence", []) if isinstance(item, dict)]
-    # Every [E###] identifier rendered in the document must resolve to a row
-    # of the rendered evidence register (the record's own IDs for the complete
-    # report, the renumbered IDs for focused routes).
-    if route == "complete_report":
-        rendered_register_ids = {str(item.get("id")) for item in evidence}
-    else:
-        rendered_register_ids = set(id_map.values())
+    # Every reader-facing [S#] marker must resolve to the Source Register.
+    rendered_register_ids = set(id_map.values())
     cited_in_document = {
         cited
         for group in re.findall(r"\[([^\[\]]+)\]", text)
-        for cited in re.findall(r"\bE\d{3,}\b", group)
+        for cited in re.findall(r"\bS\d+\b", group)
     }
     dangling = sorted(cited_in_document - rendered_register_ids)
     if dangling:
         failures.append(
-            "dangling evidence citations in the document: "
+            "dangling source citations in the document: "
             + ", ".join(dangling)
-            + " do not appear in the evidence register"
+            + " do not appear in the Source Register"
         )
     numeric_checks = record.get("validation", {}).get("numeric_checks", []) if route == "complete_report" else []
     for index, check in enumerate(numeric_checks):
@@ -252,9 +253,10 @@ def validate(document_path: Path, record_path: Path) -> dict:
             )
             continue
         for evidence_id in calculation_ids:
-            if not any(f"[{evidence_id}]" in line for line in calculation_lines):
+            source_id = id_map.get(evidence_id)
+            if not source_id or not any(f"[{source_id}]" in line for line in calculation_lines):
                 failures.append(
-                    f"numeric check {label} does not cite its calculation evidence ID: {evidence_id}"
+                    f"numeric check {label} does not cite its source marker for internal evidence: {evidence_id}"
                 )
     return {"status": "pass" if not failures else "fail", "heading_count": len(headings), "failures": failures}
 

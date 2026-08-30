@@ -34,7 +34,7 @@ The product name is a substantive promise, not merely a heading:
 - A Current Rule Explanation requires a concise rule card that separates the codified baseline from non-operative comparison layers and tells the acquisition team which source to use now.
 - An Agency Policy Status Matrix requires a named-agency adoption view, comparator treatment, and a confirmation list; it must not repeat a government-wide rule explanation as its main body.
 - A Three-Layer Policy Comparison requires a side-by-side codified/model/agency-deviation map and an adoption test; it must not reuse the Agency Status or Current Rule body.
-- A Regulatory Change Briefing requires matched before-and-after text, a clause- or section-level delta, operational consequences, and evidence IDs.
+- A Regulatory Change Briefing requires matched before-and-after text, a clause- or section-level delta, operational consequences, and reader-facing source citations.
 - A Rulemaking Timeline requires a dated milestone sequence, current stage, next status-changing trigger, and monitoring owner; it must not repeat a general current-status report.
 - An Open Rulemaking Watchlist requires live matter or docket identifiers, stage, verified deadline or an explicit no-open-window result, next event, owner, and recommended action.
 - A Public Comment Position Analysis requires an approved sample frame, returned and reviewed counts, stakeholder segments, coded themes, contrary positions, limitations, and acquisition implications.
@@ -71,22 +71,18 @@ Every written product must lead with the operational meaning of the approved evi
 4. **Planning scenarios:** show how the treatment changes if the baseline holds, agency adoption is confirmed, rulemaking changes status, or a material conflict remains unresolved. Include only scenarios relevant to the route and record.
 5. **Proportionate boundary:** reserve legal advice, procurement-specific applicability, deviation approval, and other official determinations in a compact note. Do not let boundary language displace the practical answer.
 
-When the approved record supplies `validation.planning_posture`, `validation.decision_gates`, or `validation.planning_scenarios`, use those approved fields. Otherwise the builder derives conservative route-appropriate content from policy statuses, conflicts, open questions, and evidence IDs. Never invent an agency adoption, effective date, controlling value, owner commitment, or procurement fact to make the product appear decisive.
+When the approved record supplies `validation.planning_posture`, `validation.decision_gates`, or `validation.planning_scenarios`, use those approved fields. When it does not, give the supported posture and material unknowns without fabricating a generic gate structure. Never invent an agency adoption, effective date, controlling value, owner commitment, procurement fact, or meeting cadence to make the product appear decisive.
 
-## Impact Brief required sections
+## Impact Brief content functions
 
-1. Planning Posture and Implications
-2. Owners and Decision Gates
-3. Question and Scope
-4. Documented Current Status
-5. Source Hierarchy and Authorities
-6. Planning Scenarios
-7. Change Timeline
-8. Government and Industry Impacts
-9. Open Issues and Comment Deadlines
-10. Operational Considerations
-11. Evidence Register
-12. Limitations and Reserved Determinations
+A full Acquisition Policy Impact Brief should cover the supported functions below, but the author chooses their order, grouping, and labels. Omit empty or immaterial functions and combine closely related ones. Never manufacture owners, scenarios, timelines, or deadlines merely to complete an outline.
+
+- Planning posture, practical implications, and question scope
+- Documented current status, source hierarchy, and authorities
+- Material scenarios, changes, impacts, and open issues
+- Owners or decision gates only when supported by the approved record
+- A concise Source Register
+- One proportionate limitations and reserved-determinations note
 
 Use the `standard_business_brief` visual preset with a restrained memo masthead. Use US Letter portrait, one-inch margins, Calibri 11-point body text, blue heading hierarchy, quiet running header/footer, real list styles, and fixed-width tables with repeating header rows.
 
@@ -111,10 +107,10 @@ Status cells in the Agency Policy Status Matrix ("Status for this question" colu
 
 A proposed-rule or deviation row must never carry the codified-baseline status. The DOCX validator errors on any status cell outside this vocabulary and on any non-baseline layer labeled with the codified-baseline status.
 
-## Evidence presentation
+## Source presentation
 
-- Put evidence IDs beside every consequential finding and impact statement.
-- Preserve canonical public hyperlinks in the evidence register.
+- Put reader-facing source markers such as `[S1]` or `[S1, S4]` beside every consequential finding and impact statement. Never expose internal `E001`-style identifiers.
+- Number sources by first appearance and preserve canonical public hyperlinks in a concise Source Register.
 - Keep codified text, agency deviations, model text, rulemaking, guidance, and public comments visually distinguishable.
 - Use tables only for repeated comparable records such as policy layers, timelines, and the evidence register.
 - Do not place internal prompts, tool names, filesystem paths, credentials, or raw private text in the document.
@@ -131,6 +127,6 @@ Impacts are considerations, not directives or legal conclusions.
 
 ## Validation
 
-The builder requires `validation.findings_approved` and `validation.brief_approved` to be true. The validator checks that planning posture is the first substantive section, owners/gates and scenarios are present, section order, evidence-ID coverage, live hyperlinks, as-of date, decision-boundary language, fixed table geometry, repeating headers, prohibited internal content, and policy-record validity.
+The builder requires `validation.findings_approved` and `validation.brief_approved` to be true. The validator checks route-native outcome coverage, reader-facing source-marker resolution, live hyperlinks, as-of date, decision-boundary language, table geometry, prohibited internal content, and policy-record validity. It must not require one exact heading list or section order when another coherent form satisfies the route.
 
 Validation is a floor, not the release decision. After validation, convert the DOCX through LibreOffice, extract text, confirm live links, render every page, and inspect the rendered product as the intended reader. Reject and revise any output whose first page does not answer what the reader should do, whose tables crowd or clip, whose boundaries overwhelm the recommendation, or whose owners and scenarios are too generic to use. Repeat validation and rendering after each material revision.

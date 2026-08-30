@@ -4,11 +4,11 @@
 
 The customer organization name, size posture, and constraints used anywhere in the document must come verbatim from user intake. Never substitute a placeholder company, a different size profile, or invented constraints.
 
-Internal harness vocabulary is prohibited in every reader-visible field, including headers, footers, titles, body text, tables, and the evidence appendix: never write "fictional", "test", "synthetic", "fixture", "bounded sample", or "archived record" where a reader can see it. When the user has not approved live research, honest illustrative labeling uses exactly one standard reader-facing line, placed in the limitations block only: "Illustrative analysis prepared without live-data confirmation". The brief validator rejects documents containing the banned tokens.
+Internal harness vocabulary is prohibited in every reader-visible field, including headers, footers, titles, body text, tables, and the Source Register: never write "fictional", "test", "synthetic", "fixture", "bounded sample", or "archived record" where a reader can see it. When the user has not approved live research, honest illustrative labeling uses exactly one standard reader-facing line, placed in the limitations block only: "Illustrative analysis prepared without live-data confirmation". The brief validator rejects documents containing the banned tokens.
 
 ## Evidence classes render as reader labels
 
-Evidence source classes are internal record vocabulary, not capture vocabulary. The research record, the record validator, and the evidence contract keep the internal tokens (`document`, `federal_mcp`, `official_web`, `other_web`, `user_statement`, `calculation`), but the builder renders each one as a reader-facing label wherever it reaches the page, including the evidence appendix Class column: Supplied document, Federal data service, Official website, Public web source, Customer statement, Recorded calculation. These are the same labels the market research product uses, so the two deliverables speak one vocabulary. A raw class token must never appear anywhere in the document text, and the brief validator errors when one does.
+Evidence source classes are internal record vocabulary, not capture vocabulary. The research record, the record validator, and the evidence contract keep the internal tokens (`document`, `federal_mcp`, `official_web`, `other_web`, `user_statement`, `calculation`), but the builder renders each one as a reader-facing label wherever it reaches the page, including the Source Register: Supplied document, Federal data service, Official website, Public web source, Customer statement, Recorded calculation. These are the same labels the market research product uses, so the two deliverables speak one vocabulary. A raw class token must never appear anywhere in the document text, and the brief validator errors when one does.
 
 ## Verifiable locators
 
@@ -24,9 +24,9 @@ Retrieval timestamps are the actual clock times of the source calls, never a pla
 
 Use US Letter, 0.75 to 1 inch margins, Aptos or Arial body text, restrained color, accessible contrast, page numbers, and real Word heading styles. First pages are decision pages, not generic covers: the title, business question, one decisive insight, and next action must be visible without turning a page. Use an appropriate route accent and layout: shortlist (pipeline cards), screen (decision dashboard), competitor (positioning map), recompete (radar table), teaming (decision card), account plan (market thesis), pricing (rate band), and refresh (delta ledger). Repeat table headers where the renderer preserves the printable margin. Use landscape only for wide evidence tables.
 
-## Required content, not a fixed generic section order
+## Required outcomes, not a fixed generic section order
 
-Every product includes a decision-first page, tailored analysis appropriate to the selected route, a short action plan, proportional limitations, and a compact evidence appendix containing source/search records and evidence IDs. The body should normally be three to six pages. Do not reuse the same title, cover page, section names, or generic “Evidence Brief” label for every route.
+Every product delivers a decision-first opening, tailored analysis appropriate to the selected route, practical next moves when the record supports them, proportionate limitations, and a concise Source Register. Length follows the evidence and the management question. A one-page screen can be the right product; a nuanced landscape may need substantially more room. Do not target a page count, reuse the same title or section stack, or call every route an “Evidence Brief.” Internal query logs and internal evidence identifiers remain in the research sidecar and do not appear in the customer document.
 
 The rendered product is the design authority. Passing a schema or structural validator is only a technical floor. A product fails if a reasonable executive still has to invent the decision, the next move, the owner, the proof needed, or the stop condition after reading it.
 
@@ -53,7 +53,7 @@ Page one must show, without turning the page: the route-specific product title a
 
 Use `validation.decision_rule` when the approved record contains a route-specific advance/hold/stop or investment rule. When it is absent, do not invent approval thresholds; state the evidence still needed to make the decision.
 
-Every consequential finding cites an evidence ID. State the as-of date and distinguish public evidence from internal user context. If an opportunity screen lacks complete internal context, frame the result as a conditional pursuit posture rather than a bid/no-bid decision.
+Every consequential finding cites a reader-facing source marker such as `[S1]` or `[S1, S4]`. Number sources by first appearance, list them once in the Source Register with direct locators, and never expose internal `E001`-style identifiers. State the as-of date and distinguish public evidence from internal user context. If an opportunity screen lacks complete internal context, frame the result as a conditional pursuit posture rather than a bid/no-bid decision.
 
 Do not include prompts, tool prefixes, local paths, credentials, or proprietary input beyond what the user approves for the deliverable.
 
@@ -67,5 +67,5 @@ The final review must answer yes to each question:
 - Are public evidence, internal context, inference, and unknowns visibly distinguishable?
 - Does the body provide route-native work product rather than repeated findings?
 - Are owners, proof obligations, timing, and stop conditions explicit where the record supports them?
-- Is the evidence appendix compact, honest about source preservation, and subordinate to the business decision?
+- Is the Source Register compact, honest about source preservation, and subordinate to the business decision?
 - Are all pages clean when rendered, with no blank pages, overflow, clipping, or awkward page breaks?

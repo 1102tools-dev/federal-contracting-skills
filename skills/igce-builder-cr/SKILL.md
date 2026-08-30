@@ -25,6 +25,7 @@ Load supporting files only when needed:
 - [wrap-rate-presets.md](references/wrap-rate-presets.md) for indirect-cost and fee structures.
 - [data-source-operations.md](references/data-source-operations.md) before mapping labor or calling BLS, CALC+, or Per Diem.
 - [workbook-specification.md](references/workbook-specification.md) before creating the workbook.
+- [professional-product-standard.md](references/professional-product-standard.md) before creating the workbook.
 - [validation-gates.md](references/validation-gates.md) before and after workbook generation.
 - [runtime-adaptation.md](references/runtime-adaptation.md) for questions, tools, formula engines, and delivery.
 
@@ -227,7 +228,7 @@ Prorate partial periods by months. Escalate labor and travel from the aged base-
 
 ### Step 8: build the workbook
 
-Follow [workbook-specification.md](references/workbook-specification.md). Use formulas for calculated values, numeric zero for placeholders, and explicit source and assumption cells. Keep editable assumptions visually distinct.
+Follow [professional-product-standard.md](references/professional-product-standard.md) and [workbook-specification.md](references/workbook-specification.md). Use formulas for calculated values, numeric zero for placeholders, and explicit source and assumption cells. Keep editable assumptions visually distinct. Keep formal controls intact while making the default summary and print experience concise and decision-centered.
 
 ### Step 8.5: validate
 

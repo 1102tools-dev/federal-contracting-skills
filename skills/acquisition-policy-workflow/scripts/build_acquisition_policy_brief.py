@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -270,10 +271,10 @@ def configure_styles(document: Document) -> None:
     title.paragraph_format.right_indent = Inches(0)
     title.paragraph_format.first_line_indent = Inches(0)
 
-    if "Evidence ID" not in document.styles:
-        evidence_style = document.styles.add_style("Evidence ID", WD_STYLE_TYPE.CHARACTER)
+    if "Source Citation" not in document.styles:
+        evidence_style = document.styles.add_style("Source Citation", WD_STYLE_TYPE.CHARACTER)
     else:
-        evidence_style = document.styles["Evidence ID"]
+        evidence_style = document.styles["Source Citation"]
     evidence_style.font.name = "Calibri"
     evidence_style.font.size = Pt(9)
     evidence_style.font.bold = True
@@ -297,7 +298,7 @@ def add_metadata(document: Document, label: str, value: object) -> None:
     paragraph.paragraph_format.space_after = Pt(2)
     label_run = paragraph.add_run(f"{label}: ")
     set_run_font(label_run, bold=True)
-    value_run = paragraph.add_run(str(value if value not in (None, "") else "Not provided"))
+    value_run = paragraph.add_run(reader_text(value if value not in (None, "") else "Not provided"))
     set_run_font(value_run)
 
 
@@ -308,7 +309,7 @@ def set_cell_text(
     paragraph = cell.paragraphs[0]
     paragraph.paragraph_format.space_after = Pt(0)
     paragraph.paragraph_format.line_spacing = 1.05
-    run = paragraph.add_run(str(value if value not in (None, "") else "Not stated"))
+    run = paragraph.add_run(reader_text(value if value not in (None, "") else "Not stated"))
     set_run_font(run, size=font_size, color=color, bold=bold)
 
 
@@ -351,16 +352,93 @@ def add_bullets(document: Document, items: list[object], empty_text: str) -> Non
         else:
             text = str(item)
             evidence_ids = []
-        paragraph = document.add_paragraph(str(text), style="List Bullet")
+        paragraph = document.add_paragraph(reader_text(text), style="List Bullet")
         cite_ids(paragraph, evidence_ids)
 
 
+def reader_text(value: object) -> str:
+    """Remove internal evidence markers that may be embedded in approved prose."""
+    text = str(value)
+    return re.sub(r"\s*\[(?:E\d{3,}(?:\s*,\s*)?)+\]", "", text).strip()
+
+
+_ACTIVE_SOURCE_MAP: dict[str, str] = {}
+
+
+def policy_source_map(record: dict) -> dict[str, str]:
+    """Map internal evidence IDs to reader-facing sources ordered by first use."""
+    ordered: list[str] = []
+
+    def visit(value: object) -> None:
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if key == "evidence_ids" and isinstance(item, list):
+                    ordered.extend(str(candidate) for candidate in item)
+                else:
+                    visit(item)
+        elif isinstance(value, list):
+            for item in value:
+                visit(item)
+
+    visit(record.get("validation", {}))
+    visit(record.get("findings", []))
+    visit(record.get("policy_items", []))
+    visit(record.get("timeline", []))
+    ordered.extend(str(item.get("id", "")) for item in record.get("evidence", []) if isinstance(item, dict))
+    by_id = {
+        str(item.get("id")): item
+        for item in record.get("evidence", [])
+        if isinstance(item, dict) and item.get("id")
+    }
+    mapping: dict[str, str] = {}
+    key_to_source: dict[tuple[str, str, str], str] = {}
+    for evidence_id in ordered:
+        if evidence_id in mapping or evidence_id not in by_id:
+            continue
+        item = by_id[evidence_id]
+        key = (
+            str(item.get("source_type", "")),
+            str(item.get("canonical_url") or item.get("locator") or "").strip(),
+            str(item.get("title", "")).strip(),
+        )
+        source_id = key_to_source.get(key)
+        if source_id is None:
+            source_id = f"S{len(key_to_source) + 1}"
+            key_to_source[key] = source_id
+        mapping[evidence_id] = source_id
+    return mapping
+
+
+def source_ids(ids: list[str]) -> list[str]:
+    return list(dict.fromkeys(_ACTIVE_SOURCE_MAP[value] for value in ids if value in _ACTIVE_SOURCE_MAP))
+
+
+def source_suffix(ids: list[str]) -> str:
+    markers = source_ids(ids)
+    return " [" + ", ".join(markers) + "]" if markers else ""
+
+
+def source_register_entries(record: dict, include_ids: set[str] | None = None) -> list[dict]:
+    entries: dict[str, dict] = {}
+    for item in record.get("evidence", []):
+        if not isinstance(item, dict) or item.get("id") not in _ACTIVE_SOURCE_MAP:
+            continue
+        if include_ids is not None and item.get("id") not in include_ids:
+            continue
+        source_id = _ACTIVE_SOURCE_MAP[str(item["id"])]
+        entry = entries.setdefault(source_id, {**item, "source_id": source_id, "facts": []})
+        fact = str(item.get("fact", "")).strip()
+        if fact and fact not in entry["facts"]:
+            entry["facts"].append(fact)
+    return [entries[key] for key in sorted(entries, key=lambda value: int(value[1:]))]
+
+
 def cite_ids(paragraph, ids: list[str]) -> None:
-    if not ids:
+    markers = source_ids(ids)
+    if not markers:
         return
-    paragraph.add_run(" [")
-    paragraph.add_run(", ".join(ids), style="Evidence ID")
-    paragraph.add_run("]")
+    paragraph.add_run(" ")
+    paragraph.add_run("[" + ", ".join(markers) + "]", style="Source Citation")
 
 
 def display_value(value: object) -> str:
@@ -401,7 +479,7 @@ def policy_rows(record: dict) -> list[list[object]]:
             item.get("citation", ""),
             item.get("agency", "") or "Government-wide or not stated",
             item.get("applicability_summary", ""),
-            ", ".join(item.get("evidence_ids", [])),
+            ", ".join(source_ids(item.get("evidence_ids", []))),
         ]
         for item in record.get("policy_items", [])
     ]
@@ -792,41 +870,7 @@ def derive_decision_gates(record: dict) -> list[dict]:
     supplied = record.get("validation", {}).get("decision_gates")
     if isinstance(supplied, list) and supplied:
         return [item for item in supplied if isinstance(item, dict)]
-    first_owner, second_owner, third_owner = route_owner_labels(record.get("workflow_mode", ""))
-    unresolved = bool(record.get("unresolved_questions") or record.get("conflicts"))
-    first_evidence = evidence_ids_for_statuses(
-        record, {"agency_class_deviation", "model_deviation", "codified_current"}
-    )
-    rulemaking_evidence = evidence_ids_for_statuses(
-        record, {"proposed_rule", "final_rule_pending_effective", "final_rule_effective"}
-    )
-    return [
-        {
-            "gate": "A",
-            "evidence": "Confirm the current source layer, status, scope, and effective timing.",
-            "owner": first_owner,
-            "timing": "Before the analysis is used to draft or approve acquisition language",
-            "evidence_ids": first_evidence,
-        },
-        {
-            "gate": "B",
-            "evidence": (
-                "Resolve the recorded conflict or open applicability question."
-                if unresolved
-                else "Map the documented policy to the actual solicitation, award, option, or modification date."
-            ),
-            "owner": second_owner,
-            "timing": "Before release or the next material procurement decision",
-            "evidence_ids": first_evidence,
-        },
-        {
-            "gate": "C",
-            "evidence": "Refresh agency and rulemaking status when a material source or date changes.",
-            "owner": third_owner,
-            "timing": "At the stated refresh trigger and before relying on prior conclusions",
-            "evidence_ids": rulemaking_evidence or first_evidence,
-        },
-    ]
+    return []
 
 
 def derive_scenarios(record: dict) -> list[dict]:
@@ -839,14 +883,16 @@ def derive_scenarios(record: dict) -> list[dict]:
     rulemaking_ids = evidence_ids_for_statuses(
         record, {"proposed_rule", "final_rule_pending_effective", "final_rule_effective"}
     )
-    scenarios = [
-        {
-            "scenario": "Baseline holds",
-            "trigger": "No new agency adoption or effective rule changes the documented status.",
-            "treatment": "Continue from the documented current baseline and retain the cited source set.",
-            "evidence_ids": baseline_ids,
-        }
-    ]
+    scenarios: list[dict] = []
+    if statuses & {"model_deviation", "agency_class_deviation", "proposed_rule", "final_rule_pending_effective"}:
+        scenarios.append(
+            {
+                "scenario": "Baseline holds",
+                "trigger": "No new agency adoption or effective rule changes the documented status.",
+                "treatment": "Continue from the documented current baseline and retain the cited source set.",
+                "evidence_ids": baseline_ids,
+            }
+        )
     if statuses & {"model_deviation", "agency_class_deviation"}:
         scenarios.append(
             {
@@ -910,8 +956,7 @@ def item_with_status(record: dict, status: str) -> dict:
 
 
 def evidence_suffix(item: dict) -> str:
-    ids = item.get("evidence_ids", [])
-    return " [" + ", ".join(ids) + "]" if ids else ""
+    return source_suffix(item.get("evidence_ids", []))
 
 
 def validation_rows(record: dict, field: str) -> list[dict]:
@@ -931,10 +976,7 @@ def require_validation_rows(record: dict, field: str, purpose: str) -> list[dict
 
 def value_with_evidence(item: dict, field: str) -> str:
     text = str(item.get(field, ""))
-    ids = item.get("evidence_ids", [])
-    if ids:
-        text += " [" + ", ".join(str(value) for value in ids) + "]"
-    return text
+    return text + source_suffix(item.get("evidence_ids", []))
 
 
 def enforce_route_content(record: dict) -> None:
@@ -1015,7 +1057,7 @@ def add_route_native_analysis(document: Document, record: dict) -> None:
                 )
             else:
                 relevance = STATUS_QUESTION_LABELS.get(status, "Documented status not classified")
-            rows.append([status.replace("_", " ").title(), item.get("agency") or "Government-wide", relevance, ", ".join(item.get("evidence_ids", []))])
+            rows.append([status.replace("_", " ").title(), item.get("agency") or "Government-wide", relevance, ", ".join(source_ids(item.get("evidence_ids", [])))])
         add_table(document, ["Layer", "Issuer/agency", "Status for this question", "Evidence"], rows, [1800, 1900, 4200, 1460])
     elif mode == "three_layer":
         document.add_heading("Three-Layer Comparison and Adoption Test", level=1)
@@ -1049,7 +1091,7 @@ def add_route_native_analysis(document: Document, record: dict) -> None:
         add_bullets(document, record.get("validation", {}).get("implementation_actions", []), "No implementation action was approved.")
     elif mode == "rulemaking":
         document.add_heading("Rulemaking Milestones and Next Trigger", level=1)
-        rows = [[item.get("date", ""), item.get("status", ""), item.get("event", ""), ", ".join(item.get("evidence_ids", []))] for item in record.get("timeline", [])]
+        rows = [[item.get("date", ""), item.get("status", ""), item.get("event", ""), ", ".join(source_ids(item.get("evidence_ids", [])))] for item in record.get("timeline", [])]
         add_table(document, ["Date", "Status", "Milestone", "Evidence"], rows, [1300, 1700, 4900, 1460])
         document.add_paragraph("Next status-changing trigger: an effective final rule, correction, withdrawal, codification update, or applicable agency instruction. Until then, the proposed-rule layer remains non-operative.")
     elif mode == "watchlist":
@@ -1093,10 +1135,12 @@ def add_route_native_analysis(document: Document, record: dict) -> None:
 
 
 def build(record: dict, output: Path) -> None:
+    global _ACTIVE_SOURCE_MAP
     validation = record.get("validation", {})
     if not validation.get("findings_approved") or not validation.get("brief_approved"):
         raise ValueError("findings and brief generation must be approved before building the DOCX")
     enforce_route_content(record)
+    _ACTIVE_SOURCE_MAP = policy_source_map(record)
 
     document = Document()
     configure_styles(document)
@@ -1164,7 +1208,7 @@ def build(record: dict, output: Path) -> None:
     document.add_heading("What is established", level=2)
     approved_findings = validation.get("focused_findings") or record.get("findings", [])
     for finding in approved_findings[:3]:
-        paragraph = document.add_paragraph(finding.get("text", ""), style="List Bullet")
+        paragraph = document.add_paragraph(reader_text(finding.get("text", "")), style="List Bullet")
         cite_ids(paragraph, finding.get("evidence_ids", []))
     if not approved_findings:
         document.add_paragraph("No approved finding was recorded.")
@@ -1175,30 +1219,26 @@ def build(record: dict, output: Path) -> None:
         leading_impacts,
         "Use the documented status to frame acquisition planning, timing, monitoring, and file support.",
     )
-    document.add_heading("Owners and Decision Gates", level=1)
     decision_gates = derive_decision_gates(record)
-    gate_rows = []
-    for gate in decision_gates:
-        evidence_text = gate.get("evidence", "")
-        evidence_ids = gate.get("evidence_ids", [])
-        if evidence_ids:
-            evidence_text += " [" + ", ".join(evidence_ids) + "]"
-        gate_rows.append(
-            [
-                gate.get("gate", ""),
-                evidence_text,
-                gate.get("owner", ""),
-                gate.get("timing", ""),
-            ]
+    if decision_gates:
+        document.add_heading("Owners and Decision Gates", level=1)
+        gate_rows = []
+        for gate in decision_gates:
+            evidence_text = gate.get("evidence", "") + source_suffix(gate.get("evidence_ids", []))
+            gate_rows.append(
+                [
+                    gate.get("gate", ""),
+                    evidence_text,
+                    gate.get("owner", ""),
+                    gate.get("timing", ""),
+                ]
+            )
+        add_table(
+            document,
+            ["Gate", "Decision-ready evidence", "Owner", "Timing"],
+            gate_rows,
+            [1800, 3160, 1700, 2700],
         )
-    # The first column must stay wide enough for multi-word gate labels such as
-    # "Adoption confirmation"; narrower widths force mid-word breaks in fixed layout.
-    add_table(
-        document,
-        ["Gate", "Decision-ready evidence", "Owner", "Timing"],
-        gate_rows,
-        [1800, 3160, 1700, 2700],
-    )
     boundary = document.add_paragraph()
     boundary.paragraph_format.space_before = Pt(4)
     boundary.paragraph_format.space_after = Pt(6)
@@ -1213,62 +1253,51 @@ def build(record: dict, output: Path) -> None:
     add_route_native_analysis(document, record)
 
     if record.get("workflow_mode") in FOCUSED_PRODUCTS:
-        document.add_heading("Management Actions", level=1)
         supplied_actions = record.get("validation", {}).get("management_actions")
         management_actions = (
             [item for item in supplied_actions if isinstance(item, dict)]
             if isinstance(supplied_actions, list)
             else []
         )
-        if not management_actions or management_actions == decision_gates:
-            # Do not repeat the decision-gate rows as a second table.
-            document.add_paragraph(
-                "The owners, timing, and decision-ready evidence for each management action are stated once in "
-                "the Owners and Decision Gates table above."
-            )
-        else:
+        if management_actions and management_actions != decision_gates:
+            document.add_heading("Management Actions", level=1)
             action_rows = []
             for action in management_actions:
                 evidence_text = action.get("evidence", "")
                 if action.get("evidence_ids"):
-                    evidence_text += " [" + ", ".join(action["evidence_ids"]) + "]"
+                    evidence_text += source_suffix(action["evidence_ids"])
                 action_rows.append([action.get("owner", ""), action.get("timing", ""), action.get("gate", ""), evidence_text])
             add_table(document, ["Owner", "Timing", "Action / decision gate", "Evidence needed"], action_rows, [1700, 1900, 2200, 3560], font_size=9)
 
-        document.add_heading("Evidence and Source Notes", level=1)
+        document.add_heading("Source Register", level=1)
         focused_ids = focused_evidence_ids(record)
-        evidence = [item for item in record.get("evidence", []) if item.get("id") in focused_ids]
+        evidence = source_register_entries(record, focused_ids)
         if evidence:
-            table = add_table(
-                document,
-                ["ID", "Source", "Decision-useful fact", "Limit"],
-                [[item.get("id", ""), f"{item.get('title', '')}\n{item.get('locator', '')}", item.get("fact", ""), item.get("limitations", "")] for item in evidence],
-                [700, 2600, 3900, 2160],
-                font_size=8.5,
-                add_spacer=False,
-            )
-            for row, item in zip(table.rows[1:], evidence):
+            for item in evidence:
+                paragraph = document.add_paragraph()
+                paragraph.paragraph_format.space_after = Pt(3)
+                paragraph.add_run(f"[{item.get('source_id', '')}] ").bold = True
+                paragraph.add_run(f"{item.get('source_type', '').replace('_', ' ').title()}. {item.get('title', '')}. ")
                 url = item.get("canonical_url", "")
                 if url:
-                    paragraph = row.cells[1].add_paragraph()
-                    paragraph.paragraph_format.space_after = Pt(0)
-                    add_hyperlink(paragraph, urlparse(url).netloc or "Official source", url, font_size=8.5)
+                    add_hyperlink(paragraph, url, url, font_size=8.5)
+                elif item.get("locator"):
+                    paragraph.add_run(str(item.get("locator")))
+                date = item.get("as_of_date") or item.get("retrieved_at")
+                if date:
+                    paragraph.add_run(f". {date}")
         else:
             document.add_paragraph("No approved evidence item was recorded.")
 
-        document.add_heading("Limitations and Reserved Determinations", level=1)
-        limitations = list(record.get("limitations", [])) or ["No additional limitation was recorded."]
-        limitations[-1] += (
-            " This product does not provide legal advice. It states what cited published sources indicate as of the date shown. "
-            "An authorized agency official must determine procurement-specific applicability."
+        limitation_text = " ".join(str(value) for value in record.get("limitations", []) if value)
+        limitation_text = (limitation_text + " " if limitation_text else "") + (
+            "This product does not provide legal advice. An authorized agency official must determine procurement-specific applicability."
         )
-        limitation_start = len(document.paragraphs)
-        add_bullets(document, limitations, "No additional limitation was recorded.")
-        for paragraph in document.paragraphs[limitation_start:]:
-            paragraph.paragraph_format.space_after = Pt(2)
-            paragraph.paragraph_format.line_spacing = 1.0
-            for run in paragraph.runs:
-                set_run_font(run, size=8.5, color=BLACK)
+        paragraph = document.add_paragraph()
+        paragraph.paragraph_format.space_before = Pt(6)
+        paragraph.paragraph_format.space_after = Pt(2)
+        run = paragraph.add_run("Boundary: " + limitation_text)
+        set_run_font(run, size=8.5, color=MID_GRAY)
         output.parent.mkdir(parents=True, exist_ok=True)
         document.save(output)
         return
@@ -1290,61 +1319,61 @@ def build(record: dict, output: Path) -> None:
         document.add_paragraph("No approved policy item was recorded.")
     document.add_heading("Approved findings", level=2)
     for finding in record.get("findings", []):
-        paragraph = document.add_paragraph(finding.get("text", ""), style="List Bullet")
+        paragraph = document.add_paragraph(reader_text(finding.get("text", "")), style="List Bullet")
         cite_ids(paragraph, finding.get("evidence_ids", []))
     if not record.get("findings"):
         document.add_paragraph("No approved finding was recorded.")
 
-    document.add_heading("Source Hierarchy and Authorities", level=1)
     hierarchy = validation.get("source_hierarchy", [])
-    add_bullets(
-        document,
-        hierarchy,
-        "The analysis distinguishes codified text, agency deviations, model text, rulemaking, guidance, comments, and supplied documents.",
-    )
+    if hierarchy:
+        document.add_heading("Source Hierarchy and Authorities", level=1)
+        add_bullets(document, hierarchy, "")
 
-    document.add_heading("Planning Scenarios", level=1)
     scenario_rows = []
     for scenario in derive_scenarios(record):
         treatment = scenario.get("treatment", "")
         evidence_ids = scenario.get("evidence_ids", [])
         if evidence_ids:
-            treatment += " [" + ", ".join(evidence_ids) + "]"
+            treatment += source_suffix(evidence_ids)
         scenario_rows.append(
             [scenario.get("scenario", ""), scenario.get("trigger", ""), treatment]
         )
-    add_table(
-        document,
-        ["Scenario", "Trigger", "Planning treatment"],
-        scenario_rows,
-        [1900, 3300, 4160],
-    )
+    if scenario_rows:
+        document.add_heading("Planning Scenarios", level=1)
+        add_table(
+            document,
+            ["Scenario", "Trigger", "Planning treatment"],
+            scenario_rows,
+            [1900, 3300, 4160],
+        )
 
-    document.add_heading("Change Timeline", level=1)
     timeline = record.get("timeline", [])
     if timeline:
+        document.add_heading("Change Timeline", level=1)
         add_table(
             document,
             ["Date", "Event", "Status", "Evidence"],
-            [[item.get("date", ""), item.get("event", ""), item.get("status", ""), ", ".join(item.get("evidence_ids", []))] for item in timeline],
+            [[item.get("date", ""), item.get("event", ""), item.get("status", ""), ", ".join(source_ids(item.get("evidence_ids", [])))] for item in timeline],
             [1250, 4700, 1850, 1560],
         )
-    else:
-        document.add_paragraph("No change event was required for the approved scope.")
-
-    document.add_heading("Government and Industry Impacts", level=1)
-    if lens == "neutral":
+    impacts = validation.get("impacts", {})
+    has_impacts = bool(impacts.get("government") or impacts.get("industry")) if isinstance(impacts, dict) else bool(impacts)
+    if has_impacts:
+        document.add_heading("Government and Industry Impacts", level=1)
+    if has_impacts and lens == "neutral":
         document.add_heading("Government lens", level=2)
         add_bullets(document, validation.get("impacts", {}).get("government", []), "No approved government impact was recorded.")
         document.add_heading("Industry lens", level=2)
         add_bullets(document, validation.get("impacts", {}).get("industry", []), "No approved industry impact was recorded.")
-    else:
+    elif has_impacts:
         document.add_heading(f"{lens.title()} lens", level=2)
         add_bullets(document, impact_items(record, lens), f"No approved {lens} impact was recorded.")
 
-    document.add_heading("Open Issues and Comment Deadlines", level=1)
     deadlines = validation.get("open_issues", [])
-    add_bullets(document, deadlines, "No open issue or comment deadline was identified within the approved scope.")
+    if deadlines or record.get("stakeholder_positions"):
+        document.add_heading("Open Issues and Comment Deadlines", level=1)
+    if deadlines:
+        add_bullets(document, deadlines, "")
     if record.get("stakeholder_positions"):
         document.add_heading("Observed stakeholder positions", level=2)
         add_table(
@@ -1356,15 +1385,18 @@ def build(record: dict, output: Path) -> None:
                     item.get("position", ""),
                     f"{item.get('reviewed_count', 0)} of {item.get('returned_count', 0)}; {item.get('sample_method', '')}",
                     item.get("limitations", ""),
-                    ", ".join(item.get("evidence_ids", [])),
+                    ", ".join(source_ids(item.get("evidence_ids", []))),
                 ]
                 for item in record["stakeholder_positions"]
             ],
             [1250, 3000, 1600, 2350, 1160],
         )
 
-    document.add_heading("Operational Considerations", level=1)
-    add_bullets(document, validation.get("operational_considerations", []), "No operational consideration was approved.")
+    operational = validation.get("operational_considerations", [])
+    if operational or record.get("conflicts") or record.get("unresolved_questions"):
+        document.add_heading("Operational Considerations", level=1)
+    if operational:
+        add_bullets(document, operational, "")
     if record.get("conflicts"):
         document.add_heading("Conflicts", level=2)
         add_table(
@@ -1389,43 +1421,35 @@ def build(record: dict, output: Path) -> None:
         document.add_heading("Unresolved questions", level=2)
         add_bullets(document, record["unresolved_questions"], "")
 
-    document.add_heading("Evidence Register", level=1)
-    evidence = record.get("evidence", [])
+    document.add_heading("Source Register", level=1)
+    evidence = source_register_entries(record)
     if evidence:
-        table = add_table(
-            document,
-            ["ID", "Type", "Source and locator", "Supported fact", "Limits"],
-            [
-                [
-                    item.get("id", ""),
-                    item.get("source_type", "").replace("_", " ").title(),
-                    f"{item.get('title', '')}\n{item.get('locator', '')}",
-                    item.get("fact", ""),
-                    item.get("limitations", ""),
-                ]
-                for item in evidence
-            ],
-            [850, 1400, 2350, 3000, 1760],
-            font_size=8.5,
-            add_spacer=False,
-        )
-        for row, item in zip(table.rows[1:], evidence):
+        for item in evidence:
+            paragraph = document.add_paragraph()
+            paragraph.paragraph_format.space_after = Pt(3)
+            paragraph.add_run(f"[{item.get('source_id', '')}] ").bold = True
+            paragraph.add_run(f"{item.get('source_type', '').replace('_', ' ').title()}. {item.get('title', '')}. ")
             url = item.get("canonical_url", "")
             if url:
-                paragraph = row.cells[2].add_paragraph()
-                paragraph.paragraph_format.space_before = Pt(2)
-                paragraph.paragraph_format.space_after = Pt(0)
-                add_hyperlink(paragraph, urlparse(url).netloc or "Official source", url, font_size=8.5)
+                add_hyperlink(paragraph, url, url, font_size=8.5)
+            elif item.get("locator"):
+                paragraph.add_run(str(item.get("locator")))
+            date = item.get("as_of_date") or item.get("retrieved_at")
+            if date:
+                paragraph.add_run(f". {date}")
     else:
         document.add_paragraph("No evidence item was recorded.")
 
-    document.add_section(WD_SECTION.NEW_PAGE)
-    document.add_heading("Limitations and Reserved Determinations", level=1)
-    add_bullets(document, record.get("limitations", []), "No additional limitation was recorded.")
-    document.add_paragraph(
-        "This brief does not provide legal advice, approve policy, select clauses, or determine which rule legally governs a specific procurement. "
-        "Confirm transaction-specific treatment with the responsible contracting, policy, and legal officials."
+    limitation_text = " ".join(str(value) for value in record.get("limitations", []) if value)
+    paragraph = document.add_paragraph()
+    paragraph.paragraph_format.space_before = Pt(6)
+    paragraph.paragraph_format.space_after = Pt(2)
+    run = paragraph.add_run(
+        "Boundary: "
+        + ((limitation_text + " ") if limitation_text else "")
+        + "This brief does not provide legal advice, approve policy, select clauses, or determine which rule legally governs a specific procurement."
     )
+    set_run_font(run, size=8.5, color=MID_GRAY)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     document.save(output)

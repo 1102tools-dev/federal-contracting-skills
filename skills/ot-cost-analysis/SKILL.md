@@ -38,6 +38,7 @@ Load only the references needed for the active workflow:
 - [labor-and-costing-methods.md](references/labor-and-costing-methods.md) before deriving labor, materials, scenarios, ceilings, fees, or funding timing.
 - [data-source-operations.md](references/data-source-operations.md) before mapping SOCs or calling BLS, CALC+, or Per Diem operations.
 - [workbook-specification.md](references/workbook-specification.md) in full before generating the workbook.
+- [professional-product-standard.md](references/professional-product-standard.md) before generating the workbook.
 - [validation-gates.md](references/validation-gates.md) before building and again before delivery.
 - [runtime-adaptation.md](references/runtime-adaptation.md) when collecting structured answers, locating tools, selecting a calculation engine, or delivering files.
 
@@ -213,7 +214,7 @@ Vary only assumptions with a documented basis. Keep low, working, and high labor
 
 ### Step 7: build the workbook
 
-Read [workbook-specification.md](references/workbook-specification.md) in full. Build the seven required sheets and preserve:
+Read [professional-product-standard.md](references/professional-product-standard.md) and [workbook-specification.md](references/workbook-specification.md) in full. Build the seven required sheets and preserve the formal calculation controls, while making the default summary and print experience concise and decision-centered:
 
 - Blank proposed-amount cells when no proposal exists, with conditional variance formulas.
 - Formula-driven labor, escalation, ceiling, share, fee, scenario, and cumulative-funding cells.

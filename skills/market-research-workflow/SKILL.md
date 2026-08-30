@@ -82,6 +82,7 @@ Read supporting files only when their stage is reached:
 - [decision-boundaries.md](references/decision-boundaries.md) before presenting findings or recommendations.
 - [report-specification.md](references/report-specification.md) before building a report.
 - [evidence-contract.md](references/evidence-contract.md) whenever creating or updating the research record.
+- [professional-product-standard.md](references/professional-product-standard.md) before drafting any reader-facing response or file.
 - [runtime-adaptation.md](references/runtime-adaptation.md) for host-specific capability handling.
 
 ## Permanent release gates
@@ -260,7 +261,7 @@ After findings, acquisition decisions, and every unresolved-item disposition are
 
 Write every reader-visible record field (findings, unresolved items, conflicts, evidence titles, locators, facts, limitations, and all `validation` narrative) as an acquisition-record statement, never as chat or session narration. Do not carry phrases such as "the user", "this session", tool names, or fixture and synthetic vocabulary into those fields; label honest illustrative data as `Illustrative example data (not live research)`. If any action text references named firms or vendors, the record must actually name those concerns (for example in `validation.small_business_candidates`); otherwise rewrite the action. The record validator rejects violations of both rules.
 
-1. Read [report-specification.md](references/report-specification.md).
+1. Read [professional-product-standard.md](references/professional-product-standard.md) and [report-specification.md](references/report-specification.md). Choose a route-native structure and proportional length. Do not treat the specification as a universal table of contents.
 2. Populate the route-native human-output fields supported by the approved record: decision implications and owned next actions for every route; capability/packaging hypotheses, a market-engagement instrument, and decision gates for a complete report when approved; change fields for a refresh; bounded-answer fields for one-question analysis; or requirements/pricing-boundary fields for a Pre-Award handoff. Give each unresolved item an owner, decision gate, and evidence/action need without inventing a disposition.
 3. Apply the route-content minimums in the report specification. A route title is a promise to the reader: do not generate a Market Research Refresh without a prior/current comparison, a small-business decision analysis without an actual candidate or result population and a bounded Rule of Two assessment, or a Pre-Award handoff without translating findings into executable acquisition inputs. If those minimums are not met, provide a short evidence-acquisition note in chat instead of a polished but empty document.
 4. Save the normalized schema `1.2` record as JSON and run `scripts/validate_research_record.py`. Archived schema `1.1` records may be read or refreshed, but they must be migrated to `1.2` before formal artifact generation.

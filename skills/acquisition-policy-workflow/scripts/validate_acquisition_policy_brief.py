@@ -14,20 +14,11 @@ from pathlib import Path
 from docx import Document
 from docx.oxml.ns import qn
 
-
-REQUIRED_HEADINGS = [
+IMPACT_BRIEF_OUTCOMES = [
     "Planning Posture and Implications",
-    "Owners and Decision Gates",
     "Question and Scope",
     "Documented Current Status",
-    "Source Hierarchy and Authorities",
-    "Planning Scenarios",
-    "Change Timeline",
-    "Government and Industry Impacts",
-    "Open Issues and Comment Deadlines",
-    "Operational Considerations",
-    "Evidence Register",
-    "Limitations and Reserved Determinations",
+    "Source Register",
 ]
 # Route-native payload Heading 1 sections for each focused product; see
 # references/report-specification.md ("Per-route required payload and the
@@ -68,6 +59,45 @@ STATUS_CELL_VOCABULARY = CODIFIED_BASELINE_LABELS | {
 }
 STATUS_COLUMN_HEADERS = {"Status for this question", "Documented status"}
 NONBASELINE_LAYER = re.compile(r"\b(?:proposed|deviation|model)\b", re.I)
+
+
+def policy_source_map(record: dict) -> dict[str, str]:
+    """Mirror the builder's internal-evidence to reader-source mapping."""
+    ordered: list[str] = []
+
+    def visit(value: object) -> None:
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if key == "evidence_ids" and isinstance(item, list):
+                    ordered.extend(str(candidate) for candidate in item)
+                else:
+                    visit(item)
+        elif isinstance(value, list):
+            for item in value:
+                visit(item)
+
+    for value in (record.get("validation", {}), record.get("findings", []), record.get("policy_items", []), record.get("timeline", [])):
+        visit(value)
+    ordered.extend(str(item.get("id", "")) for item in record.get("evidence", []) if isinstance(item, dict))
+    by_id = {
+        str(item.get("id")): item
+        for item in record.get("evidence", [])
+        if isinstance(item, dict) and item.get("id")
+    }
+    mapping: dict[str, str] = {}
+    keys: dict[tuple[str, str, str], str] = {}
+    for evidence_id in ordered:
+        if evidence_id in mapping or evidence_id not in by_id:
+            continue
+        item = by_id[evidence_id]
+        key = (
+            str(item.get("source_type", "")),
+            str(item.get("canonical_url") or item.get("locator") or "").strip(),
+            str(item.get("title", "")).strip(),
+        )
+        source_id = keys.setdefault(key, f"S{len(keys) + 1}")
+        mapping[evidence_id] = source_id
+    return mapping
 
 
 def load_record_validator(path: Path):
@@ -204,29 +234,29 @@ def validate(document_path: Path, record_path: Path) -> dict:
 
     document = Document(document_path)
     text = all_text(document)
+    cited_source_ids = {
+        source_id
+        for group in re.findall(r"\[([^\[\]]+)\]", text)
+        for source_id in re.findall(r"\bS\d+\b", group)
+    }
     headings = [
         paragraph.text.strip()
         for paragraph in document.paragraphs
         if getattr(paragraph.style, "name", "") == "Heading 1"
     ]
     mode = record.get("workflow_mode", "")
-    required_headings = (
+    required_outcomes = (
         [
             "Planning Posture and Implications",
-            "Owners and Decision Gates",
             *FOCUSED_HEADINGS[mode],
-            "Management Actions",
-            "Evidence and Source Notes",
-            "Limitations and Reserved Determinations",
+            "Source Register",
         ]
         if mode in FOCUSED_HEADINGS
-        else REQUIRED_HEADINGS
+        else IMPACT_BRIEF_OUTCOMES
     )
-    for heading in required_headings:
-        if heading not in headings:
-            failures.append(f"missing Heading 1 section: {heading}")
-    if [heading for heading in headings if heading in required_headings] != required_headings:
-        failures.append("required Heading 1 sections are out of order")
+    for outcome in required_outcomes:
+        if outcome not in text:
+            failures.append(f"route-native outcome is missing: {outcome}")
 
     for pattern in FORBIDDEN:
         if pattern.search(text):
@@ -235,7 +265,8 @@ def validate(document_path: Path, record_path: Path) -> dict:
     for phrase in BOUNDARY_PHRASES:
         if phrase not in lowered:
             failures.append(f"required decision-boundary language is missing: {phrase}")
-    product_elements = ("Decision-ready evidence", "Owner", "Timing") if mode in FOCUSED_HEADINGS else ("Decision-ready evidence", "Owner", "Timing", "Scenario", "Planning treatment")
+    has_decision_gates = bool(record.get("validation", {}).get("decision_gates"))
+    product_elements = ("Decision-ready evidence", "Owner", "Timing") if has_decision_gates else ()
     for product_element in product_elements:
         if product_element not in text:
             failures.append(f"required reader-facing product element is missing: {product_element}")
@@ -258,6 +289,7 @@ def validate(document_path: Path, record_path: Path) -> dict:
 
     validation = record.get("validation", {})
     focused = mode in FOCUSED_HEADINGS
+    id_map = policy_source_map(record)
     findings = validation.get("focused_findings", []) if focused else record.get("findings", [])
     relevant_evidence_ids = (
         focused_evidence_ids(record)
@@ -266,16 +298,20 @@ def validate(document_path: Path, record_path: Path) -> dict:
     )
     for finding in findings:
         for evidence_id in finding.get("evidence_ids", []):
-            if evidence_id not in text:
-                failures.append(f"finding evidence ID not present in brief: {evidence_id}")
+            source_id = id_map.get(evidence_id)
+            if not source_id or source_id not in cited_source_ids:
+                failures.append(f"finding source marker not present in brief for internal evidence: {evidence_id}")
     if mode not in FOCUSED_HEADINGS:
         for policy in record.get("policy_items", []):
             policy_id = policy.get("id")
             if policy_id and policy_id not in text:
                 failures.append(f"policy item ID not present in brief: {policy_id}")
     for evidence_id in sorted(relevant_evidence_ids):
-        if evidence_id not in text:
-            failures.append(f"evidence register is missing ID: {evidence_id}")
+        source_id = id_map.get(evidence_id)
+        if not source_id or source_id not in text:
+            failures.append(f"Source Register is missing the source for internal evidence: {evidence_id}")
+    if re.search(r"\bE\d{3,}\b", text):
+        failures.append("internal E-style evidence identifiers are reader-visible")
 
     urls = external_hyperlinks(document)
     for item in record.get("evidence", []):
@@ -287,9 +323,6 @@ def validate(document_path: Path, record_path: Path) -> dict:
 
     failures.extend(status_vocabulary_failures(document))
     failures.extend(table_geometry_failures(document))
-    if len(document.tables) < 3:
-        failures.append("brief must contain at least three structured evidence tables")
-
     return {
         "status": "pass" if not failures else "fail",
         "heading_count": len(headings),

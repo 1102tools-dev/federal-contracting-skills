@@ -11,6 +11,7 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -241,19 +242,20 @@ class FocusedRouteRenderingTests(unittest.TestCase):
     def test_no_internal_evidence_class_tokens_render(self):
         for token in ("federal_mcp", "official_web", "user_statement", "other_web", "source_class"):
             self.assertNotIn(token, self.text)
-        # E004 (a customer statement) is uncited, so its row is filtered out of
-        # the focused register; the cited classes render as reader labels.
-        for label in ("Supplied document", "Federal data service", "Official website"):
+        # Only sources cited by this focused refresh are promoted to the
+        # reader-facing register.
+        for label in ("Federal data service", "Official website"):
             self.assertIn(label, self.text)
+        self.assertNotIn("Customer statement", self.text)
 
-    def test_reader_visible_evidence_ids_are_sequential(self):
-        # The record cites E001, E002, E003, E005 (E004 is uncited), so the
-        # rendered register renumbers to a gap-free E001 through E004.
-        self.assertIn("E004", self.text)
-        self.assertNotIn("E005", self.text)
-        register = self.document.tables[-1]
-        rendered_ids = [row.cells[0].text.splitlines()[0] for row in register.rows[1:]]
-        self.assertEqual(rendered_ids, [f"E{index:03d}" for index in range(1, len(rendered_ids) + 1)])
+    def test_reader_visible_source_ids_are_sequential(self):
+        self.assertNotRegex(self.text, r"\bE\d{3,}\b")
+        rendered_ids = [
+            re.match(r"\[(S\d+)\]", paragraph.text).group(1)
+            for paragraph in self.document.paragraphs
+            if re.match(r"\[S\d+\]", paragraph.text)
+        ]
+        self.assertEqual(rendered_ids, [f"S{index}" for index in range(1, len(rendered_ids) + 1)])
 
     def test_closing_action_table_is_cross_referenced_not_duplicated(self):
         action_headers = [
@@ -344,7 +346,7 @@ class CompleteRouteRenderingTests(unittest.TestCase):
         )
         self.assertTrue(heading.paragraph_format.page_break_before)
 
-    def test_execution_plan_cross_references_lead_actions(self):
+    def test_actions_appear_once_without_a_process_plan(self):
         lead_tables = [
             table
             for table in self.document.tables
@@ -356,15 +358,14 @@ class CompleteRouteRenderingTests(unittest.TestCase):
             for table in self.document.tables
             if [cell.text for cell in table.rows[0].cells] == ["When", "Action"]
         ]
-        self.assertEqual(len(plan_tables), 1)
-        plan_text = "\n".join(
-            cell.text for row in plan_tables[0].rows for cell in row.cells
+        self.assertEqual(len(plan_tables), 0)
+        lead_text = "\n".join(
+            cell.text for row in lead_tables[0].rows for cell in row.cells
         )
         for item in self.record["validation"]["next_actions"]:
-            self.assertIn(item["when"], plan_text)
-            self.assertNotIn(item["action"], plan_text)
-            self.assertNotIn(item["output"], plan_text)
-        self.assertIn("consolidated in the Next practical actions table", self.text)
+            self.assertIn(item["action"], lead_text)
+            self.assertIn(item["output"], lead_text)
+        self.assertNotIn("Research execution plan", self.text)
 
 
 class ReportValidatorTokenTests(unittest.TestCase):
@@ -501,7 +502,7 @@ class DanglingCitationValidationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             output = build(refresh_record(), directory)
             document = Document(output)
-            document.add_paragraph("Registrant contraction is documented [E026].")
+            document.add_paragraph("Registrant contraction is documented [S999].")
             document.save(output)
             check = subprocess.run(
                 [
@@ -515,8 +516,8 @@ class DanglingCitationValidationTests(unittest.TestCase):
                 text=True,
             )
             self.assertNotEqual(check.returncode, 0)
-            self.assertIn("dangling evidence citations", check.stdout + check.stderr)
-            self.assertIn("E026", check.stdout + check.stderr)
+            self.assertIn("dangling source citations", check.stdout + check.stderr)
+            self.assertIn("S999", check.stdout + check.stderr)
 
 
 class ActionNameTests(unittest.TestCase):
@@ -649,7 +650,7 @@ class ActionNameTests(unittest.TestCase):
         )
         self.assertEqual(name, "Issue the sources-sought notice")
 
-    def test_rendered_execution_plan_cells_are_intelligible(self):
+    def test_rendered_decision_actions_are_intelligible(self):
         record = complete_record()
         record["validation"]["next_actions"] = [
             {
@@ -671,18 +672,19 @@ class ActionNameTests(unittest.TestCase):
         ]
         with tempfile.TemporaryDirectory() as directory:
             document = Document(build(record, directory))
-            plan = next(
+            actions = next(
                 table
                 for table in document.tables
-                if [cell.text for cell in table.rows[0].cells] == ["When", "Action"]
+                if [cell.text for cell in table.rows[0].cells] == ["Owner", "Action", "Output or gate"]
             )
-            cells = [row.cells[1].text for row in plan.rows[1:]]
+            cells = [row.cells[1].text for row in actions.rows[1:]]
             self.assertEqual(len(cells), 2)
-            self.assertNotIn("Complete the FAR 19", cells)
-            self.assertIn("Issue the sources-sought notice", cells)
-            for cell in cells:
-                self.assertLessEqual(len(cell), self.builder.ACTION_NAME_LIMIT)
-                self.assertFalse(cell.endswith(("FAR", "the", "a", "as a")), cell)
+            self.assertIn("Complete the FAR 19.502-2 Rule of Two inquiry", cells[0])
+            self.assertEqual(cells[1], "Issue the sources-sought notice.")
+            self.assertFalse(any(
+                [cell.text for cell in table.rows[0].cells] == ["When", "Action"]
+                for table in document.tables
+            ))
 
 
 class PlaceholderTimestampTests(unittest.TestCase):
