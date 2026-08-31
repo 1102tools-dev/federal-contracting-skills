@@ -44,7 +44,7 @@ Read only the references needed for the active workflow:
 - Read [validation-gates.md](references/validation-gates.md) before building and again before delivering the workbook.
 - Read [runtime-adaptation.md](references/runtime-adaptation.md) when collecting structured answers, locating tools, selecting a calculation engine, or delivering files.
 
-## Non-negotiable gates
+## Substantive boundaries
 
 These gates prevent documented silent wrong answers. Keep them active even when shortening or adapting the workflow.
 
@@ -61,20 +61,7 @@ These gates prevent documented silent wrong answers. Keep them active even when 
 
 ## Pre-flight: capabilities and dependencies
 
-When this skill is entered immediately after a numbered Pre-Award Agent pricing selection and the current assistant response has not already shown the orchestrator's outcome preview, emit these exact four lines before intake or a capability check:
-
-Begin line 1 with `Recommended outcome:`. Do not precede the block with a heading, acknowledgement, selection recap, routing narration, or code fence.
-
-```text
-Recommended outcome: Routed IGCE `.xlsx`, separated by confirmed pricing method or hybrid CLIN
-Includes: auditable labor, indirect, escalation, travel and other-cost build-up, benchmarks, assumptions, formulas, and validation
-Boundary/default: no contract type is inferred; the user or Contracting Officer must confirm FFP, LH, T&M, a CR subtype, or hybrid routing
-Next: collect the approved handoff or requirements and the confirmed pricing method
-```
-
-This is a routing fallback, not a second preview. Do not repeat it when the orchestrator already rendered the four lines in the current assistant response. If FFP has not been supplied or confirmed, stop after the bounded pricing-method question and return routing control to the orchestrator; the presence of this component skill never selects FFP for the user.
-
-Select the workflow and begin useful intake before testing dependencies. Do not make workbook authoring or provider availability the first response after selection. A read-only or artifact-limited session may still reuse supplied facts, identify missing inputs, and complete decomposition or handoff review. Run only the relevant portions of this pre-flight immediately before the first dependent MCP call or before promising or beginning workbook generation. For Workflow B, emit the required boundary and wait for the user's option before any pre-flight or tool call.
+Begin useful intake from the requirement or approved handoff. State the intended workbook only when that helps correct scope. If FFP has not been confirmed, ask one concise pricing-method question; the component never selects it for the user. Test only capabilities required immediately before their dependent work.
 
 1. Call `bls-oews.get_access_status` before any BLS data operation. If it reports `limited_fallback`, tell the user `BLS_API_KEY` is not configured and that the active v1 fallback is limited to 25 requests per day and 10 years per query. Continue only when the planned workload fits. If the status operation is missing, classify the BLS MCP or shared host profile as outdated or incomplete; do not call BLS unavailable.
 2. When travel is in scope, call `gsa-perdiem.get_access_status` before any Per Diem data operation. If it reports `limited_fallback`, tell the user `PERDIEM_API_KEY` is not configured and the active `DEMO_KEY` fallback is limited to approximately 10 requests per hour. If the status operation is missing, classify the MCP or host profile as outdated or incomplete.
@@ -291,6 +278,12 @@ Do not claim full workbook validation when the third layer did not run. Fix ever
 Use the host's file-output or attachment capability when available. Otherwise write to the user-supplied path or current working directory and return the absolute path. Do not assume a host sandbox path, a particular file-presentation function, or an OS-specific open command. Follow [runtime-adaptation.md](references/runtime-adaptation.md).
 
 State which validation layers passed and whether a real spreadsheet engine ran. Do not bury the limitation when only static and independent checks ran.
+
+## Reader-first runtime priority
+
+Begin useful intake from the supplied requirement or approved handoff. Do not require a scripted outcome preview or staged approval ceremony when the pricing method and material inputs are already supplied. Retain a concise confirmation only before material staffing derivation, using material assumptions, or filling a controlled determination template.
+
+Keep formula, source, contract-type, neutral-analysis, and validation requirements intact without narrating them as process.
 
 ## Edge conditions
 

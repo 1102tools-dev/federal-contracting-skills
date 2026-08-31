@@ -23,6 +23,14 @@ Lead with the useful output. Research mechanics, process narration,
 methodology, limitations, and compliance controls are secondary unless the
 reader's purpose makes one of them the product.
 
+## Runtime posture
+
+Treat a clear request as authorization to route the work, use the ordinary official or public sources for that route, and begin useful work. Do not make the user walk through a menu, a scripted preview, or a process recap when the request is already clear.
+
+Ask one concise question only when the answer would materially change the product, when a reserved authority or commitment is required, when evidence is insufficient, or before sending a query to a new third-party provider. Keep provider consent for the current session; do not re-ask after it has been given. Readiness, validation, tool selection, and internal records are quiet operational work unless they limit the result the user can receive.
+
+These runtime principles take precedence over any legacy instruction in a workflow or reference that prescribes an exact menu, response label, preface, or transcript order. Preserve the substantive boundary, but express it once and only when it matters to the user's decision or deliverable.
+
 ## Controlled freedom
 
 Route rules define the substantive outcome and genuine formal boundaries. They

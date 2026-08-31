@@ -4,12 +4,11 @@ description: >
   Trigger for: finding federal opportunities; capture and bid screening;
   competitor or incumbent intelligence; recompete pipelines; teaming partner
   research; agency, customer, or market intelligence; federal labor-rate or
-  pricing context; or refreshing prior GovCon research. Always begin with the
-  local SAM.gov access-readiness check, then show the complete workflow menu and
-  obtain the user's selection before research, preflight, file generation, web
-  search, or other MCP calls. Produce sourced chat
-  findings or an optional validated GovCon Growth Brief without making a bid
-  decision from public data alone.
+  pricing context; or refreshing prior GovCon research. Route clear requests
+  directly, use readiness checks quietly unless they limit the result, and show
+  a menu only when the work is ambiguous. Produce sourced chat findings or an
+  optional validated GovCon Growth Brief without making a bid decision from
+  public data alone.
 ---
 
 # GovCon Growth Workflow
@@ -64,13 +63,12 @@ Read supporting files only when their mode is reached:
 - [evidence-contract.md](references/evidence-contract.md) whenever creating or updating the research record.
 - [runtime-adaptation.md](references/runtime-adaptation.md) for host capability handling.
 
-## Permanent release gates
+## Substantive boundaries
 
-1. **Readiness, then menu:** The first action is the local presence-only SAM.gov `get_access_status` call. When it reports missing access or is unavailable, the exact readiness block above precedes the complete nine-choice menu. Otherwise the first-turn response is the menu alone. This remains mandatory when the opening request already describes a specific opportunity, bid screen, attached notice, company, or desired analysis; mark the closest choice `Recommended`, but do not ask for details until the user selects a mode. The exact final line is `Which option would you like? You can reply with the number, label, or your own wording.` Do not announce the skill, acknowledge the request, or add any other preface or postscript. No upstream research, file generation, capability preflight, web-research request, or other MCP tool invocation occurs first.
-2. **Confirmed mode:** A clear opening request may cause one choice to be marked `Recommended`, but the user still confirms it.
-3. **Outcome preview, then relevant intake:** After a productive selection, name the route's recommended product, major contents, default and reserved boundaries, and next gate using the exact labels `Recommended outcome:`, `Includes:`, `Boundary/default:`, and `Next:`. Then ask only for information and optional documents relevant to that mode. If none are available, record that and proceed. Help me choose follows the diagnosis-and-recommendation contract in the launch reference instead.
-4. **Approval before calls:** The startup readiness status call is the sole exception. Present a research plan, sources, sanitized parameters, exact public URLs proposed for extraction, limits, expected output, and the four web-provider choices. Obtain explicit provider selection and approval before any research tool invocation.
-5. **Provider choice in every plan:** A plan-approval response is invalid unless it ends with all four provider choices, the Tavily third-party disclosure, and a question asking the user to select a provider mode and approve the plan. Never substitute a generic plan-approval question.
+1. **Route directly:** A clear request selects its route and authorizes ordinary official and native-public research. Offer a short menu only for a bare or ambiguous invocation. Run readiness checks before a dependent call, and mention them only when they limit the product.
+2. **Focused intake:** Reuse supplied facts and ask one batched question only for missing information that materially changes the route, evidence, or product. Help me choose may ask the smallest useful diagnostic question set.
+3. **Proportionate source planning:** For ordinary work, proceed with the route's ordinary official sources and state material limits in the result. For multi-source, sensitive, or materially uncertain work, give a concise source plan and invite correction before retrieval.
+4. **Session-scoped provider consent:** Native public sources are authorized by a clear request. Before using Tavily or another new third-party provider, briefly identify it, disclose the query category, and obtain consent for the session. Do not repeat that choice in the same session.
 6. **MCP boundary:** Use installed MCP operations. Never improvise direct API calls or shell requests around a missing MCP.
 7. **Minimum tool surface:** SAM is required only for live-opportunity, registration, exclusion, certification, or other SAM-specific work. CALC+ is required only for pricing context.
 8. **Evidence integrity:** Label sourced fact, inference, user statement, user decision, and unresolved question. Every finding cites stable evidence IDs.
@@ -245,6 +243,12 @@ For a reader-facing report:
 Design for the executive who must act. Brand the document for the customer organization the user named in intake, with that organization's stated size posture and constraints; never carry over harness or sample identities. If the route's management question cannot be answered from the approved evidence, page one leads with the shortfall statement and follow-up query plan required by the brief specification instead of padded or out-of-scope content. Page one must state the specific decision or commercial question, a plain-language management posture, up to three evidence-backed signals, the immediate moves, and the operational unknowns that control commitment. The body must deliver the route-native work product defined in the brief specification, not repeat the same findings under generic headings. State owners, proof obligations, timing, and stop conditions when the approved record supports them. End with a concise reader-facing Source Register; keep query logs and raw research mechanics in the sidecar. Reuse company context already collected in the run; ask only for information that could change the route decision. Do not expose internal prompt or tool plumbing.
 
 The rendered report, not validator output, is the final quality authority. Structural and citation checks are necessary but cannot qualify a product that is generic, repetitive, difficult to read, or not operationally useful.
+
+## Reader-first runtime priority
+
+For ordinary execution, this skill does not require a fixed menu, a four-line preview, exact labels, or a scripted provider/plan transcript. A clear request routes directly; a vague request receives a short menu or a focused question. The user's request authorizes ordinary official and native-public research. Ask before a new third-party provider receives a query, or when missing company facts prevent a bid conclusion or materially change the product. Keep that provider consent for the session.
+
+Keep evidence, privacy, source, and bid-decision boundaries intact. State them once only when they constrain the useful answer or product.
 
 ## Out of scope
 
