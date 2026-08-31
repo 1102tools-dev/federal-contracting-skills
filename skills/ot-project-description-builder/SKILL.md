@@ -39,7 +39,7 @@ Load only what the active workflow needs:
 - [validation-gates.md](references/validation-gates.md) before generation and again before delivery.
 - [runtime-adaptation.md](references/runtime-adaptation.md) when selecting input, document-generation, rendering, validation, or delivery capabilities.
 
-## Substantive boundaries
+## Non-negotiable gates
 
 1. **Correct authority:** 10 U.S.C. 4021 covers basic, applied, and advanced research. 10 U.S.C. 4022 covers prototype projects. Section 4022(f) covers follow-on production contracts or transactions. Never label a prototype as a 4021 action.
 2. **Authority is supplied, not selected:** Explain the three paths when needed, but require the user or Agreements Officer to identify the authority. Do not default an uncertain request to Prototype OT.
@@ -55,7 +55,20 @@ Load only what the active workflow needs:
 
 ## Pre-flight: capabilities and inputs
 
-Begin with the supplied concept or source material. State the intended project-description product in ordinary language only when that helps the user choose or correct scope. Reuse facts already supplied and ask one batched clarification for missing material authority or scope facts. Do not make document-authoring or rendering capability the first question; a limited session can still develop a useful milestone structure and identify what is needed for the final file.
+When this skill is entered immediately after a numbered Other Transaction Agent project-description selection and the current assistant response has not already shown the orchestrator's outcome preview, emit these exact four lines before authority intake or a capability check:
+
+Begin line 1 with `Recommended outcome:`. Do not precede the block with a heading, acknowledgement, selection recap, routing narration, or code fence.
+
+```text
+Recommended outcome: Validated OT Project Description `.docx` plus chat-only milestone handoff
+Includes: authority record, objective, milestone structure, deliverables, completion evidence, schedule, and downstream cost handoff
+Boundary/default: milestone payment type remains pending unless supplied; the user or Agreements Officer retains authority, participant, contribution, successful-completion, and follow-on decisions
+Next: collect the concept or source material and missing authority facts
+```
+
+This is a routing fallback, not a second preview. Do not repeat it when the orchestrator already rendered the four lines in the current assistant response, and never replace it with Stage A intake.
+
+After the orchestrator's outcome preview, begin authority and acquisition-frame intake and reuse every supplied fact. Do not make document-authoring or rendering availability the first question or action after workflow selection. A read-only or artifact-limited session may still inspect supplied material, identify contradictions and gaps, and complete useful scope intake.
 
 Before promising or beginning the validated `.docx` build:
 
@@ -152,12 +165,6 @@ After approval:
 6. Read [handoff-specification.md](references/handoff-specification.md) and emit the approved milestone handoff in chat. Never save it as a file or add it to the `.docx`.
 7. Report unresolved `[TBD]` items, the source and date of authority facts, and any validation layer that could not run.
 8. If the document contains a dynamic TOC, tell the user: `Open the document in Word, press Ctrl+A (Cmd+A on Mac), then F9 (or Fn+F9) to update all fields and page numbers.` Do not rely on a right-click-only instruction.
-
-## Reader-first runtime priority
-
-Begin with the supplied concept or source material and ask one batched clarification only for material missing facts. Do not require a scripted outcome preview or staged approval ceremony when authority, scope, and milestone facts are already supplied. Retain a confirmation only when authority, contribution, milestone, data-rights, or follow-on facts are unresolved and change the document.
-
-Keep the statutory, negotiated-rights, artifact-separation, and validation requirements intact without narrating them as process.
 
 ## Out of scope
 

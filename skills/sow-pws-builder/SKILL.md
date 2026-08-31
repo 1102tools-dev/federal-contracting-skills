@@ -39,7 +39,7 @@ Load supporting files only when needed:
 - [runtime-adaptation.md](references/runtime-adaptation.md) for questions, document tools, TOC handling, and delivery.
 - [validation-gates.md](references/validation-gates.md) before delivery.
 
-## Substantive boundaries
+## Permanent correctness gates
 
 1. **Separation:** The `.docx` contains no staffing handoff, FTE estimate, SOC code, IGCE content, CLIN table, pricing schedule, or skill-chain message. The two handoffs exist only in chat.
 2. **No false FAR exception:** Do not cite FAR 37.102(d) as an hours prohibition. Use FAR 37.602(b)(1) for results-oriented PWS language.
@@ -70,7 +70,20 @@ Use an existing SOW/PWS and, when available, IGCE cost drivers to present capabi
 
 ## Runtime pre-flight
 
-Begin with the supplied requirement or source material. State the intended SOW/PWS product in ordinary language only when that helps the user choose or correct scope. Reuse facts already supplied and ask one batched clarification for missing material acquisition facts. Do not make document-authoring or rendering capability the first question; a limited session can still produce useful scope analysis and identify what is needed for the final file.
+When this skill is entered immediately after a numbered Pre-Award Agent selection and the current assistant response has not already shown the orchestrator's outcome preview, emit these exact four lines before any intake or capability check:
+
+Begin line 1 with `Recommended outcome:`. Do not precede the block with a heading, acknowledgement, selection recap, routing narration, or code fence.
+
+```text
+Recommended outcome: Validated SOW/PWS `.docx` plus two chat-only handoffs
+Includes: an executable work statement, measurable standards, a staffing handoff, and a Section B handoff
+Boundary/default: recommend PWS for performance-based services when the requirement supports it; the user or Contracting Officer retains contract type, commerciality, and other reserved decisions
+Next: collect the current requirement or source material and missing acquisition-strategy facts
+```
+
+This is a routing fallback, not a second preview. Do not repeat it when the orchestrator already rendered the four lines in the current assistant response, and never replace it with component intake.
+
+After the orchestrator's outcome preview, begin acquisition-strategy intake and reuse every supplied fact. Do not make document-authoring or rendering capability the first question or first action after workflow selection. A read-only or artifact-limited session may still inspect supplied material, identify gaps, and complete useful scope intake.
 
 Before promising or beginning the validated `.docx` build:
 
@@ -171,12 +184,6 @@ Before delivery:
 Deliver the `.docx`, then present both chat-only handoffs using [handoff-specification.md](references/handoff-specification.md). The pricing skill consumes the approved staffing table without repeating decomposition. The final message must state that the SOW/PWS is the contract-file artifact and the handoffs are internal workpapers outside it.
 
 When a dynamic TOC has not been updated in Word, end with: `Open the document in Word, press Ctrl+A (Cmd+A on Mac), then F9 to populate or refresh the Table of Contents, and save.`
-
-## Reader-first runtime priority
-
-Begin with the supplied requirement and ask one batched clarification only for material missing facts. Do not require a scripted outcome preview, staged intake ceremony, or separate confirmation when the user supplied sufficient direction. Retain a confirmation only when an unresolved contract type, commerciality, CPFF form, material scope assumption, or handoff contradiction changes the document.
-
-Keep the formal document, reserved-decision, separation, and validation requirements intact without narrating them as process.
 
 ## Out of scope
 

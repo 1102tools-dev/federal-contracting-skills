@@ -42,7 +42,7 @@ Load only the references needed for the active workflow:
 - [validation-gates.md](references/validation-gates.md) before building and again before delivery.
 - [runtime-adaptation.md](references/runtime-adaptation.md) when collecting structured answers, locating tools, selecting a calculation engine, or delivering files.
 
-## Substantive boundaries
+## Non-negotiable gates
 
 1. **Authority is supplied, not inferred:** Require the user or Agreements Officer to identify Research OT under 10 U.S.C. 4021, Prototype OT under 10 U.S.C. 4022, or follow-on production under 10 U.S.C. 4022(f). Explain differences but do not choose.
 2. **Correct 4022(d) paths:** Path A is significant participation by at least one nontraditional defense contractor or nonprofit research institution. Path B requires all significant non-Government participants to be small businesses or nontraditional defense contractors. Path C requires at least one-third of total project cost from non-Federal sources. Path D is a senior procurement executive's written exceptional-circumstances determination. There is no 4022(d)(1)(D) "competition commitment" path.
@@ -62,7 +62,20 @@ Load only the references needed for the active workflow:
 
 ## Pre-flight: capabilities and dependencies
 
-Begin useful intake from the supplied milestone table or concept. State the intended workbook only when that helps correct scope. Ask one concise question for material authority, contribution, or cost facts that are missing; never infer those facts. Test only capabilities required immediately before their dependent work.
+When this skill is entered immediately after a numbered Other Transaction Agent cost-analysis selection and the current assistant response has not already shown the orchestrator's outcome preview, emit these exact four lines before milestone intake, the proposed-amount boundary, or a capability check:
+
+Begin line 1 with `Recommended outcome:`. Do not precede the block with a heading, acknowledgement, selection recap, routing narration, or code fence.
+
+```text
+Recommended outcome: Milestone-based OT Cost Analysis `.xlsx`
+Includes: milestone should-cost, labor and market benchmarks, materials, travel, ODCs, fees, contribution treatment, funding profile, scenarios, and validation
+Boundary/default: approved milestones are the default basis; do not infer authority, statutory path, cost share, payment type, ceiling, or a price-reasonableness conclusion
+Next: collect approved milestones or concept, authority facts, and missing cost inputs
+```
+
+This is a routing fallback, not a second preview. Do not repeat it when the orchestrator already rendered the four lines in the current assistant response. The fixed Workflow B determination boundary still follows immediately when the supplied context directly triggers it; never replace the preview with intake alone.
+
+Select the workflow and begin useful intake before testing dependencies. Do not make workbook authoring or provider availability the first response after selection. A read-only or artifact-limited session may still reuse supplied facts, identify missing inputs, and develop or review the milestone structure. Inspect only the capabilities the route actually needs immediately before its first dependent MCP call or before promising or beginning workbook generation. Workflow B's fixed boundary takes precedence and must be shown before any pre-flight or tool call.
 
 1. Call `bls-oews.get_access_status` before any BLS data call. For `limited_fallback`, tell the user `BLS_API_KEY` is not configured and v1 is limited to 25 requests per day and 10 years per query; continue only when the workload fits. A missing status operation means an outdated or incomplete MCP or shared host profile.
 2. When travel is in scope, call `gsa-perdiem.get_access_status` before Per Diem data. For `limited_fallback`, tell the user `PERDIEM_API_KEY` is not configured and `DEMO_KEY` is limited to approximately 10 requests per hour. A missing status operation means an outdated or incomplete MCP or host profile.
@@ -231,12 +244,6 @@ If no spreadsheet engine is available, state exactly:
 ### Step 8: deliver
 
 State which validation layers ran. Summarize the authority and contribution facts as user-supplied inputs, the should-cost range, the Government funding range, key sensitivities, missing evidence, and refresh dates. Do not state a price-reasonableness conclusion unless it is the user's verbatim Option B text, visibly marked DRAFT.
-
-## Reader-first runtime priority
-
-Begin useful intake from the supplied milestone table or concept. Do not require a scripted outcome preview or staged approval ceremony when authority, milestone, and cost facts are already supplied. Retain a concise confirmation only before deriving a milestone model, using material assumptions, or filling a controlled determination template.
-
-Keep authority, contribution, formula, neutral-analysis, and validation requirements intact without narrating them as process.
 
 ## Out of scope
 

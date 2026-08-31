@@ -42,7 +42,7 @@ This skill assembles data and formats analysis. The Contracting Officer owns cos
 - Never invent a clearance, SCIF, OCONUS, specialty-labor, cost-risk, or performance premium.
 - When the user supplies rationale or a determination, preserve it verbatim and label the resulting document `DRAFT`.
 
-## Substantive boundaries
+## Permanent correctness gates
 
 These gates prevent documented silent wrong answers. Keep them in the front-loaded core.
 
@@ -91,7 +91,20 @@ After Option A, run the applicable BLS and CALC+ steps and stop at neutral posit
 
 ## Pre-flight capabilities
 
-Begin useful intake from the requirement or approved handoff. State the intended workbook only when that helps correct scope. If the CR subtype has not been confirmed, ask one concise pricing-method question; the component never selects it for the user. Test only capabilities required immediately before their dependent work.
+When this skill is entered immediately after a numbered Pre-Award Agent pricing selection and the current assistant response has not already shown the orchestrator's outcome preview, emit these exact four lines before intake or a capability check:
+
+Begin line 1 with `Recommended outcome:`. Do not precede the block with a heading, acknowledgement, selection recap, routing narration, or code fence.
+
+```text
+Recommended outcome: Routed IGCE `.xlsx`, separated by confirmed pricing method or hybrid CLIN
+Includes: auditable labor, indirect, escalation, travel and other-cost build-up, benchmarks, assumptions, formulas, and validation
+Boundary/default: no contract type is inferred; the user or Contracting Officer must confirm FFP, LH, T&M, a CR subtype, or hybrid routing
+Next: collect the approved handoff or requirements and the confirmed pricing method
+```
+
+This is a routing fallback, not a second preview. Do not repeat it when the orchestrator already rendered the four lines in the current assistant response. If a CR subtype has not been supplied or confirmed, stop after the bounded pricing-method question and return routing control to the orchestrator; the presence of this component skill never selects a CR subtype for the user.
+
+Begin useful intake after workflow selection; do not make workbook authoring or provider availability the first response. A read-only or artifact-limited session may still reuse supplied facts, identify missing inputs, and review an approved handoff. Run only the relevant portions of this pre-flight immediately before the first dependent MCP call or before promising or beginning workbook generation. For Workflow B, run it only after the user chooses an option.
 
 1. Call `bls-oews.get_access_status` before any BLS data call. For `limited_fallback`, tell the user `BLS_API_KEY` is not configured and v1 is limited to 25 requests per day and 10 years per query; continue only when the workload fits. A missing status operation means an outdated or incomplete MCP or shared host profile.
 2. When travel is in scope, call `gsa-perdiem.get_access_status` before Per Diem data. For `limited_fallback`, tell the user `PERDIEM_API_KEY` is not configured and `DEMO_KEY` is limited to approximately 10 requests per hour. A missing status operation means an outdated or incomplete MCP or host profile.
@@ -233,12 +246,6 @@ Never call openpyxl-only inspection recalculation or proof of formula execution.
 ### Step 9: deliver
 
 Use the host's artifact-delivery capability when available. Otherwise save to the requested or current working directory and report the absolute path. Do not invent host-specific paths or commands. See [runtime-adaptation.md](references/runtime-adaptation.md).
-
-## Reader-first runtime priority
-
-Begin useful intake from the supplied requirement or approved handoff. Do not require a scripted outcome preview or staged approval ceremony when the pricing method and material inputs are already supplied. Retain a concise confirmation only before material staffing derivation, using material assumptions, or filling a controlled determination template.
-
-Keep formula, source, contract-type, neutral-analysis, and validation requirements intact without narrating them as process.
 
 ## Out of scope
 
